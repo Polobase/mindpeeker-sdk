@@ -213,6 +213,35 @@ smaller samples score lower. The value of this table is catching a *broken* sour
 (`anu-legacy` is skipped by design: at 1 request/minute a meaningful sample would take hours,
 and the keyed `anu` endpoint reads the same physical source.)
 
+### In plain English — what do these numbers mean?
+
+Entropy quality = **how hard it is to guess the next byte**. A perfect source gives 8 bits of
+surprise per byte; a broken source repeats itself. What each measure tells you:
+
+| Measure | Good | Bad | In simple words |
+|---|---|---|---|
+| Shannon (b/B) | close to 8 | low | how much *surprise* each byte carries on average |
+| 90B MCV (b/B) | close to 8 | low | how hard the *best possible guesser* finds the next byte — the strictest measure |
+| 90B Markov (b/bit) | close to 1 | low | does the next bit depend on the previous one? low = it has "memory" |
+| χ² p | 0.01 – 0.99 | ≈ 0 | are all 256 byte values used equally often? p ≈ 0 = suspiciously uneven |
+| Serial corr | ≈ 0 | far from 0 | does one byte predict the next? |
+| Runs z | between −3 and 3 | large | are there too many (or too few) streaks of same bits? |
+| gzip | ≈ 1.0 | low | randomness cannot be compressed — if zip makes it smaller, it has patterns |
+
+**Simple quality ranking of your real (raw) sources:**
+
+| Rank | Source | Grade | In simple words |
+|---|---|---|---|
+| 🥇 | `esp32` raw | **excellent** | almost perfect randomness at high speed — the best real source you own. Tiny patterns exist, so we still clean it up by default |
+| 🥇 | `camera` raw | **excellent** | real physical noise, ~7 of 8 bits are genuinely unguessable — and we only "count" 1 of them, a 7× safety margin |
+| 🥈 | `microphone` raw | **excellent** | surprisingly clean noise from the mic; also runs with a big safety margin |
+| 🥉 | `jitter` raw | **weak** | full of patterns (you can zip it to 10%!) — only safe because we squeeze 32 raw bytes into every 1 output byte |
+| — | `crypto` | perfect but *fake* | flawless numbers, but from math, not physics — a very good magician, not nature |
+| — | all cloud sources | pass | cleaned up (whitened) before they reach you, so tests cannot tell them apart — choose them by *trust and physics class*, not by these numbers |
+
+Machine-readable version of all results: [`docs/quality.json`](docs/quality.json)
+(regenerated on every `bun run quality`).
+
 ### Noise bitmaps
 
 Raw bytes rendered as 256×256 grayscale (`docs/noise/`) — human eyes are ruthless pattern

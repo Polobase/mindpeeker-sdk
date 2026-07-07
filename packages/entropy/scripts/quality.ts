@@ -278,7 +278,61 @@ for (const r of results) {
       `- ${r.subject.name}: credited ${r.subject.creditedH}, measured MCV ${r.mcv.toFixed(2)} b/B (${r.subject.note})`,
     )
 }
+// ---------- machine-readable output ----------
+
+const CLASSES: Record<string, string> = {
+  crypto: 'csprng',
+  'jitter-raw': 'software-physical-hybrid',
+  'esp32-raw': 'classical-trng',
+  'camera-raw': 'hybrid-quantum-classical-trng',
+  'microphone-raw': 'classical-trng',
+  'qrandom.io': 'quantum-qrng',
+  'lfdr.de': 'quantum-qrng',
+  anu: 'quantum-qrng',
+  outshift: 'quantum-qrng',
+  'random.org': 'classical-trng',
+  superrand: 'classical-trng',
+  drand: 'cryptographic-beacon-public',
+  'nist-beacon': 'trng-beacon-public',
+}
+
+function grade(r: Result): string {
+  if (!r.subject.raw) return 'pass (whitened upstream — tests cannot rank it)'
+  if (r.mcv >= 6.5) return 'excellent'
+  if (r.mcv >= 3) return 'moderate'
+  return 'weak — only usable because conditioning compresses it heavily'
+}
+
+const report = {
+  generated: new Date().toISOString().slice(0, 10),
+  platform: `${process.platform} ${process.arch}, bun ${Bun.version}`,
+  note: 'Statistical tests can only FAIL a source. Whitened sources all pass by construction; small samples score lower on mcvMinEntropy because of the confidence penalty (sample-size artifact, not quality).',
+  sources: results
+    .sort((a, b) => b.mcv - a.mcv)
+    .map((r) => ({
+      name: r.subject.name,
+      class: CLASSES[r.subject.name] ?? 'unknown',
+      rawSample: r.subject.raw,
+      sampleBytes: r.n,
+      shannonBitsPerByte: Number(r.shannon.toFixed(3)),
+      mcvMinEntropyBitsPerByte: Number(r.mcv.toFixed(2)),
+      markovBitsPerBit: Number(r.markov.toFixed(3)),
+      chiSquareP: Number(r.chi.pValue.toFixed(3)),
+      serialCorrelation: Number(r.scc.toFixed(4)),
+      onesPercent: Number((r.mono.onesFraction * 100).toFixed(2)),
+      runsZ: Number(r.runsZ.toFixed(1)),
+      monteCarloPi: Number(r.pi.toFixed(3)),
+      gzipRatio: Number(r.gzip.toFixed(3)),
+      creditedBitsPerByte: r.subject.raw ? r.subject.creditedH : null,
+      grade: grade(r),
+      note: r.subject.note,
+    })),
+}
+const jsonPath = join(import.meta.dir, '../docs/quality.json')
+writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`)
+
 console.log(`\nbitmaps: ${NOISE_DIR}/<source>.png`)
+console.log(`json report: ${jsonPath}`)
 console.log(
   `platform: ${process.platform} ${process.arch}, bun ${Bun.version}, ${new Date().toISOString().slice(0, 10)}`,
 )
