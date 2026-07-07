@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { once } from 'node:events'
 import { createReadStream } from 'node:fs'
 import { EntropyError } from '../errors.js'
 
@@ -58,8 +59,17 @@ function configurePort(sttyPath: string, args: string[]): Promise<void> {
 export async function nodeSerialSource(opts: NodeSerialOptions): Promise<NodeSerialStream> {
   const { path, baudRate = 921_600, sttyPath = 'stty' } = opts
   if (!path) throw new TypeError('nodeSerialSource({ path }) requires a device path')
-  await configurePort(sttyPath, sttyArgs(path, baudRate, process.platform))
+  // Open our fd BEFORE running stty: tty settings reset when the last file
+  // descriptor closes (stty's own), which would silently drop the port back
+  // to 9600 baud. Holding the stream open keeps the configuration applied.
   const stream = createReadStream(path, { highWaterMark: 4096 })
+  try {
+    await once(stream, 'open')
+    await configurePort(sttyPath, sttyArgs(path, baudRate, process.platform))
+  } catch (error) {
+    stream.destroy()
+    throw error
+  }
   return {
     [Symbol.asyncIterator]: () => stream[Symbol.asyncIterator]() as AsyncIterator<Uint8Array>,
     close: () => {

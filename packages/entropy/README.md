@@ -104,6 +104,40 @@ micEntropy({ source: ffmpegSampleSource({ device: ':0' }) })         // ':0' avf
 hwRng()                                                              // /dev/hwrng (usually root-only)
 ```
 
+## Measured performance
+
+Real measurements from `bun scripts/bench.ts` (Apple Silicon macOS, Bun 1.3, residential
+connection, 2026-07-07 — rerun it yourself; results vary with network, hardware and light):
+
+| Rank | Provider | Kind | Transport | Request | Latency | Effective rate | Notes |
+|---|---|---|---|---|---|---|---|
+| 1 | `crypto` | csprng | in-process | 1 MiB | 1 ms | ~870 MiB/s | baseline, not physical entropy |
+| 2 | `esp32` (raw) | trng | USB serial 921600 | 16 KiB | 233 ms | **~69 KiB/s** | AetherOnePi firmware, near wire speed |
+| 3 | `esp32` (conditioned) | trng | USB serial 921600 | 2 KiB | 65 ms | ~31 KiB/s | SHA-256, 2× credit |
+| 4 | `jitter` | trng | in-process | 1 KiB | 112 ms | ~9 KiB/s | hrtime deltas, conditioned |
+| 5 | `camera` (raw) | trng | ffmpeg avfoundation | 1 KiB | 1.9 s | ~540 B/s | debiased sign bits |
+| 6 | `lfdr.de` | qrng | https | 64 B | 139 ms | ~460 B/s | free, keyless |
+| 7 | `random.org` | trng | https | 64 B | 196 ms | ~330 B/s | 250k bits/day |
+| 8 | `qrandom.io` | qrng | https | 64 B | 232 ms | ~280 B/s | free, keyless |
+| 9 | `outshift` | qrng | https | 64 B | 475 ms | ~135 B/s | 100k bits/day |
+| 10 | `nist-beacon` | beacon | https | 64 B | 677 ms | ~95 B/s | PUBLIC bits |
+| 11 | `drand` | beacon | https | 64 B | 890 ms | ~72 B/s | PUBLIC bits, 2 rounds |
+| 12 | `anu` (keyed) | qrng | https | 64 B | 980 ms | ~65 B/s | quantum vacuum |
+| 13 | `superrand` (REST) | trng | https | 64 B | 1.3 s | ~51 B/s | ≤256 values/request |
+| 14 | `camera` (conditioned) | trng | ffmpeg | 64 B | 3.6 s | ~18 B/s | warmup + 8× credit dominate |
+| 15 | `anu-legacy` | qrng | https | 16 B | 1.1 s | ~14 B/s | hard 1 req/min limit |
+
+Reading the numbers:
+
+- **Cloud rates are latency-bound**, not throughput limits — a 64-byte request costs one round
+  trip, so bigger requests amortize much better (e.g. `random.org` serves up to 128 KiB per call).
+- **The ESP32 is by far the fastest physical source** — orders of magnitude ahead of any cloud
+  QRNG — which is exactly why local hardware is worth the USB cable.
+- **Camera small reads pay fixed costs** (auto-exposure warmup + the deliberately paranoid 8×
+  extraction credit). Streaming or raw mode is where it shines; covered-lens thermal mode works too.
+- For **bulk + strongest-source guarantees**, mix fast local with a cloud QRNG:
+  `xorMix([serialEntropy({...}), anu({...})])` costs one round trip regardless of size.
+
 ### Honest labels
 
 - `jitterEntropy()` in the browser requires `allowCoarseClock: true` and is named
