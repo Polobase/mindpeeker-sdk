@@ -48,6 +48,31 @@ console.log(sources.map((s) => s.name)) // ['anu-legacy'] … or ['crypto'] if A
 
 All network providers accept `fetch` (dependency injection / proxying) and a base-URL override.
 
+## Randomness classes — what you're actually getting
+
+"Random" hides four very different claims. Every provider's class, physical process and the
+actual basis of its unpredictability:
+
+| Source | Class | Physical process | Why it's unpredictable |
+|---|---|---|---|
+| `cryptoProvider` | **CSPRNG** (deterministic) | none — an algorithm seeded from OS entropy | computational hardness only; predictable to anyone holding the state |
+| `anu`, `anuLegacy` | **Quantum** (QRNG) | vacuum fluctuations of the electromagnetic field | quantum measurement — non-deterministic by the laws of physics |
+| `qrandomIo`, `lfdr` | **Quantum** (QRNG) | photon detection (ID Quantique Quantis) | quantum shot noise |
+| `outshift`, `qci` | **Quantum** (QRNG) | photonic hardware (Cisco / QCi) | quantum optics |
+| `cameraEntropy` | **Hybrid** quantum + classical | photon shot noise (lit scene — quantum) and sensor thermal noise (covered lens — classical) | photon-arrival statistics / Johnson noise |
+| `randomOrg` | **Classical TRNG** | atmospheric radio noise | chaotic macroscopic physics — deterministic in principle, unmeasurable in practice |
+| `superRand` | **Classical TRNG** | electromagnetic background noise | chaotic macroscopic physics |
+| `serialEntropy` (ESP32) | **Classical TRNG** | SAR-ADC thermal/RF noise (`bootloader_random`) | thermal noise |
+| `micEntropy` | **Classical TRNG** | microphone ADC / Johnson noise | thermal noise |
+| `hwRng` | varies | whatever the kernel's `/dev/hwrng` driver trusts | device-dependent |
+| `jitterEntropy` | **Software/physical hybrid** | CPU micro-architectural timing chaos | system state too complex to model — weakest physical claim |
+| `drand` | **Cryptographic beacon** | none per round — threshold BLS signatures | cryptography + distributed trust; **PUBLIC** values |
+| `nistBeacon` | **TRNG-backed beacon** | NIST-internal hardware entropy | single-operator trust; **PUBLIC** values |
+
+Rules of thumb: only the quantum sources are non-deterministic *in principle*; classical TRNGs
+are practically unpredictable but not fundamentally so; a CSPRNG is pure math; beacons are not
+private entropy at all — they are shared, verifiable randomness.
+
 ## Local physical entropy
 
 The four local providers share one pipeline: raw physical samples → **continuous NIST SP 800-90B
@@ -148,21 +173,45 @@ passes everything by construction, so the honest subjects are the raw local sour
 
 | Source | Sample | Shannon (b/B) | 90B MCV (b/B) | 90B Markov (b/bit) | χ² p | Serial corr | Runs z | gzip |
 |---|---|---|---|---|---|---|---|---|
-| `crypto` (baseline) | 1 MiB | 8.000 | 7.89 | 1.000 | 0.21 | −0.0006 | 0.4 | 1.000 |
-| `camera` raw | 64 KiB | 7.984 | 7.20 | 0.928 | 0.00 | −0.0017 | 37.5 | 1.001 |
-| `esp32` raw | 1 MiB | 7.881 | 7.07 | 0.932 | 0.00 | −0.0813 | 143.0 | 0.992 |
-| `jitter` raw | 512 KiB | 2.190 | 1.27 | 0.431 | 0.00 | 0.1749 | 1024 | 0.105 |
+| `crypto` (baseline) | 1 MiB | 8.000 | 7.88 | 0.999 | 0.43 | 0.0013 | −1.6 | 1.000 |
+| `microphone` raw | 32 KiB | 7.994 | 7.40 | 0.996 | 0.57 | 0.0110 | 1.3 | 1.001 |
+| `esp32` raw | 1 MiB | 7.880 | 7.06 | 0.932 | 0.00 | −0.0805 | 143.7 | 0.992 |
+| `camera` raw | 64 KiB | 7.969 | 7.02 | 0.896 | 0.00 | −0.0003 | 54.7 | 1.001 |
+| `jitter` raw | 512 KiB | 2.211 | 1.29 | 0.432 | 0.00 | 0.2196 | 1024 | 0.100 |
 
 What the numbers say (and why the credited H values hold up):
 
-- **`esp32` raw measures 7.07 b/B against a credited 7 b/B** — almost exactly on target. Note
+- **`esp32` raw measures 7.06 b/B against a credited 7 b/B** — almost exactly on target. Note
   it is *not* perfectly white (visible serial correlation and run structure), which is precisely
   why the library still conditions it by default instead of trusting `esp_fill_random` blindly.
-- **`camera` raw (post-von-Neumann) measures 7.20 b/B against a credited 1 b/B** — a 7× safety
+- **`camera` raw (post-von-Neumann) measures 7.02 b/B against a credited 1 b/B** — a 7× safety
   margin. The χ²/runs failures show real residual structure; the 8× extraction credit absorbs it.
+- **`microphone` raw measures 7.40 b/B against a credited 2 b/B** — the MacBook mic's ADC noise
+  LSBs are surprisingly clean; the 4× credit leaves a comfortable margin for worse microphones.
 - **`jitter` raw is heavily structured** (Shannon 2.2, gzip-compressible to 10%!) — validating
-  the ultra-conservative 1/16 b credit (measured MCV 1.27 → 20× margin).
+  the ultra-conservative 1/16 b credit (measured MCV 1.29 → 20× margin).
 - `crypto` aces everything, as any CSPRNG must — which is exactly why passing proves nothing.
+
+### Whitened sources (sanity check, not a ranking)
+
+The same battery over the cloud providers, with quota-polite sample sizes. All of these are
+whitened server-side, so differences here are **sample-size artifacts, not quality differences**
+— the 90B MCV estimator subtracts a confidence penalty that shrinks with √N, which is why
+smaller samples score lower. The value of this table is catching a *broken* source (none were):
+
+| Source | Sample | Shannon (b/B) | 90B MCV (b/B) | χ² p | Serial corr | Quota spent |
+|---|---|---|---|---|---|---|
+| `qrandom.io` | 32 KiB | 7.994 | 7.44 | 0.40 | 0.0037 | fair-use |
+| `lfdr.de` | 32 KiB | 7.994 | 7.44 | 0.26 | −0.0072 | fair-use |
+| `random.org` | 16 KiB | 7.989 | 7.22 | 0.43 | 0.0025 | ~52% of daily bits |
+| `superrand` | 8 KiB | 7.972 | 6.91 | 0.01 | −0.0142 | ~1.6% of free allowance |
+| `drand` | 8 KiB | 7.980 | 6.91 | 0.89 | 0.0026 | free (256 rounds) |
+| `anu` | 8 KiB | 7.976 | 6.88 | 0.18 | 0.0125 | 8 requests |
+| `nist-beacon` | 4 KiB | 7.959 | 6.67 | 0.80 | 0.0006 | free (64 pulses) |
+| `outshift` | 4 KiB | 7.954 | 6.54 | 0.46 | 0.0010 | ~33% of daily bits |
+
+(`anu-legacy` is skipped by design: at 1 request/minute a meaningful sample would take hours,
+and the keyed `anu` endpoint reads the same physical source.)
 
 ### Noise bitmaps
 

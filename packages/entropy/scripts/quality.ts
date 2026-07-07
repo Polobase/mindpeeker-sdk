@@ -14,12 +14,21 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ffmpegFrameSource } from '../src/node/ffmpeg-frames.js'
+import { ffmpegSampleSource } from '../src/node/ffmpeg-samples.js'
 import { nodeSerialSource } from '../src/node/serial-source.js'
+import { anu } from '../src/providers/anu.js'
 import { cameraEntropy } from '../src/providers/camera.js'
 import { cryptoProvider } from '../src/providers/crypto.js'
+import { drand } from '../src/providers/drand.js'
 import { jitterEntropy } from '../src/providers/jitter.js'
+import { lfdr } from '../src/providers/lfdr.js'
+import { micEntropy } from '../src/providers/microphone.js'
+import { nistBeacon } from '../src/providers/nist-beacon.js'
+import { outshift } from '../src/providers/outshift.js'
 import { qrandomIo } from '../src/providers/qrandom.js'
+import { randomOrg } from '../src/providers/random-org.js'
 import { serialEntropy } from '../src/providers/serial.js'
+import { superRand } from '../src/providers/superrand.js'
 import type { EntropyProvider } from '../src/types.js'
 import { loadNearestDotEnv } from '../test/helpers/dotenv.js'
 import { grayPng } from './png.js'
@@ -105,14 +114,107 @@ if (ffmpegDevice !== '') {
   })
 }
 
+const audioDevice = env('ENTROPY_FFMPEG_AUDIO') || (ffmpegDevice !== '' ? ':1' : '')
+if (audioDevice !== '') {
+  subjects.push({
+    name: 'microphone-raw',
+    raw: true,
+    creditedH: '2 b/B',
+    bytes: 32_768,
+    note: 'sample LSBs via ffmpeg',
+    make: () =>
+      micEntropy({
+        source: ffmpegSampleSource({ device: audioDevice }),
+        conditioning: 'raw',
+      }),
+  })
+}
+
+// Cloud sources — all whitened (expected to pass everything; this is a
+// sanity check, not a quality ranking). Sample sizes stay well inside each
+// service's free-tier/day budget.
 subjects.push({
   name: 'qrandom.io',
   raw: false,
   creditedH: '—',
-  bytes: 4096,
-  note: 'whitened cloud QRNG (small quota-polite sample)',
+  bytes: 32_768,
+  note: 'whitened cloud QRNG, fair-use keyless',
   make: () => qrandomIo(),
 })
+
+subjects.push({
+  name: 'lfdr.de',
+  raw: false,
+  creditedH: '—',
+  bytes: 32_768,
+  note: 'whitened cloud QRNG, fair-use keyless',
+  make: () => lfdr(),
+})
+
+if (env('ANU_API_KEY')) {
+  subjects.push({
+    name: 'anu',
+    raw: false,
+    creditedH: '—',
+    bytes: 8192,
+    note: 'quantum vacuum, 8 API requests',
+    make: () => anu({ apiKey: env('ANU_API_KEY') }),
+  })
+}
+
+if (env('OUTSHIFT_API_KEY')) {
+  subjects.push({
+    name: 'outshift',
+    raw: false,
+    creditedH: '—',
+    bytes: 4096,
+    note: '~33% of the 100k bits/day budget',
+    make: () => outshift({ apiKey: env('OUTSHIFT_API_KEY') }),
+  })
+}
+
+if (env('RANDOM_ORG_API_KEY')) {
+  subjects.push({
+    name: 'random.org',
+    raw: false,
+    creditedH: '—',
+    bytes: 16_384,
+    note: '~52% of the 250k bits/day budget, single blob',
+    make: () => randomOrg({ apiKey: env('RANDOM_ORG_API_KEY') }),
+  })
+}
+
+if (env('SUPERRAND_API_KEY')) {
+  subjects.push({
+    name: 'superrand',
+    raw: false,
+    creditedH: '—',
+    bytes: 8192,
+    note: '~1.6% of the one-time 512 KiB allowance',
+    make: () => superRand({ apiKey: env('SUPERRAND_API_KEY') }),
+  })
+}
+
+subjects.push({
+  name: 'drand',
+  raw: false,
+  creditedH: '—',
+  bytes: 8192,
+  note: 'PUBLIC beacon, 256 historical rounds',
+  make: () => drand(),
+})
+
+subjects.push({
+  name: 'nist-beacon',
+  raw: false,
+  creditedH: '—',
+  bytes: 4096,
+  note: 'PUBLIC beacon, 64 historical pulses',
+  make: () => nistBeacon(),
+})
+
+// anu-legacy is deliberately absent: at 1 request/minute a meaningful sample
+// would take hours, and the keyed `anu` reads the same physical source.
 
 interface Result {
   subject: Subject
