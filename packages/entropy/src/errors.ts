@@ -7,6 +7,7 @@ export type EntropyErrorCode =
   | 'timeout' // per-request timeoutMs exceeded
   | 'aborted' // caller's AbortSignal fired
   | 'invalid_request' // caller error: length <= 0, non-integer, over provider max
+  | 'health_test' // continuous health test (RCT/APT) failed on raw samples — the source is misbehaving
 
 export interface EntropyErrorOptions {
   provider?: string

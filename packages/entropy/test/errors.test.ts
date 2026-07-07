@@ -30,6 +30,12 @@ describe('EntropyError', () => {
     expect(err.cause).toBeUndefined()
   })
 
+  test('supports the health_test code for failed source health checks', () => {
+    const err = new EntropyError('health_test', 'RCT tripped at cutoff 21', { provider: 'camera' })
+    expect(err.code).toBe('health_test')
+    expect(err.provider).toBe('camera')
+  })
+
   test('supports AggregateError as cause for strategy failures', () => {
     const inner = new AggregateError(
       [new EntropyError('timeout', 'a timed out'), new EntropyError('network', 'b unreachable')],

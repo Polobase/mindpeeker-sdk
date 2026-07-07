@@ -41,8 +41,77 @@ console.log(sources.map((s) => s.name)) // ['anu-legacy'] … or ['crypto'] if A
 | `superRand({ apiKey })` | EM background noise | trng | private | key in query | **WebSocket streaming**; ≤256 values/request; wire format live-verified |
 | `drand()` | League of Entropy (threshold BLS) | beacon | **public** | none | 3 s rounds, 32 B each; mirror failover built in |
 | `nistBeacon()` | NIST full-entropy source | beacon | **public** | none | 512 bits/min; NIST: *never use as secret keys* |
+| `cameraEntropy()` | camera sensor noise (shot/thermal) | trng | private | camera permission | frame-diff sign bits (AetherOnePi-style); browser or injected frames |
+| `micEntropy()` | microphone ADC noise | trng | private | mic permission | sample LSBs; browser or injected PCM |
+| `serialEntropy({...})` | ESP32 / TrueRNG / OneRNG over serial | trng | private | — | Web Serial `port` or any injected byte `source` |
+| `jitterEntropy()` | CPU timing jitter | trng | private | — | Node `hrtime` (credited 1/16 bit/delta); browser only via `allowCoarseClock` |
 
 All network providers accept `fetch` (dependency injection / proxying) and a base-URL override.
+
+## Local physical entropy
+
+The four local providers share one pipeline: raw physical samples → **continuous NIST SP 800-90B
+health tests** (Repetition Count + Adaptive Proportion, always on) → **SHA-256 extraction** with a
+conservative per-source entropy credit — or, with `conditioning: 'raw'`, a health-tested
+passthrough of the unwhitened physical bits (the provider then reports itself as `name(raw)` in
+attribution, so results are always traceable). A failing source throws
+`EntropyError('health_test')` — it never silently degrades to pseudo-randomness.
+
+```ts
+import { cameraEntropy, serialEntropy, xorMix, cryptoProvider } from '@mindpeeker/entropy'
+
+// Browser webcam, whitened:
+const cam = cameraEntropy() // getUserMedia; cover the lens for pure thermal noise
+
+// Raw hotbits for oracle/radionics workflows — unwhitened frame-diff sign bits:
+const rawCam = cameraEntropy({ conditioning: 'raw' })
+
+// Defense in depth stays available:
+const belt = xorMix([cam, cryptoProvider()])
+```
+
+### ESP32 (AetherOnePi firmware)
+
+Flash the [AetherOnePi ESP32 sketch](https://github.com/isuretpolos/AetherOnePi) (streams raw
+`esp_fill_random` bytes at 921 600 baud — keep `bootloader_random_enable()` on) and read it:
+
+```ts
+// Browser (Chromium, Web Serial):
+const port = await navigator.serial.requestPort()
+const esp32 = serialEntropy({ port, name: 'esp32' })
+
+// Node (macOS/Linux, zero deps — stty + fs):
+import { nodeSerialSource } from '@mindpeeker/entropy/node'
+const esp32 = serialEntropy({
+  source: await nodeSerialSource({ path: '/dev/cu.usbserial-110' }),
+  name: 'esp32',
+})
+```
+
+TrueRNG v3 works the same way (plain CDC read); OneRNG needs its init command via the
+`init` option (check onerng.info for your firmware).
+
+### Node camera & microphone
+
+Node has no `getUserMedia`; inject frames/PCM — the built-in adapters spawn `ffmpeg`
+(must be installed) with zero npm dependencies:
+
+```ts
+import { ffmpegFrameSource, ffmpegSampleSource, hwRng } from '@mindpeeker/entropy/node'
+
+cameraEntropy({ source: ffmpegFrameSource({ device: '0' }) })        // avfoundation index / /dev/video0
+micEntropy({ source: ffmpegSampleSource({ device: ':0' }) })         // ':0' avfoundation / 'default' alsa
+hwRng()                                                              // /dev/hwrng (usually root-only)
+```
+
+### Honest labels
+
+- `jitterEntropy()` in the browser requires `allowCoarseClock: true` and is named
+  `jitter(coarse)`: real but **unquantified** entropy — only ever mix it via `xorMix`,
+  never use it alone. The Node variant (nanosecond `hrtime`) is credited very
+  conservatively at 1/16 bit per timing delta.
+- Camera/mic quality varies wildly with device DSP (auto-exposure, noise suppression);
+  the health tests are the guard, and cheap sensors are often *better* entropy sources.
 
 ## Combining strategies
 
@@ -95,7 +164,8 @@ Default streams poll `getBytes` per pull, so provider rate limits are honored au
 
 Everything throws `EntropyError` with a `code`:
 `rate_limited` (with `retryAfterMs` when known) · `auth` · `network` · `bad_response` ·
-`insufficient_entropy` · `timeout` · `aborted` · `invalid_request`.
+`insufficient_entropy` · `timeout` · `aborted` · `invalid_request` · `health_test`
+(a local source failed its continuous NIST health tests).
 
 When a strategy exhausts all members, you get `insufficient_entropy` whose `cause` is an
 `AggregateError` holding each member's error in attempt order.

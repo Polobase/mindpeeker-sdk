@@ -3,8 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": []
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/node"]
+  "include": ["src/node/**/*.ts"]
 }
