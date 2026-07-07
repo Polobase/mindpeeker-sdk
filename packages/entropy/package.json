@@ -1,0 +1,41 @@
+{
+  "name": "@mindpeeker/entropy",
+  "version": "0.1.0",
+  "description": "Provider-pluggable quantum (QRNG) and true (TRNG) randomness for web and Node — ANU, RANDOM.ORG, drand, NIST beacon and more, with composable fallback/xor/race strategies and streaming.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "qrng",
+    "trng",
+    "entropy",
+    "random",
+    "quantum",
+    "randomness",
+    "drand",
+    "csprng",
+    "anu",
+    "random.org"
+  ]
+}
