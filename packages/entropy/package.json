@@ -25,7 +25,9 @@
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.node.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "bun test",
-    "bench": "bun scripts/bench.ts"
+    "bench": "bun scripts/bench.ts",
+    "bench:stream": "bun scripts/stream-bench.ts",
+    "quality": "bun scripts/quality.ts"
   },
   "publishConfig": {
     "access": "public",

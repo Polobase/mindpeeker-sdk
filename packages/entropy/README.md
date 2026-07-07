@@ -138,6 +138,55 @@ Reading the numbers:
 - For **bulk + strongest-source guarantees**, mix fast local with a cloud QRNG:
   `xorMix([serialEntropy({...}), anu({...})])` costs one round trip regardless of size.
 
+## Entropy quality (measured)
+
+`bun scripts/quality.ts` collects RAW output from each local source and runs Shannon entropy,
+NIST SP 800-90B estimators (most-common-value, binary Markov), chi-square, serial correlation,
+monobit/runs, Monte-Carlo π and gzip compressibility. **Statistical tests can only fail a
+source, never certify one** — whitened output (all cloud providers, anything conditioned)
+passes everything by construction, so the honest subjects are the raw local sources:
+
+| Source | Sample | Shannon (b/B) | 90B MCV (b/B) | 90B Markov (b/bit) | χ² p | Serial corr | Runs z | gzip |
+|---|---|---|---|---|---|---|---|---|
+| `crypto` (baseline) | 1 MiB | 8.000 | 7.89 | 1.000 | 0.21 | −0.0006 | 0.4 | 1.000 |
+| `camera` raw | 64 KiB | 7.984 | 7.20 | 0.928 | 0.00 | −0.0017 | 37.5 | 1.001 |
+| `esp32` raw | 1 MiB | 7.881 | 7.07 | 0.932 | 0.00 | −0.0813 | 143.0 | 0.992 |
+| `jitter` raw | 512 KiB | 2.190 | 1.27 | 0.431 | 0.00 | 0.1749 | 1024 | 0.105 |
+
+What the numbers say (and why the credited H values hold up):
+
+- **`esp32` raw measures 7.07 b/B against a credited 7 b/B** — almost exactly on target. Note
+  it is *not* perfectly white (visible serial correlation and run structure), which is precisely
+  why the library still conditions it by default instead of trusting `esp_fill_random` blindly.
+- **`camera` raw (post-von-Neumann) measures 7.20 b/B against a credited 1 b/B** — a 7× safety
+  margin. The χ²/runs failures show real residual structure; the 8× extraction credit absorbs it.
+- **`jitter` raw is heavily structured** (Shannon 2.2, gzip-compressible to 10%!) — validating
+  the ultra-conservative 1/16 b credit (measured MCV 1.27 → 20× margin).
+- `crypto` aces everything, as any CSPRNG must — which is exactly why passing proves nothing.
+
+### Noise bitmaps
+
+Raw bytes rendered as 256×256 grayscale (`docs/noise/`) — human eyes are ruthless pattern
+detectors. The ESP32 is clean white noise; jitter shows its timer-quantization banding:
+
+| `esp32` raw | `camera` raw | `jitter` raw | `crypto` |
+|---|---|---|---|
+| ![esp32 raw noise](docs/noise/esp32-raw.png) | ![camera raw noise](docs/noise/camera-raw.png) | ![jitter raw noise](docs/noise/jitter-raw.png) | ![crypto noise](docs/noise/crypto.png) |
+
+### Sustained streaming (steady state)
+
+`bun scripts/stream-bench.ts` measures `stream()` throughput after the first chunk — i.e.
+without session setup, permissions or warmup:
+
+| Source | Steady-state rate | Notes |
+|---|---|---|
+| `esp32` raw | 68.8 KiB/s | wire-speed passthrough |
+| `esp32` conditioned | 29.7 KiB/s | SHA-256, 2× credit |
+| `jitter` conditioned | 8.6 KiB/s | |
+| `camera` conditioned | 0.28 KiB/s | 15× the single-call figure — warmup dominates small reads |
+| `superrand` WebSocket | 0.09 KiB/s | round-trip bound (one 32 B request in flight) |
+| `drand` beacon | 0.01 KiB/s | by design: one public 32 B round every 3 s |
+
 ### Honest labels
 
 - `jitterEntropy()` in the browser requires `allowCoarseClock: true` and is named
