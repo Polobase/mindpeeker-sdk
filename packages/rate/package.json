@@ -1,0 +1,41 @@
+{
+  "name": "@mindpeeker/rate",
+  "version": "0.1.0",
+  "description": "Malcolm Rae base-44 radionic angular encoding — rate parsing, digit→angle geometry, directional statistics, Magneto-Geometric card data/SVG, and deterministic stream modulation over any byte stream.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "radionics",
+    "malcolm-rae",
+    "magneto-geometric",
+    "base-44",
+    "angular-encoding",
+    "directional-statistics",
+    "circular-statistics",
+    "phase-modulation",
+    "svg",
+    "dowsing"
+  ]
+}
