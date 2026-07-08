@@ -1,0 +1,43 @@
+{
+  "name": "@mindpeeker/flow",
+  "version": "0.1.0",
+  "description": "Transfer entropy and directed information flow for discrete symbol streams — Schreiber TE, local/net/effective variants, surrogate significance, and streaming windows over any byte source.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "transfer-entropy",
+    "information-flow",
+    "mutual-information",
+    "conditional-mutual-information",
+    "directed-information",
+    "schreiber",
+    "surrogate-data",
+    "permutation-test",
+    "ordinal-patterns",
+    "bandt-pompe",
+    "time-series",
+    "causality"
+  ]
+}
