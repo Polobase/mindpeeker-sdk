@@ -203,8 +203,20 @@ def vasicek_fixture() -> None:
     write("vasicek.json", {"cases": cases})
 
 
+def health_fixture() -> None:
+    # SP 800-90B §4.4.2 APT cutoffs cross-checked against the exact binomial
+    # quantile: 1 + smallest k with P(Bin(W, 2^-H) <= k) >= 1 - 2^-20.
+    cases = []
+    for h in [0.3, 0.5, 1.0, 2.0, 4.0, 6.5, 8.0]:
+        for w in [512, 1024]:
+            cutoff = 1 + int(stats.binom.ppf(1 - 2**-20, w, 2**-h))
+            cases.append({"h": h, "windowSize": w, "cutoff": cutoff})
+    write("health.json", {"apt": cases})
+
+
 if __name__ == "__main__":
     special_fixture()
     gaussian_constants_fixture()
     moments_fixture()
     vasicek_fixture()
+    health_fixture()

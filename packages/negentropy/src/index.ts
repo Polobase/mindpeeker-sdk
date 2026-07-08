@@ -29,6 +29,26 @@ export type {
   WindowedNegentropyPoint,
 } from './estimators/windowed.js'
 export { windowedNegentropy } from './estimators/windowed.js'
+export type {
+  AccountedBytes,
+  EntropyClaim,
+  PipelineOp,
+  PipelineStep,
+} from './extract/accounting.js'
+export {
+  claimBytes,
+  conditionAccounted,
+  debiasAccounted,
+  extractAccounted,
+  vettedOutputEntropy,
+} from './extract/accounting.js'
+export type { ConditionStreamOptions } from './extract/condition.js'
+export { conditionStream, hmacCondition, sha256Condition } from './extract/condition.js'
+export { peres, peresRate, vonNeumann } from './extract/debias.js'
+export type { HealthAlarm, HealthConfig } from './extract/health.js'
+export { aptCutoff, ContinuousHealth, rctCutoff } from './extract/health.js'
+export type { ToeplitzExtractor } from './extract/toeplitz.js'
+export { toeplitzExtractor, toeplitzOutputBits } from './extract/toeplitz.js'
 export type { CalibrateOptions } from './stats/calibration.js'
 export { calibrate, theoreticalCalibration } from './stats/calibration.js'
 export { cumulativeDeviation, significanceEnvelope } from './stats/cumdev.js'

@@ -1,0 +1,75 @@
+{
+  "generator": "python 3.11.13, scipy 1.17.1, numpy 2.4.6, mpmath mpmath 1.4.1",
+  "apt": [
+    {
+      "h": 0.3,
+      "windowSize": 512,
+      "cutoff": 456
+    },
+    {
+      "h": 0.3,
+      "windowSize": 1024,
+      "cutoff": 890
+    },
+    {
+      "h": 0.5,
+      "windowSize": 512,
+      "cutoff": 410
+    },
+    {
+      "h": 0.5,
+      "windowSize": 1024,
+      "cutoff": 793
+    },
+    {
+      "h": 1.0,
+      "windowSize": 512,
+      "cutoff": 311
+    },
+    {
+      "h": 1.0,
+      "windowSize": 1024,
+      "cutoff": 589
+    },
+    {
+      "h": 2.0,
+      "windowSize": 512,
+      "cutoff": 177
+    },
+    {
+      "h": 2.0,
+      "windowSize": 1024,
+      "cutoff": 325
+    },
+    {
+      "h": 4.0,
+      "windowSize": 512,
+      "cutoff": 62
+    },
+    {
+      "h": 4.0,
+      "windowSize": 1024,
+      "cutoff": 105
+    },
+    {
+      "h": 6.5,
+      "windowSize": 512,
+      "cutoff": 21
+    },
+    {
+      "h": 6.5,
+      "windowSize": 1024,
+      "cutoff": 31
+    },
+    {
+      "h": 8.0,
+      "windowSize": 512,
+      "cutoff": 13
+    },
+    {
+      "h": 8.0,
+      "windowSize": 1024,
+      "cutoff": 18
+    }
+  ]
+}
