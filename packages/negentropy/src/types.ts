@@ -38,6 +38,8 @@ export interface TrialSeries {
   readonly bitsPerTrial: number
   readonly sums: Float64Array
   readonly timestamps?: Float64Array
+  /** Trailing bits that did not fill a whole trial (batch extraction only). */
+  readonly leftoverBits?: number
 }
 
 /** Normalization parameters mapping one source's trial sums to z-scores. */
