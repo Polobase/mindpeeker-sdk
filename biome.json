@@ -1,6 +1,6 @@
 {
   "files": {
-    "includes": ["packages/**", "!**/dist"]
+    "includes": ["packages/**", "!**/dist", "!**/.claude-flow", "!**/.claude"]
   },
   "formatter": {
     "enabled": true,
