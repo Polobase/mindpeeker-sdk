@@ -96,35 +96,115 @@ def special_fixture() -> None:
 
 
 def gaussian_constants_fixture() -> None:
-    # E[G(nu)] and Var[G(nu)] for nu ~ N(0,1), the null constants of the
-    # Hyvärinen negentropy contrasts. logcosh has no closed form.
+    # Null constants of the Hyvärinen negentropy contrasts for nu ~ N(0,1):
+    # E[G(nu)], Var[G(nu)], and — the one that actually calibrates the z
+    # detector — the DELTA-METHOD variance of sqrt(n)·(mean G(y) − E[G(nu)])
+    # under empirical standardization:
+    #   nullVariance = Var[G(nu) − (b/2)(nu² − 1)],  b = E[nu·G'(nu)]
+    # (the mean-correction term E[G']·nu vanishes: G' is odd for both Gs).
+    # For logcosh this is ~34× smaller than Var[G] — standardization removes
+    # G's quadratic component almost entirely.
     def gauss_expect(f):
         return mpmath.quad(
             lambda x: f(x) * mpmath.exp(-x * x / 2) / mpmath.sqrt(2 * mpmath.pi),
             [-mpmath.inf, 0, mpmath.inf],
         )
 
-    e_logcosh = gauss_expect(lambda x: mpmath.log(mpmath.cosh(x)))
-    e_logcosh_sq = gauss_expect(lambda x: mpmath.log(mpmath.cosh(x)) ** 2)
-    var_logcosh = e_logcosh_sq - e_logcosh**2
+    def constants(g, g_prime):
+        e_g = gauss_expect(g)
+        var_g = gauss_expect(lambda x: g(x) ** 2) - e_g**2
+        b = gauss_expect(lambda x: x * g_prime(x))
+        null_var = gauss_expect(lambda x: (g(x) - e_g - (b / 2) * (x * x - 1)) ** 2)
+        return e_g, var_g, b, null_var
 
-    e_exp = gauss_expect(lambda x: -mpmath.exp(-x * x / 2))
-    e_exp_sq = gauss_expect(lambda x: mpmath.exp(-x * x))
-    var_exp = e_exp_sq - e_exp**2
+    e_lc, var_lc, b_lc, null_lc = constants(
+        lambda x: mpmath.log(mpmath.cosh(x)), lambda x: mpmath.tanh(x)
+    )
+    e_ex, var_ex, b_ex, null_ex = constants(
+        lambda x: -mpmath.exp(-x * x / 2), lambda x: x * mpmath.exp(-x * x / 2)
+    )
 
-    # closed forms to cross-check: E = −1/√2, Var = 1/√3 − 1/2
-    assert abs(e_exp + 1 / mpmath.sqrt(2)) < mpmath.mpf("1e-25"), e_exp
-    assert abs(var_exp - (1 / mpmath.sqrt(3) - mpmath.mpf(1) / 2)) < mpmath.mpf("1e-25"), var_exp
+    # closed forms to cross-check: E = −1/√2, Var = 1/√3 − 1/2, b = 1/(2√2)
+    assert abs(e_ex + 1 / mpmath.sqrt(2)) < mpmath.mpf("1e-25"), e_ex
+    assert abs(var_ex - (1 / mpmath.sqrt(3) - mpmath.mpf(1) / 2)) < mpmath.mpf("1e-25"), var_ex
+    assert abs(b_ex - 1 / (2 * mpmath.sqrt(2))) < mpmath.mpf("1e-25"), b_ex
 
     write(
         "gaussian-constants.json",
         {
-            "logcosh": {"mean": float(e_logcosh), "variance": float(var_logcosh)},
-            "exp": {"mean": float(e_exp), "variance": float(var_exp)},
+            "logcosh": {
+                "mean": float(e_lc),
+                "variance": float(var_lc),
+                "b": float(b_lc),
+                "nullVariance": float(null_lc),
+            },
+            "exp": {
+                "mean": float(e_ex),
+                "variance": float(var_ex),
+                "b": float(b_ex),
+                "nullVariance": float(null_ex),
+            },
         },
     )
+
+
+def moments_fixture() -> None:
+    # Stored samples + scipy population (biased) moments of the standardized
+    # data, plus the contrast means the TS estimators must reproduce.
+    rng = np.random.default_rng(20260708)
+    cases = []
+    for label, sample in [
+        ("normal64", rng.standard_normal(64)),
+        ("uniform64", rng.uniform(-1, 1, 64)),
+        ("exponential64", rng.exponential(1.0, 64)),
+        ("mixed200", np.concatenate([rng.standard_normal(100), rng.exponential(1.0, 100)])),
+    ]:
+        x = np.asarray(sample, dtype=np.float64)
+        y = (x - x.mean()) / x.std()  # population sd — the TS standardization convention
+        skew = float(stats.skew(x, bias=True))
+        exkurt = float(stats.kurtosis(x, fisher=True, bias=True))
+        cases.append(
+            {
+                "label": label,
+                "samples": x.tolist(),
+                "skew": skew,
+                "exkurt": exkurt,
+                "jMoment": skew**2 / 12 + exkurt**2 / 48,
+                "meanLogcosh": float(np.mean(np.log(np.cosh(y)))),
+                "meanExp": float(np.mean(-np.exp(-(y**2) / 2))),
+            }
+        )
+    write("moments.json", {"cases": cases})
+
+
+def vasicek_fixture() -> None:
+    rng = np.random.default_rng(19441945)
+    cases = []
+    for label, sample in [
+        ("normal500", rng.standard_normal(500)),
+        ("uniform500", rng.uniform(0, 1, 500)),
+        ("exponential500", rng.exponential(1.0, 500)),
+        ("normal50", rng.standard_normal(50)),
+    ]:
+        x = np.asarray(sample, dtype=np.float64)
+        n = len(x)
+        default_m = int(np.floor(np.sqrt(n) + 0.5))
+        for m in sorted({default_m, 3, 15}):
+            cases.append(
+                {
+                    "label": label,
+                    "samples": x.tolist(),
+                    "m": m,
+                    "entropy": float(
+                        stats.differential_entropy(x, window_length=m, method="vasicek")
+                    ),
+                }
+            )
+    write("vasicek.json", {"cases": cases})
 
 
 if __name__ == "__main__":
     special_fixture()
     gaussian_constants_fixture()
+    moments_fixture()
+    vasicek_fixture()
