@@ -1,0 +1,40 @@
+{
+  "name": "@mindpeeker/vdf",
+  "version": "0.1.0",
+  "description": "Pietrzak verifiable delay function over an RSA group of unknown order — sequential-squaring time-locks, O(log T) halving proofs, and beacon freshness seals.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "vdf",
+    "verifiable-delay-function",
+    "pietrzak",
+    "time-lock",
+    "sequential-squaring",
+    "rsa-2048",
+    "randomness-beacon",
+    "fiat-shamir",
+    "proof-of-elapsed-time"
+  ]
+}
