@@ -11,7 +11,7 @@
  * - Special functions (internal/special.ts): $\ln\Gamma(x)$ via a Lanczos
  *   approximation (Godfrey $g=7$, $n=9$); the regularized incomplete gammas
  *   $P(a,x)=\gamma(a,x)/\Gamma(a)$ and $Q(a,x)=1-P(a,x)$ (series + Lentz continued
- *   fraction, per Numerical Recipes §6.2); $\operatorname{erfc}(x)=Q(\tfrac12,x^2)$;
+ *   fraction, per Numerical Recipes §6.2); $\mathrm{erfc}(x)=Q(\tfrac12,x^2)$;
  *   the standard normal CDF $\Phi(z)$, survival $1-\Phi(z)$, and quantile
  *   $\Phi^{-1}(p)$ (Wichura's AS 241 / PPND16); chi-square CDF/SF/quantile for
  *   df $k$ via $P(k/2, x/2)$, $Q(k/2, x/2)$, and a bracketed log-space Newton.

@@ -41,7 +41,7 @@ export function resultantLength(phases: ArrayLike<number>): number {
 /**
  * The **circular mean** direction:
  *
- * $$\bar\theta = \operatorname{atan2}\!\Big(\sum_j \sin\theta_j,\ \sum_j
+ * $$\bar\theta = \mathrm{atan2}\!\Big(\sum_j \sin\theta_j,\ \sum_j
  *   \cos\theta_j\Big) \bmod 2\pi$$
  *
  * Returned in $[0, 2\pi)$. Undefined when the resultant is (near) zero; this

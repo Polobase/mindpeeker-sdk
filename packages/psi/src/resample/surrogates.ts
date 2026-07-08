@@ -13,7 +13,7 @@ export interface SurrogateOptions {
   offsets?: readonly number[]
   /**
    * When `offsets` is omitted: how many evenly spaced offsets to generate,
-   * $\left\{\operatorname{round}\!\big(\tfrac{(i+1)\,T}{c+1}\big)\right\}_{i<c}$
+   * $\left\{\mathrm{round}\!\big(\tfrac{(i+1)\,T}{c+1}\big)\right\}_{i<c}$
    * clamped to $[1, T-1]$ and deduplicated. Default `min(T − 1, 100)`.
    */
   count?: number
@@ -125,7 +125,7 @@ export function* timeOffsetSurrogates(
 
 /**
  * Permutation/randomization p-value with the +1 correction:
- * $$p = \frac{1 + \#\{i : s_i \ge s_{\text{obs}}\}}{1 + m}$$
+ * $$p = \frac{1 + \left|\{ i : s_i \ge s_{\text{obs}} \}\right|}{1 + m}$$
  * for $m$ surrogate statistics — the observed arrangement counts as one
  * member of its own null ensemble, so $p$ can never be 0 (Davison &
  * Hinkley 1997 §4.2.3; North, Curtis & Sham 2002). Upper-tail convention:

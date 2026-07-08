@@ -112,7 +112,7 @@ strictly positive, roughly df/(2N ln 2). The package therefore refuses to ship a
 surrogate-based remedies as first-class API: **effective transfer entropy** ([Marschinski &
 Kantz, 2002](https://doi.org/10.1140/epjb/e2002-00379-2)), which subtracts the mean TE of
 source-shuffled surrogates, and a **permutation test** with the add-one p-value
-p = (1 + #{TE<sub>surr</sub> ≥ TE<sub>obs</sub>})/(1 + n) (Davison & Hinkley 1997; North et
+p = (1 + count of surrogates with TE<sub>surr</sub> ≥ TE<sub>obs</sub>)/(1 + n) (Davison & Hinkley 1997; North et
 al. 2002). Two surrogate constructions are offered because they encode different nulls:
 `sourceShuffle` destroys all temporal structure ("does source timing matter at all?"), while
 `circularShift` preserves the source's autocorrelation and destroys only cross-alignment — the

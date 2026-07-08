@@ -149,7 +149,7 @@ tails — the χ² asymptotics are unreliable at realistic sample counts):
   $ETE = TE - \langle TE_{X_{\text{shuffled}} \to Y} \rangle$
 - permutation test with the add-one empirical p-value
   (Davison & Hinkley 1997; North et al. 2002):
-  $$p = \frac{1 + \#\{TE_{\text{surr}} \ge TE_{\text{obs}}\}}{1 + n_{\text{surr}}}$$
+  $$p = \frac{1 + \left|\{\, TE_{\text{surr}} \ge TE_{\text{obs}} \,\}\right|}{1 + n_{\text{surr}}}$$
 
 Correctness is pinned three ways in the test suite: closed-form
 constructions (a balanced delayed-copy pair whose plug-in TE is exactly

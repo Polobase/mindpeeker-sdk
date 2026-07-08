@@ -180,7 +180,7 @@ CLI).
   the demo uses the GCP convention $k = 200$, so
   $z = (S - 100)/\sqrt{50}$ and $\sum(z^2 - 1)$ is the classic
   cumulative-deviation plot, flat in expectation under $H_0$ with
-  $\operatorname{Var}[D(t)] = 2t$.
+  $\mathrm{Var}[D(t)] = 2t$.
 - Windowed negentropy $J(x) = H(\mathcal{N}(\mu,\sigma^2)) - H(x) \ge 0$
   (zero iff Gaussian) uses the Hyvärinen log-cosh contrast from
   `@mindpeeker/negentropy`; the demo plots the raw stream, so values

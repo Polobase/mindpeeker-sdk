@@ -156,7 +156,7 @@ the GCP resampling convention). Each surrogate preserves the rotated
 source's marginal distribution and autocorrelation exactly while destroying
 cross-source simultaneity. Recompute your statistic per surrogate, then
 
-$$p = \frac{1 + \#\{i : s_i \ge s_\text{obs}\}}{1 + m}$$
+$$p = \frac{1 + \left|\{\, i : s_i \ge s_{\text{obs}} \,\}\right|}{1 + m}$$
 
 via `permutationP` — the +1 correction (Davison & Hinkley 1997; North,
 Curtis & Sham 2002) counts the observed arrangement as a member of its own

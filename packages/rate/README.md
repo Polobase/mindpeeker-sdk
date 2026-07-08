@@ -131,7 +131,7 @@ $$\bar R = \frac{1}{n}\left|\sum_{j=1}^{n} e^{i\theta_j}\right| \in [0, 1]$$
 
 measures concentration: $\bar R = 1$ iff all angles coincide, $\bar R = 0$ for a
 perfectly balanced spread. The **circular mean** is
-$\bar\theta = \operatorname{atan2}(\sum_j \sin\theta_j,\ \sum_j \cos\theta_j)$
+$\bar\theta = \mathrm{atan2}(\sum_j \sin\theta_j,\ \sum_j \cos\theta_j)$
 (returned in $[0, 2\pi)$; undefined as $\bar R \to 0$), and the **circular
 variance** is $V = 1 - \bar R$. `circularVariance` matches
 `scipy.stats.circvar` on its full-circle range — the tests cross-check against
@@ -170,7 +170,7 @@ Three deterministic maps from a byte stream + rate. They are ordinary DSP; the
   phase for its position, cycling through rings one byte at a time:
   $\phi_j = (2\pi b_j/256 + \theta_{j \bmod n}) \bmod 2\pi$.
 - **`rateMask(rate, length)`** → deterministic keystream,
-  $\mathrm{mask}[i] = \operatorname{round}(\theta(i \bmod r)\cdot\tfrac{256}{2\pi})
+  $\mathrm{mask}[i] = \mathrm{round}(\theta(i \bmod r)\cdot\tfrac{256}{2\pi})
   \bmod 256$, periodic with period $r$ = digit count. **Not** a CSPRNG; carries
   no entropy of its own; never a key.
 - **`xorImprint(stream, rate)`** → XOR the stream with the cyclic mask. XOR by a

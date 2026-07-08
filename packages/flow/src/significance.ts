@@ -29,7 +29,7 @@ export interface PermutationTestResult {
   readonly surrogates: Float64Array
   /**
    * One-sided empirical p-value with the add-one correction
-   * $$p = \frac{1 + \#\{TE_{surr} \ge TE_{obs}\}}{1 + n_{surr}}$$
+   * $$p = \frac{1 + \left|\{ TE_{surr} \ge TE_{obs} \}\right|}{1 + n_{surr}}$$
    * (Davison & Hinkley 1997 §4.2; North, Curtis & Sham 2002). Never exactly
    * zero — the observed statistic counts as a member of its own null.
    */
