@@ -1,0 +1,46 @@
+{
+  "name": "@mindpeeker/psi",
+  "version": "0.1.0",
+  "description": "Mind-matter-interaction experiment protocols and live anomaly monitoring — PEAR-style tripolar runs, GCP formal event analysis, JSONL recording/replay, surrogate nulls, and Bayes factors, composing @mindpeeker/negentropy.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/negentropy": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "psi",
+    "mmi",
+    "mind-matter-interaction",
+    "gcp",
+    "pear",
+    "rng",
+    "anomaly-detection",
+    "stouffer",
+    "netvar",
+    "bayes-factor",
+    "surrogate-data",
+    "pre-registration"
+  ]
+}
