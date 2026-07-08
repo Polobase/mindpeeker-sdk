@@ -31,7 +31,8 @@
     "test": "bun test",
     "bench": "bun scripts/bench.ts",
     "bench:stream": "bun scripts/stream-bench.ts",
-    "quality": "bun scripts/quality.ts"
+    "quality": "bun scripts/quality.ts",
+    "demo:negentropy": "bun scripts/negentropy-demo.ts"
   },
   "publishConfig": {
     "access": "public",

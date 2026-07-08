@@ -13,6 +13,18 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+// Estimators live in @mindpeeker/negentropy now; scripts import its source
+// directly so they run without a prior dist build (scripts are bun-run only).
+import {
+  chiSquareBytes as chiSquare,
+  markovMinEntropyPerBit,
+  mcvMinEntropy,
+  monobit,
+  runsTest,
+  serialCorrelation,
+  shannonEntropy,
+  toBits,
+} from '../../negentropy/src/index.js'
 import { ffmpegFrameSource } from '../src/node/ffmpeg-frames.js'
 import { ffmpegSampleSource } from '../src/node/ffmpeg-samples.js'
 import { nodeSerialSource } from '../src/node/serial-source.js'
@@ -32,18 +44,7 @@ import { superRand } from '../src/providers/superrand.js'
 import type { EntropyProvider } from '../src/types.js'
 import { loadNearestDotEnv } from '../test/helpers/dotenv.js'
 import { grayPng } from './png.js'
-import {
-  chiSquare,
-  compressionRatio,
-  markovMinEntropyPerBit,
-  mcvMinEntropy,
-  monobit,
-  monteCarloPi,
-  runsTest,
-  serialCorrelation,
-  shannonEntropy,
-  toBits,
-} from './stats.js'
+import { compressionRatio, monteCarloPi } from './stats.js'
 
 loadNearestDotEnv(import.meta.dir)
 const env = (name: string) => process.env[name] ?? ''
