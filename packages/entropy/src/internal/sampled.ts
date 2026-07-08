@@ -19,6 +19,8 @@ export interface SampledSpec extends EntropySourceInfo {
   /** Conservative assessed min-entropy in bits per raw sample byte. */
   defaultMinEntropyPerSample: number
   defaultSafetyFactor: number
+  /** Stricter H for health-testing than for crediting (see ConditionerConfig). */
+  defaultHealthMinEntropyPerSample?: number
   defaultTimeoutMs?: number
   defaultChunkBytes?: number
 }
@@ -44,6 +46,7 @@ export function sampledProvider(
     provider: name,
     minEntropyPerSample: opts.minEntropyPerSample ?? spec.defaultMinEntropyPerSample,
     safetyFactor: opts.safetyFactor ?? spec.defaultSafetyFactor,
+    healthMinEntropyPerSample: spec.defaultHealthMinEntropyPerSample,
     mode,
   }
 

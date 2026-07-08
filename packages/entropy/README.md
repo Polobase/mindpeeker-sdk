@@ -14,10 +14,19 @@ source attribution — every result tells you where its bytes actually came from
 npm install @mindpeeker/entropy    # or bun add @mindpeeker/entropy
 ```
 
+Three entry points:
+
+| Import | Contents |
+|---|---|
+| `@mindpeeker/entropy` | the core: types, `EntropyError`, strategies (`fallback`/`xorMix`/`race`), `defineProvider` |
+| `@mindpeeker/entropy/providers` | **all providers** (cloud, beacons, local sensors/hardware) |
+| `@mindpeeker/entropy/node` | Node-only adapters (`nodeSerialSource`, ffmpeg, `hwRng`, `rtlSdrSource`) — browser bundlers cannot resolve this on purpose |
+
 ## Quick start
 
 ```ts
-import { anuLegacy, cryptoProvider, fallback } from '@mindpeeker/entropy'
+import { fallback } from '@mindpeeker/entropy'
+import { anuLegacy, cryptoProvider } from '@mindpeeker/entropy/providers'
 
 // The classic: try quantum first, fall back to the local CSPRNG — and know which one served.
 const entropy = fallback([anuLegacy(), cryptoProvider()])
@@ -41,9 +50,22 @@ console.log(sources.map((s) => s.name)) // ['anu-legacy'] … or ['crypto'] if A
 | `superRand({ apiKey })` | EM background noise | trng | private | key in query | **WebSocket streaming**; ≤256 values/request; wire format live-verified |
 | `drand()` | League of Entropy (threshold BLS) | beacon | **public** | none | 3 s rounds, 32 B each; mirror failover built in |
 | `nistBeacon()` | NIST full-entropy source | beacon | **public** | none | 512 bits/min; NIST: *never use as secret keys* |
+| `nqsn()` | NQSN Singapore quantum beacon | beacon | **public** | none | NIST-2.0 format, 60 s pulses |
+| `uchile()` | Random UChile hybrid beacon | beacon | **public** | none | quantum device + seismic/radio mixers, 60 s |
+| `inmetro()` | Inmetro Brazil beacon | beacon | **public** | none | `variant: 'combination'` = 10-min multi-beacon VDF mix |
+| `curby()` | CURBy (CU Boulder + NIST) | beacon | **public** | none | Twine chain, freshness guard built in |
+| `padova()` | Univ. of Padova QRNG (VSIX) | qrng | private | none | keyless PRIVATE quantum draws — the simplest QRNG API alive |
+| `qbck({apiKey})` | Quantum Blockchains aggregator (IDQ/qStream/SeQRNG/Tropos) | qrng | private | email-registration key | response parse marked VERIFY-WITH-KEY |
+| `randao()` | Ethereum RANDAO | beacon | **public** | none | 12 s slots; proposer-biasable ~1 bit — see caveats |
+| `bitcoinBeacon()` | Bitcoin block hashes | beacon | **public** | none | ~10 min cadence; miner-grindable at high cost |
+| `solanaBeacon()` | Solana blockhashes | beacon | **public** | none | ~400 ms slots; leader-influenced |
+| `tezosBeacon()` | Tezos block hashes | beacon | **public** | none | via the TzKT indexer (extra third-party trust) |
+| `flowBeacon()` | Flow protocol randomness | beacon | **public** | none | 8 B per script execution |
 | `cameraEntropy()` | camera sensor noise (shot/thermal) | trng | private | camera permission | frame-diff sign bits (AetherOnePi-style); browser or injected frames |
 | `micEntropy()` | microphone ADC noise | trng | private | mic permission | sample LSBs; browser or injected PCM |
 | `serialEntropy({...})` | ESP32 / TrueRNG / OneRNG over serial | trng | private | — | Web Serial `port` or any injected byte `source` |
+| `sensorEntropy()` | phone/tablet motion sensors | trng | private | motion permission | quantized readings → tiny credit; breadth source |
+| `sdrEntropy({source})` | RTL-SDR radio noise | trng | private | — | community-verified tier; `rtlSdrSource` from `/node` |
 | `jitterEntropy()` | CPU timing jitter | trng | private | — | Node `hrtime` (credited 1/16 bit/delta); browser only via `allowCoarseClock` |
 
 All network providers accept `fetch` (dependency injection / proxying) and a base-URL override.
@@ -58,20 +80,34 @@ actual basis of its unpredictability:
 | `cryptoProvider` | **CSPRNG** (deterministic) | none — an algorithm seeded from OS entropy | computational hardness only; predictable to anyone holding the state |
 | `anu`, `anuLegacy` | **Quantum** (QRNG) | vacuum fluctuations of the electromagnetic field | quantum measurement — non-deterministic by the laws of physics |
 | `qrandomIo`, `lfdr` | **Quantum** (QRNG) | photon detection (ID Quantique Quantis) | quantum shot noise |
-| `outshift`, `qci` | **Quantum** (QRNG) | photonic hardware (Cisco / QCi) | quantum optics |
+| `outshift`, `qci`, `padova` | **Quantum** (QRNG) | photonic hardware (Cisco / QCi / Univ. Padova) | quantum optics |
+| `qbck` | **Quantum** (QRNG) | aggregated IDQ/qStream/SeQRNG/Tropos hardware | quantum optics, multi-vendor |
 | `cameraEntropy` | **Hybrid** quantum + classical | photon shot noise (lit scene — quantum) and sensor thermal noise (covered lens — classical) | photon-arrival statistics / Johnson noise |
 | `randomOrg` | **Classical TRNG** | atmospheric radio noise | chaotic macroscopic physics — deterministic in principle, unmeasurable in practice |
 | `superRand` | **Classical TRNG** | electromagnetic background noise | chaotic macroscopic physics |
 | `serialEntropy` (ESP32) | **Classical TRNG** | SAR-ADC thermal/RF noise (`bootloader_random`) | thermal noise |
 | `micEntropy` | **Classical TRNG** | microphone ADC / Johnson noise | thermal noise |
+| `sensorEntropy` | **Classical TRNG** | accelerometer/gyroscope MEMS noise | thermal/mechanical noise (heavily quantized in browsers) |
+| `sdrEntropy` | **Classical TRNG** | radio front-end thermal noise (RTL-SDR) | thermal noise; RF-injectable — mixing tier |
 | `hwRng` | varies | whatever the kernel's `/dev/hwrng` driver trusts | device-dependent |
 | `jitterEntropy` | **Software/physical hybrid** | CPU micro-architectural timing chaos | system state too complex to model — weakest physical claim |
 | `drand` | **Cryptographic beacon** | none per round — threshold BLS signatures | cryptography + distributed trust; **PUBLIC** values |
-| `nistBeacon` | **TRNG-backed beacon** | NIST-internal hardware entropy | single-operator trust; **PUBLIC** values |
+| `nistBeacon`, `nqsn`, `uchile`, `inmetro`, `curby` | **TRNG/QRNG-backed beacons** | operator-run physical sources | operator trust; **PUBLIC** values |
+| `randao`, `bitcoinBeacon`, `solanaBeacon`, `tezosBeacon`, `flowBeacon` | **Chain beacons** | none — consensus artifacts | economic cost of bias; **PUBLIC** and participant-influenceable |
 
 Rules of thumb: only the quantum sources are non-deterministic *in principle*; classical TRNGs
 are practically unpredictable but not fundamentally so; a CSPRNG is pure math; beacons are not
 private entropy at all — they are shared, verifiable randomness.
+
+### Chain-beacon caveats (read before using `randao`/`bitcoinBeacon`/…)
+
+Blockchain values are **public and participant-influenceable**: an Ethereum proposer can bias
+RANDAO by roughly one bit per slot by withholding a block (and more with forking strategies —
+eprint 2025/037); Bitcoin miners can discard unfavourable blocks, though at a cost estimated in
+six figures per bit (Bonneau et al., eprint 2015/1015); Solana values pass through the slot
+leader, and `tezosBeacon` additionally trusts the TzKT indexer. Use them for commitments,
+audits and `xorMix` transparency inputs. For well-engineered public randomness with distributed
+trust, prefer `drand`.
 
 ## Local physical entropy
 
@@ -83,7 +119,8 @@ attribution, so results are always traceable). A failing source throws
 `EntropyError('health_test')` — it never silently degrades to pseudo-randomness.
 
 ```ts
-import { cameraEntropy, serialEntropy, xorMix, cryptoProvider } from '@mindpeeker/entropy'
+import { xorMix } from '@mindpeeker/entropy'
+import { cameraEntropy, cryptoProvider, serialEntropy } from '@mindpeeker/entropy/providers'
 
 // Browser webcam, whitened:
 const cam = cameraEntropy() // getUserMedia; cover the lens for pure thermal noise
@@ -94,6 +131,52 @@ const rawCam = cameraEntropy({ conditioning: 'raw' })
 // Defense in depth stays available:
 const belt = xorMix([cam, cryptoProvider()])
 ```
+
+### Serial hardware in the BROWSER (Web Serial)
+
+The `serialEntropy` provider works in Chromium (89+, Android 148) and Firefox (151+) today —
+no adapter needed, just a user gesture on an HTTPS page:
+
+```ts
+const port = await navigator.serial.requestPort() // user picks the ESP32/TrueRNG
+const hw = serialEntropy({ port, name: 'esp32' })
+```
+
+### More boards: the firmware collection
+
+[`firmware/`](firmware/) ships ready-to-flash sketches speaking the same raw-serial contract:
+**Raspberry Pi Pico 2** (⭐ $5, real TRNG), **STM32F405/407** (⭐ best quality — but beware:
+F401/F411 "Black Pill" and F446 have NO RNG peripheral), nRF52840, Arduino+avalanche-diode
+(DIY tier, parts list included) and ESP8266 (compat-only). See `firmware/README.md` for the
+full comparison table.
+
+### Motion sensors (phones/tablets)
+
+```ts
+import { sensorEntropy } from '@mindpeeker/entropy/providers'
+const motion = sensorEntropy() // Generic Sensor API, DeviceMotion fallback (iOS asks permission)
+```
+
+Browsers quantize readings (0.1 m/s² / 0.1 °/s), so the credited entropy is deliberately tiny
+(≤1 bit per reading; a 32-byte block takes several seconds even in motion). A frozen device
+trips the health tests instead of producing fake entropy. Breadth source — mix it, don't rely
+on it.
+
+### RTL-SDR radio noise (community-verified tier)
+
+```ts
+import { sdrEntropy } from '@mindpeeker/entropy/providers'
+import { rtlSdrSource } from '@mindpeeker/entropy/node'
+
+const radio = sdrEntropy({ source: await rtlSdrSource() }) // 70 MHz, max manual gain
+```
+
+Follows the rtl-entropy pipeline (6 LSBs per IQ sample, von Neumann, health tests on raw).
+Needs the `rtl_sdr` CLI + a ~$35–45 dongle; **RTL-SDR Blog V4 requires the rtlsdrblog driver
+fork** — stock drivers silently corrupt V4 output, which the raw health tests are there to
+catch. RF injection attacks on TRNGs are demonstrated in the literature: treat radio noise as
+a mixing source, never a sole root of trust. This provider is community-verified (built from
+documented behavior, no hardware on the author's desk).
 
 ### ESP32 (AetherOnePi firmware)
 
@@ -279,7 +362,8 @@ without session setup, permissions or warmup:
 Strategies implement the same `EntropyProvider` interface, so they nest arbitrarily.
 
 ```ts
-import { anu, cryptoProvider, drand, fallback, race, randomOrg, xorMix } from '@mindpeeker/entropy'
+import { fallback, race, xorMix } from '@mindpeeker/entropy'
+import { anu, cryptoProvider, drand, randomOrg } from '@mindpeeker/entropy/providers'
 
 // Priority order, first success wins:
 fallback([anu({ apiKey }), randomOrg({ apiKey }), cryptoProvider()])
@@ -368,6 +452,28 @@ default poll-based `stream()` for free.
   is blocked by CORS in the browser, route it through a small proxy.
 - Node 20 has no global `WebSocket` (Node ≥ 21 does): pass `superRand({ WebSocketCtor })`,
   e.g. from the `ws` package.
+
+## Sources we evaluated — and why they're NOT providers
+
+Researched (mid-2026), rejected, and documented so nobody re-litigates them:
+
+| Candidate | Why not |
+|---|---|
+| Network RTT jitter | attacker-observable and manipulable — RFC 4086 §3.5 says such input "must not be trusted as a source of entropy"; the Linux kernel removed exactly this source (`IRQF_SAMPLE_RANDOM`, gone since 3.6). Mix-don't-credit is the only defensible pattern, so we don't ship it |
+| `/proc` interrupt/stat sampling | the kernel sees those events first and better; read-timing is our existing CPU-jitter source in disguise (no independent entropy) |
+| Disk seek timing | the classic CRYPTO'94 air-turbulence source died with spinning platters; NVMe latency is engineered for *consistency* |
+| macOS `powermetrics` / battery `ioreg` | needs root / high-inertia sensors with ≪1 bit per sample |
+| Linux thermal zones | millidegree *units*, 0.5–1 °C actual quantization — near-zero entropy |
+| RDRAND/RDSEED from JS | needs a native addon (zero-dep violation); the OS CSPRNG already mixes it |
+| BLE heart-rate straps etc. | ~1 Hz and the literature is titled "Heartbeats Do Not Make Good PRNGs" |
+| WebGPU races, DRAM (D-RaNGe), SGX | not reachable from JS/Node — speculative research |
+| CURBy-Q quantum chain | stalled since 2025-08 (same round for months) — we use the fresh CURBy-RNG chain instead |
+| USTC Jinan DIQRNG beacon | expired TLS + data stale since 2025-09 |
+| LizaOnAir "QRNG" | an ANU-*seeded PRNG* (its own metadata admits hours-old seeds) |
+| Tsotchke "Quantum RNG" | unverifiable marketing claims from a software vendor |
+| csrng.net | a CSPRNG service — out of scope |
+| beaconcha.in, Aptos/Sui/ICP randomness | now key-gated / not readable over plain HTTP |
+| WebUSB RTL-SDR in the browser | possible in principle, stale pre-V4 libraries — documented as experimental only |
 
 ## Verifying against live APIs
 

@@ -1,49 +1,18 @@
-// Core types & errors
+// Core of @mindpeeker/entropy: types, errors, combining strategies and the
+// custom-provider building blocks. The providers themselves live behind
+// '@mindpeeker/entropy/providers'; Node-only adapters behind
+// '@mindpeeker/entropy/node'.
 
 export type { EntropyErrorCode, EntropyErrorOptions } from './errors.js'
 export { EntropyError } from './errors.js'
-// Local physical-noise providers (browser-safe; Node adapters live in './node')
+// Building blocks for custom providers
 export type { ByteSource } from './internal/byte-source.js'
 export type { ConditioningMode, ConditioningOptions } from './internal/condition.js'
+export type { NistFamilyOptions } from './internal/nist-pulse.js'
 export type { ProviderSpec } from './internal/provider.js'
-// Building block for custom providers
 export { defineProvider } from './internal/provider.js'
-export type { AnuOptions } from './providers/anu.js'
-export { anu } from './providers/anu.js'
-export type { AnuLegacyOptions } from './providers/anu-legacy.js'
-export { anuLegacy } from './providers/anu-legacy.js'
-export type { CameraOptions, Frame, FrameSource } from './providers/camera.js'
-export { cameraEntropy, lsbBits, signBits } from './providers/camera.js'
-// Providers
-export { cryptoProvider } from './providers/crypto.js'
-export type { DrandOptions } from './providers/drand.js'
-export { drand } from './providers/drand.js'
-export type { JitterOptions } from './providers/jitter.js'
-export { jitterEntropy } from './providers/jitter.js'
-export type { LfdrOptions } from './providers/lfdr.js'
-export { lfdr } from './providers/lfdr.js'
-export type { MicrophoneOptions, SampleSource } from './providers/microphone.js'
-export { micEntropy, sampleLsbBits } from './providers/microphone.js'
-export type { NistBeaconOptions } from './providers/nist-beacon.js'
-export { nistBeacon } from './providers/nist-beacon.js'
-export type { OutshiftOptions } from './providers/outshift.js'
-export { outshift } from './providers/outshift.js'
-export type { QciOptions } from './providers/qci.js'
-export { qci } from './providers/qci.js'
-export type { QrandomIoOptions } from './providers/qrandom.js'
-export { qrandomIo } from './providers/qrandom.js'
-export type { RandomOrgOptions } from './providers/random-org.js'
-export { randomOrg } from './providers/random-org.js'
-export type { SerialOptions, SerialPortLike } from './providers/serial.js'
-export { serialEntropy } from './providers/serial.js'
-export type {
-  SuperRandOptions,
-  WebSocketConstructor,
-  WebSocketLike,
-} from './providers/superrand.js'
-export { superRand } from './providers/superrand.js'
-export type { FallbackOptions } from './strategies/fallback.js'
 // Combining strategies (composable — strategies are providers themselves)
+export type { FallbackOptions } from './strategies/fallback.js'
 export { fallback } from './strategies/fallback.js'
 export { race } from './strategies/race.js'
 export { xorMix } from './strategies/xor.js'

@@ -13,18 +13,28 @@ import { ffmpegFrameSource } from '../src/node/ffmpeg-frames.js'
 import { nodeSerialSource } from '../src/node/serial-source.js'
 import { anu } from '../src/providers/anu.js'
 import { anuLegacy } from '../src/providers/anu-legacy.js'
+import { bitcoinBeacon } from '../src/providers/bitcoin.js'
 import { cameraEntropy } from '../src/providers/camera.js'
 import { cryptoProvider } from '../src/providers/crypto.js'
+import { curby } from '../src/providers/curby.js'
 import { drand } from '../src/providers/drand.js'
+import { flowBeacon } from '../src/providers/flow.js'
+import { inmetro } from '../src/providers/inmetro.js'
 import { jitterEntropy } from '../src/providers/jitter.js'
 import { lfdr } from '../src/providers/lfdr.js'
 import { nistBeacon } from '../src/providers/nist-beacon.js'
+import { nqsn } from '../src/providers/nqsn.js'
 import { outshift } from '../src/providers/outshift.js'
+import { padova } from '../src/providers/padova.js'
 import { qci } from '../src/providers/qci.js'
 import { qrandomIo } from '../src/providers/qrandom.js'
+import { randao } from '../src/providers/randao.js'
 import { randomOrg } from '../src/providers/random-org.js'
 import { serialEntropy } from '../src/providers/serial.js'
+import { solanaBeacon } from '../src/providers/solana.js'
 import { superRand } from '../src/providers/superrand.js'
+import { tezosBeacon } from '../src/providers/tezos.js'
+import { uchile } from '../src/providers/uchile.js'
 import type { EntropyProvider } from '../src/types.js'
 import { loadNearestDotEnv } from '../test/helpers/dotenv.js'
 
@@ -157,8 +167,18 @@ if (ffmpegDevice !== '') {
 
 await bench('qrandom.io', 'qrng', 'https', 64, 'free, keyless', () => qrandomIo())
 await bench('lfdr.de', 'qrng', 'https', 64, 'free, keyless', () => lfdr())
+await bench('padova', 'qrng', 'https', 64, 'free, keyless (Univ. of Padova)', () => padova())
 await bench('drand quicknet', 'beacon', 'https', 64, 'PUBLIC randomness, 2 rounds', () => drand())
 await bench('nist-beacon', 'beacon', 'https', 64, 'PUBLIC randomness, 1 pulse', () => nistBeacon())
+await bench('nqsn', 'beacon', 'https', 64, 'PUBLIC, Singapore quantum beacon', () => nqsn())
+await bench('uchile', 'beacon', 'https', 64, 'PUBLIC, hybrid beacon', () => uchile())
+await bench('inmetro', 'beacon', 'https', 64, 'PUBLIC, Brazilian beacon', () => inmetro())
+await bench('curby', 'beacon', 'https', 32, 'PUBLIC, CU Boulder twine chain', () => curby())
+await bench('randao', 'beacon', 'https', 64, 'PUBLIC, proposer-biasable', () => randao())
+await bench('bitcoin', 'beacon', 'https', 64, 'PUBLIC, ~10 min blocks', () => bitcoinBeacon())
+await bench('solana', 'beacon', 'https', 32, 'PUBLIC, leader-influenced', () => solanaBeacon())
+await bench('tezos', 'beacon', 'https', 64, 'PUBLIC, via TzKT indexer', () => tezosBeacon())
+await bench('flow', 'beacon', 'https', 16, 'PUBLIC, 8 B/call script execution', () => flowBeacon())
 
 if (env('ANU_API_KEY')) {
   await bench('anu (keyed)', 'qrng', 'https', 64, 'quantum vacuum', () =>

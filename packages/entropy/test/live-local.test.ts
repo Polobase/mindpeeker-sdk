@@ -81,6 +81,28 @@ describe('live: ESP32 over serial', () => {
   )
 })
 
+describe('live: RTL-SDR via rtl_sdr', () => {
+  const HAS_RTL_SDR = Bun.which('rtl_sdr') !== null
+  test.skipIf(!LIVE || !HAS_RTL_SDR)(
+    'harvests conditioned bytes from radio noise',
+    async () => {
+      const { rtlSdrSource } = await import('../src/node/rtl-sdr.js')
+      const { sdrEntropy } = await import('../src/providers/sdr.js')
+      const source = await rtlSdrSource()
+      try {
+        const sdr = sdrEntropy({ source })
+        const { bytes, sources } = await sdr.getBytes(64, { timeoutMs: 30_000 })
+        expect(bytes.length).toBe(64)
+        expect(sources[0]?.name).toBe('sdr')
+        expect(new Set(bytes).size).toBeGreaterThan(20)
+      } finally {
+        source.close()
+      }
+    },
+    60_000,
+  )
+})
+
 describe('live: camera via ffmpeg', () => {
   test.skipIf(!LIVE || FFMPEG_DEVICE === '')(
     'harvests conditioned bytes from real camera noise',

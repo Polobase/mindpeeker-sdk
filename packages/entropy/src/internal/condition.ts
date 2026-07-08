@@ -24,6 +24,13 @@ export interface ConditionerConfig {
   safetyFactor: number
   mode: ConditioningMode
   windowSize?: 512 | 1024
+  /**
+   * Run the health tests at a stricter assessed H than what is credited.
+   * At very low credited H the APT cutoff exceeds its window (test disabled)
+   * and the RCT cutoff balloons — a frozen-but-patterned source would pass.
+   * Default: same as minEntropyPerSample.
+   */
+  healthMinEntropyPerSample?: number
 }
 
 const BLOCK_BITS = 256
@@ -39,7 +46,10 @@ export async function* condition(
   config: ConditionerConfig,
 ): AsyncGenerator<Uint8Array> {
   const { provider, minEntropyPerSample, safetyFactor, mode, windowSize } = config
-  const health = new HealthTests({ minEntropyPerSample, windowSize }, provider)
+  const health = new HealthTests(
+    { minEntropyPerSample: config.healthMinEntropyPerSample ?? minEntropyPerSample, windowSize },
+    provider,
+  )
   const bytesPerBlock = Math.ceil((safetyFactor * BLOCK_BITS) / minEntropyPerSample)
 
   let pool: Uint8Array[] = []

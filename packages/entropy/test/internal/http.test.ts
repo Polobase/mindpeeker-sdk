@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { EntropyError } from '../../src/errors.js'
-import { fetchJson } from '../../src/internal/http.js'
+import { fetchJson, fetchText } from '../../src/internal/http.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 
 const URL_ = 'https://api.example.com/random'
@@ -104,6 +104,37 @@ describe('fetchJson', () => {
   test('lets abort reasons pass through unwrapped', async () => {
     const { fetch } = mockFetch(() => jsonResponse({}))
     const err = await fetchJson(URL_, {
+      provider: 'test',
+      fetchImpl: fetch,
+      signal: AbortSignal.abort(),
+    }).catch((e) => e)
+    expect(err).not.toBeInstanceOf(EntropyError)
+    expect((err as Error).name).toMatch(/AbortError/)
+  })
+})
+
+describe('fetchText', () => {
+  test('returns the response body as text on 200', async () => {
+    const { fetch } = mockFetch(() => new Response('00000000000000000001abc\n', { status: 200 }))
+    const text = await fetchText(URL_, { provider: 'test', fetchImpl: fetch })
+    expect(text).toBe('00000000000000000001abc\n')
+  })
+
+  test('maps non-2xx with the same taxonomy as fetchJson', async () => {
+    const { fetch } = mockFetch(
+      () => new Response('slow down', { status: 429, headers: { 'retry-after': '3' } }),
+    )
+    const err = (await fetchText(URL_, { provider: 'test', fetchImpl: fetch }).catch(
+      (e) => e,
+    )) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('rate_limited')
+    expect(err.retryAfterMs).toBe(3000)
+  })
+
+  test('abort passthrough holds for fetchText too', async () => {
+    const { fetch } = mockFetch(() => jsonResponse({}))
+    const err = await fetchText(URL_, {
       provider: 'test',
       fetchImpl: fetch,
       signal: AbortSignal.abort(),

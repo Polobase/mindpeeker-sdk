@@ -8,10 +8,10 @@ import { dirname, join, resolve } from 'node:path'
  * exclusively via the '@mindpeeker/entropy/node' subpath.
  */
 describe('browser safety of the root entry', () => {
-  test('src/index.ts never reaches node: specifiers or src/node files', () => {
+  test('root and providers entries never reach node: specifiers or src/node files', () => {
     const srcDir = resolve(import.meta.dir, '../../src')
     const seen = new Set<string>()
-    const queue = [join(srcDir, 'index.ts')]
+    const queue = [join(srcDir, 'index.ts'), join(srcDir, 'providers/index.ts')]
     while (queue.length > 0) {
       const file = queue.pop() as string
       if (seen.has(file)) continue

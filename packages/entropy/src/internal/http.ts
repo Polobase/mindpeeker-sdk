@@ -40,14 +40,11 @@ function isAbort(error: unknown, signal?: AbortSignal): boolean {
   return signal?.aborted === true || (error instanceof DOMException && error.name === 'AbortError')
 }
 
-/**
- * fetch + JSON parse with the library's uniform error taxonomy. Abort/timeout
- * reasons pass through unwrapped so `defineProvider` can classify them.
- */
-export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise<T> {
+/** Shared transport + error taxonomy: resolve to an OK Response or throw EntropyError. */
+async function fetchOk(url: string, opts: FetchJsonOptions, accept: string): Promise<Response> {
   const { provider, signal } = opts
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch
-  const headers: Record<string, string> = { accept: 'application/json', ...opts.headers }
+  const headers: Record<string, string> = { accept, ...opts.headers }
   const init: RequestInit = { method: opts.method ?? 'GET', headers, signal }
   if (opts.body !== undefined) {
     headers['content-type'] = 'application/json'
@@ -72,10 +69,34 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise
       defaultErrorFor(response.status, body, response, provider)
     )
   }
+  return response
+}
 
+/**
+ * fetch + JSON parse with the library's uniform error taxonomy. Abort/timeout
+ * reasons pass through unwrapped so `defineProvider` can classify them.
+ */
+export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise<T> {
+  const response = await fetchOk(url, opts, 'application/json')
   try {
     return (await response.json()) as T
   } catch (error) {
-    throw new EntropyError('bad_response', `invalid JSON from ${url}`, { provider, cause: error })
+    throw new EntropyError('bad_response', `invalid JSON from ${url}`, {
+      provider: opts.provider,
+      cause: error,
+    })
+  }
+}
+
+/** fetch returning the raw text body (e.g. Bitcoin tip-hash endpoints). */
+export async function fetchText(url: string, opts: FetchJsonOptions): Promise<string> {
+  const response = await fetchOk(url, opts, 'text/plain')
+  try {
+    return await response.text()
+  } catch (error) {
+    throw new EntropyError('bad_response', `unreadable body from ${url}`, {
+      provider: opts.provider,
+      cause: error,
+    })
   }
 }

@@ -12,15 +12,26 @@
 import { describe, expect, test } from 'bun:test'
 import { anu } from '../src/providers/anu.js'
 import { anuLegacy } from '../src/providers/anu-legacy.js'
+import { bitcoinBeacon } from '../src/providers/bitcoin.js'
 import { cryptoProvider } from '../src/providers/crypto.js'
+import { curby } from '../src/providers/curby.js'
 import { drand } from '../src/providers/drand.js'
+import { flowBeacon } from '../src/providers/flow.js'
+import { inmetro } from '../src/providers/inmetro.js'
 import { lfdr } from '../src/providers/lfdr.js'
 import { nistBeacon } from '../src/providers/nist-beacon.js'
+import { nqsn } from '../src/providers/nqsn.js'
 import { outshift } from '../src/providers/outshift.js'
+import { padova } from '../src/providers/padova.js'
+import { qbck } from '../src/providers/qbck.js'
 import { qci } from '../src/providers/qci.js'
 import { qrandomIo } from '../src/providers/qrandom.js'
+import { randao } from '../src/providers/randao.js'
 import { randomOrg } from '../src/providers/random-org.js'
+import { solanaBeacon } from '../src/providers/solana.js'
 import { superRand } from '../src/providers/superrand.js'
+import { tezosBeacon } from '../src/providers/tezos.js'
+import { uchile } from '../src/providers/uchile.js'
 import { fallback } from '../src/strategies/fallback.js'
 import { xorMix } from '../src/strategies/xor.js'
 import type { EntropyProvider } from '../src/types.js'
@@ -51,6 +62,26 @@ describe('live: keyless providers', () => {
   liveTest('drand', true, () => drand(), 40) // 40 bytes → exercises 2 rounds
   liveTest('nist-beacon', true, () => nistBeacon(), 70) // 70 bytes → 2 pulses
   liveTest('anu-legacy (1 req/min!)', true, () => anuLegacy())
+  liveTest('nqsn', true, () => nqsn(), 70) // 2 pulses → verifies the 303 redirect + chain walk
+  liveTest('uchile', true, () => uchile(), 70) // verifies the query-form latest route
+  // Inmetro ships an incomplete TLS certificate chain that Node/Bun's fetch
+  // rejects (curl and browsers tolerate it). Gate behind an env flag; the
+  // provider works wherever the intermediate cert is available or a custom
+  // fetch is supplied.
+  liveTest('inmetro', env('ENTROPY_TEST_INMETRO') === '1', () => inmetro(), 70)
+  liveTest(
+    'inmetro (combination)',
+    env('ENTROPY_TEST_INMETRO') === '1',
+    () => inmetro({ variant: 'combination' }),
+    16,
+  )
+  liveTest('padova', true, () => padova())
+  liveTest('curby', true, () => curby(), 40) // 2 pulses → verifies CID digest + history walk
+  liveTest('randao', true, () => randao(), 40) // 2 mixes → verifies the epoch walk
+  liveTest('bitcoin', true, () => bitcoinBeacon(), 40) // 2 blocks → verifies prev-hash walk
+  liveTest('solana', true, () => solanaBeacon(), 40) // 2 slots → verifies aggregation
+  liveTest('tezos', true, () => tezosBeacon(), 40) // 2 levels → verifies base58check
+  liveTest('flow', true, () => flowBeacon(), 16) // 2 draws → verifies double-decode
 })
 
 describe('live: keyed providers', () => {
@@ -65,6 +96,7 @@ describe('live: keyed providers', () => {
   liveTest('superrand (REST)', env('SUPERRAND_API_KEY') !== '', () =>
     superRand({ apiKey: env('SUPERRAND_API_KEY') }),
   )
+  liveTest('qbck', env('QBCK_API_KEY') !== '', () => qbck({ apiKey: env('QBCK_API_KEY') }))
 
   test.skipIf(!LIVE || env('SUPERRAND_API_KEY') === '')(
     'superrand WebSocket stream yields two chunks',
