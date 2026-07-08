@@ -29,6 +29,20 @@ export type {
   WindowedNegentropyPoint,
 } from './estimators/windowed.js'
 export { windowedNegentropy } from './estimators/windowed.js'
+export { analyzeBytes, analyzeTrials } from './experiment/batch.js'
+export { bonferroni, compositeZ } from './experiment/composite.js'
+export type { RegisteredExperiment } from './experiment/registration.js'
+export { canonicalJson, registerExperiment } from './experiment/registration.js'
+export type { Session, SessionOptions, SessionTick } from './experiment/session.js'
+export { session } from './experiment/session.js'
+export type {
+  EventResult,
+  EventSpec,
+  EventStatistic,
+  ExperimentComposite,
+  ExperimentConfig,
+  ExperimentResult,
+} from './experiment/types.js'
 export type {
   AccountedBytes,
   EntropyClaim,
