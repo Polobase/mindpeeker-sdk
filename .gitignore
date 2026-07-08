@@ -3,3 +3,9 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .env
+
+# Local agent tooling (not part of the SDK)
+.claude/
+.claude-flow/
+.mcp.json
+CLAUDE.md
