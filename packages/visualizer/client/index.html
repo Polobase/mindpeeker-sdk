@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mindpeeker visualizer</title>
+<style>
+  :root {
+    --bg: #0b0e13;
+    --panel: #11161d;
+    --border: #1f2732;
+    --text: #c9d1d9;
+    --muted: #9da7b3;
+    --ok: #4cc38a;
+    --warn: #e5a54b;
+    --down: #e5534b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    min-height: 100vh;
+    padding: 14px;
+  }
+  #topbar {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  #topbar h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+  #connection { color: var(--muted); }
+  #connection.ok { color: var(--ok); }
+  #connection.down { color: var(--down); }
+  #connection.pending { color: var(--warn); }
+  #panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 12px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel h2 { font-size: 12px; font-weight: 600; color: var(--text); }
+  .status { font-size: 11px; color: var(--muted); }
+  .status.live { color: var(--ok); }
+  .status.ended { color: var(--warn); }
+  .status.error { color: var(--down); }
+  .canvas-wrap { position: relative; height: 240px; }
+  .canvas-wrap.failed {
+    display: grid;
+    place-items: center;
+    color: var(--down);
+    padding: 12px;
+    text-align: center;
+  }
+  .canvas-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .canvas-wrap .overlay { pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="topbar">
+  <h1>mindpeeker visualizer</h1>
+  <span id="connection">connecting…</span>
+</div>
+<main id="panels"></main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

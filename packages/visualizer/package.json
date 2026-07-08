@@ -1,0 +1,49 @@
+{
+  "name": "@mindpeeker/visualizer",
+  "version": "0.1.0",
+  "description": "Real-time dashboard for entropy/negentropy/PSI data — a Bun-native WebSocket server plus a zero-dependency WebGL2 client.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3",
+    "bun": ">=1.2"
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "mindpeeker-viz": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && bun scripts/build-client.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p client/tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/entropy": "workspace:*",
+    "@mindpeeker/negentropy": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "visualization",
+    "dashboard",
+    "webgl2",
+    "websocket",
+    "entropy",
+    "negentropy",
+    "rng",
+    "gcp",
+    "real-time",
+    "bun"
+  ]
+}
