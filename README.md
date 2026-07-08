@@ -20,14 +20,16 @@ investigate. The math is asserted; the metaphysics is not.
 | [`@mindpeeker/rate`](packages/rate) | Malcolm Rae base-44 radionic angular encoding: rate parsing, card geometry + SVG, directional statistics, deterministic stream modulation | — |
 | [`@mindpeeker/oracle`](packages/oracle) | Bias-free mapping from entropy streams to archetypal systems (I-Ching, Tarot, Elder Futhark runes, geomancy) with exact probabilities and entropy accounting | — |
 | [`@mindpeeker/vdf`](packages/vdf) | Pietrzak verifiable delay function over RSA-2048: sequential-squaring time-locks, O(log T) proofs, beacon freshness seals | — |
+| [`@mindpeeker/scan`](packages/scan) | Honest radionic scanning + broadcasting: catalog resonance scan with a real chance-deviation null model, rate/signature stream modulation, and a pre-registered tripolar MMI protocol | `oracle`, `rate`, `psi` |
 | [`@mindpeeker/visualizer`](packages/visualizer) | Bun-native WebSocket server + zero-dependency WebGL2 dashboard for live byte streams, statistic series, matrices, and rate cards | `entropy`, `negentropy` (demo CLI) |
 
 ## Dependency graph
 
-Only two packages have dependencies at all — and both point at workspace siblings.
-Everything else is zero-dependency and interoperates *structurally*: live sources are anything
-shaped like `{ name, stream(opts?): AsyncIterable<Uint8Array> }`, so every entropy provider
-plugs into flow, psi, rate, oracle, and the visualizer without a single shared import.
+Most packages are zero-dependency; the three that aren't (`psi`, `scan`, `visualizer`) point only
+at workspace siblings. Everything interoperates *structurally*: live sources are anything shaped
+like `{ name, stream(opts?): AsyncIterable<Uint8Array> }`, so one entropy provider plugs into
+flow, psi, rate, oracle, scan, and the visualizer without a single shared import. `@mindpeeker/scan`
+is the one application-level composite — it orchestrates the primitives into radionic scan/broadcast.
 
 ```mermaid
 graph TD
@@ -35,9 +37,10 @@ graph TD
   visualizer -- "demo CLI only" --> negentropy["@mindpeeker/negentropy<br/>(zero-dep)"]
   psi["@mindpeeker/psi"] -- "statistics + experiment layer" --> negentropy
   psi -- "./numerics subpath<br/>(lnGamma, normPpf, …)" --> negentropy
+  scan["@mindpeeker/scan"] --> oracle["@mindpeeker/oracle<br/>(zero-dep)"]
+  scan --> rate["@mindpeeker/rate<br/>(zero-dep)"]
+  scan --> psi
   flow["@mindpeeker/flow<br/>(zero-dep)"]
-  rate["@mindpeeker/rate<br/>(zero-dep)"]
-  oracle["@mindpeeker/oracle<br/>(zero-dep)"]
   vdf["@mindpeeker/vdf<br/>(zero-dep)"]
 ```
 
