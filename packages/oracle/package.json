@@ -1,0 +1,43 @@
+{
+  "name": "@mindpeeker/oracle",
+  "version": "0.1.0",
+  "description": "Bias-free mapping from entropy streams to archetypal systems — I-Ching, Tarot, Elder Futhark runes, and geomancy — with exact rational probabilities and honest entropy accounting.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "oracle",
+    "divination",
+    "i-ching",
+    "tarot",
+    "runes",
+    "elder-futhark",
+    "geomancy",
+    "rejection-sampling",
+    "unbiased",
+    "entropy",
+    "qrng",
+    "fisher-yates"
+  ]
+}
