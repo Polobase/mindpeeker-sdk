@@ -1,0 +1,48 @@
+{
+  "name": "@mindpeeker/scan",
+  "version": "0.1.0",
+  "description": "Honest application-level radionic scanning and broadcasting over the mindpeeker-sdk primitives — an AetherOne-faithful EV race and general vitality, an unbiased per-item chance-deviation null model AetherOne lacks, deterministic rate broadcasting, and rigorous PEAR tripolar MMI scans.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/negentropy": "workspace:*",
+    "@mindpeeker/oracle": "workspace:*",
+    "@mindpeeker/psi": "workspace:*",
+    "@mindpeeker/rate": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "radionics",
+    "aetherone",
+    "hotbits",
+    "scanning",
+    "broadcasting",
+    "mind-matter-interaction",
+    "null-model",
+    "chance-deviation",
+    "bayes-factor",
+    "unbiased-sampling",
+    "rate",
+    "witness"
+  ]
+}

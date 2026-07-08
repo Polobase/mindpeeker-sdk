@@ -37,6 +37,16 @@
       "name": "@mindpeeker/rate",
       "version": "0.1.0",
     },
+    "packages/scan": {
+      "name": "@mindpeeker/scan",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mindpeeker/negentropy": "workspace:*",
+        "@mindpeeker/oracle": "workspace:*",
+        "@mindpeeker/psi": "workspace:*",
+        "@mindpeeker/rate": "workspace:*",
+      },
+    },
     "packages/vdf": {
       "name": "@mindpeeker/vdf",
       "version": "0.1.0",
@@ -83,6 +93,8 @@
     "@mindpeeker/psi": ["@mindpeeker/psi@workspace:packages/psi"],
 
     "@mindpeeker/rate": ["@mindpeeker/rate@workspace:packages/rate"],
+
+    "@mindpeeker/scan": ["@mindpeeker/scan@workspace:packages/scan"],
 
     "@mindpeeker/vdf": ["@mindpeeker/vdf@workspace:packages/vdf"],
 
