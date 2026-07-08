@@ -7,6 +7,7 @@ Bun + TypeScript workspace for mindpeeker's publishable packages.
 | Package | Description |
 |---|---|
 | [`@mindpeeker/entropy`](packages/entropy) | Provider-pluggable QRNG/TRNG entropy library for web and Node.js |
+| [`@mindpeeker/negentropy`](packages/negentropy) | Order detection (GCP-style statistics, negentropy estimators) and randomness extraction over entropy streams |
 
 ## Development
 

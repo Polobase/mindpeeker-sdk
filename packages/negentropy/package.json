@@ -1,0 +1,43 @@
+{
+  "name": "@mindpeeker/negentropy",
+  "version": "0.1.0",
+  "description": "Measure order in noise and manufacture order from noise — GCP-style network statistics, negentropy estimators, and SP 800-90B extraction over any byte stream.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "negentropy",
+    "entropy",
+    "randomness",
+    "statistics",
+    "gcp",
+    "rng",
+    "randomness-extractor",
+    "toeplitz",
+    "min-entropy",
+    "sp800-90b",
+    "stouffer",
+    "anomaly-detection"
+  ]
+}

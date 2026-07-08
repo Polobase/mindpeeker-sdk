@@ -1,0 +1,11 @@
+{
+  "generator": "python 3.11.13, scipy 1.17.1, numpy 2.4.6, mpmath mpmath 1.4.1",
+  "logcosh": {
+    "mean": 0.37456720749143796,
+    "variance": 0.18976744917236543
+  },
+  "exp": {
+    "mean": -0.7071067811865476,
+    "variance": 0.07735026918962576
+  }
+}
