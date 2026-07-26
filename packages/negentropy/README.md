@@ -52,6 +52,9 @@ Network statistics over step-aligned z-matrices from N sources:
 | `netvar` | do the sources deviate *together*? (GCP standard) | χ²(steps) |
 | `devvar` | is any source's variance off on its own? | χ²(steps × N) |
 | `interSourceCorrelation` | are pairwise products elevated? | N(0, 1) |
+| `networkCoherence` | GCP 2.0 "coherent activity" — mean pairwise product per step, with a plot-ready `perStep` curve | N(0, 1) |
+| `clusteredNetvar` | within-cluster vs between-cluster deviation, for GCP 2.0's clustered hardware | χ²(steps) between + χ²(steps × clusters) within |
+| `onsiteVsGlobal` | do an onsite and a global coherence stream correlate? (the GCP 2.0 r ≈ 0.27 analysis) | Fisher-z → N(0, 1) |
 
 `cumulativeDeviation(stoufferZs)` gives the classic cumsum(Z²−1) plot and
 `significanceEnvelope(steps, p)` its exact χ²-quantile envelope. **The

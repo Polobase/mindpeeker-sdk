@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import { NegentropyError } from '../../src/errors.js'
-import { devvar, interSourceCorrelation, netvar } from '../../src/stats/network.js'
+import {
+  clusteredNetvar,
+  devvar,
+  interSourceCorrelation,
+  netvar,
+  networkCoherence,
+  onsiteVsGlobal,
+} from '../../src/stats/network.js'
 import { stoufferZ } from '../../src/stats/zscores.js'
 import { gaussians } from '../helpers/byte-sources.js'
 
@@ -123,5 +130,93 @@ describe('structure', () => {
     const result = netvar(nullMatrix(2, 10, 0x66), ['anu', 'drand'])
     expect(result.sources).toEqual(['anu', 'drand'])
     expect(result.n).toBe(10)
+  })
+})
+
+describe('networkCoherence', () => {
+  test('null: coherence ≈ 0, statistic ~ N(0,1), perStep sized to steps', () => {
+    const steps = 5000
+    const result = networkCoherence(nullMatrix(5, steps, 0x77), SOURCES)
+    expect(Math.abs(result.statistic)).toBeLessThan(4)
+    expect(Math.abs(result.coherence)).toBeLessThan(0.05)
+    expect(result.perStep.length).toBe(steps)
+    expect(result.pValue).toBeGreaterThan(0.001)
+  })
+
+  test('common signal (r=0.1): coherence ≈ r and fires', () => {
+    const result = networkCoherence(correlatedMatrix(5, 5000, 0.1, 0x78), SOURCES)
+    // mean pairwise product of correlated z's → r
+    expect(Math.abs(result.coherence - 0.1)).toBeLessThan(0.03)
+    expect(result.pValue).toBeLessThan(1e-10)
+  })
+
+  test('needs ≥ 2 sources', () => {
+    expect(() => networkCoherence([new Float64Array(5)], ['a'])).toThrow(NegentropyError)
+  })
+})
+
+describe('clusteredNetvar', () => {
+  const SIX = ['a', 'b', 'c', 'd', 'e', 'f']
+  const TWO_CLUSTERS = [0, 0, 0, 1, 1, 1]
+
+  test('null: within ≈ df_within and between ≈ df_between', () => {
+    const steps = 4000
+    const result = clusteredNetvar(nullMatrix(6, steps, 0x81), SIX, TWO_CLUSTERS)
+    expect(result.clusterCount).toBe(2)
+    expect(result.df).toBe(steps)
+    const dfWithin = steps * 2
+    expect(Math.abs(result.within / dfWithin - 1)).toBeLessThan(4 * Math.sqrt(2 / dfWithin))
+    expect(Math.abs(result.between / steps - 1)).toBeLessThan(4 * Math.sqrt(2 / steps))
+    expect(result.pValue).toBeGreaterThan(0.001)
+  })
+
+  test('signal shared across clusters → between fires', () => {
+    const steps = 5000
+    const result = clusteredNetvar(correlatedMatrix(6, steps, 0.1, 0x82), SIX, TWO_CLUSTERS)
+    expect(result.between / steps).toBeGreaterThan(1.2)
+    expect(result.pValue).toBeLessThan(1e-6)
+  })
+
+  test('validates cluster ids', () => {
+    expect(() => clusteredNetvar(nullMatrix(3, 10, 0x83), ['a', 'b', 'c'], [0, 1])).toThrow(
+      NegentropyError,
+    )
+    expect(() => clusteredNetvar(nullMatrix(2, 10, 0x84), ['a', 'b'], [0, 1.5])).toThrow(
+      NegentropyError,
+    )
+  })
+})
+
+describe('onsiteVsGlobal', () => {
+  test('recovers a planted correlation with a one-sided p', () => {
+    const steps = 3000
+    const all = gaussians(2 * steps, 0x91)
+    const rho = 0.4
+    const onsite = new Float64Array(steps)
+    const global = new Float64Array(steps)
+    for (let t = 0; t < steps; t++) {
+      const e1 = all[t] as number
+      onsite[t] = e1
+      global[t] = rho * e1 + Math.sqrt(1 - rho * rho) * (all[steps + t] as number)
+    }
+    const result = onsiteVsGlobal(onsite, global)
+    expect(Math.abs(result.r - rho)).toBeLessThan(0.05)
+    expect(result.pValue).toBeLessThan(1e-10)
+    expect(result.df).toBe(steps - 3)
+  })
+
+  test('null: r ≈ 0, not significant', () => {
+    const all = gaussians(6000, 0x92)
+    const result = onsiteVsGlobal(all.slice(0, 3000), all.slice(3000))
+    expect(Math.abs(result.r)).toBeLessThan(0.06)
+    expect(result.pValue).toBeGreaterThan(0.01)
+  })
+
+  test('validates length, sample size, and degenerate input', () => {
+    expect(() => onsiteVsGlobal(new Float64Array(5), new Float64Array(6))).toThrow(NegentropyError)
+    expect(() => onsiteVsGlobal(new Float64Array(3), new Float64Array(3))).toThrow(NegentropyError)
+    expect(() => onsiteVsGlobal(new Float64Array(10), new Float64Array(10))).toThrow(
+      NegentropyError,
+    )
   })
 })

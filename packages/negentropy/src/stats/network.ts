@@ -135,3 +135,166 @@ export function interSourceCorrelation(
     pairs,
   }
 }
+
+/**
+ * Network coherence — the GCP 2.0 headline statistic (a measure of coherent
+ * activity across RNGs). Per step, the mean pairwise product of source
+ * z-scores S(t)/pairCount with S(t) = ((Σz)² − Σz²)/2; `coherence` is its mean
+ * over steps and `perStep` is the plot-ready "evoked response" curve.
+ * Significance uses the same CLT normal approximation as
+ * `interSourceCorrelation` (one-sided: excess coherence). Requires ≥ 2 sources.
+ */
+export function networkCoherence(
+  zBySource: readonly Float64Array[],
+  sources: readonly string[],
+): StatResult & { coherence: number; perStep: Float64Array } {
+  const steps = checkMatrix(zBySource, sources)
+  const n = zBySource.length
+  if (n < 2) {
+    throw new NegentropyError('invalid_config', 'networkCoherence needs at least 2 sources')
+  }
+  const pairCount = (n * (n - 1)) / 2
+  const perStep = new Float64Array(steps)
+  const total = new KahanSum()
+  const coherenceMean = new KahanSum()
+  for (let t = 0; t < steps; t++) {
+    let sum = 0
+    let sumSq = 0
+    for (let i = 0; i < n; i++) {
+      const z = (zBySource[i] as Float64Array)[t] as number
+      sum += z
+      sumSq += z * z
+    }
+    const s = (sum * sum - sumSq) / 2
+    perStep[t] = s / pairCount
+    total.add(s)
+    coherenceMean.add(s / pairCount)
+  }
+  const statistic = total.value / Math.sqrt(steps * pairCount)
+  return {
+    statistic,
+    df: steps * pairCount,
+    pValue: normalP(statistic, 'upper'),
+    n: steps,
+    sources: [...sources],
+    coherence: coherenceMean.value / steps,
+    perStep,
+  }
+}
+
+/**
+ * Within-cluster vs between-cluster network-variance decomposition, matching
+ * GCP 2.0's clustered hardware (clusters of RNGs). `clusters[i]` is the cluster
+ * id of source i. Per step each cluster is reduced to its own Stouffer Z;
+ * `within` = Σ_c Σ_t clusterZ_c(t)² (χ² over steps × clusters — within-cluster
+ * deviation) and `between` = Σ_t Z_g(t)² where Z_g is the Stouffer across the
+ * cluster-level Z's (χ² over steps — between-cluster co-deviation). The primary
+ * `statistic` is `between` on `df = steps`.
+ */
+export function clusteredNetvar(
+  zBySource: readonly Float64Array[],
+  sources: readonly string[],
+  clusters: readonly number[],
+): StatResult & { within: number; between: number; clusterCount: number } {
+  const steps = checkMatrix(zBySource, sources)
+  if (clusters.length !== sources.length) {
+    throw new NegentropyError(
+      'invalid_config',
+      `clusters must give one id per source: got ${clusters.length} ids for ${sources.length} sources`,
+    )
+  }
+  // group source indices by cluster id, in first-seen order
+  const groups = new Map<number, number[]>()
+  for (let i = 0; i < clusters.length; i++) {
+    const id = clusters[i] as number
+    if (!Number.isInteger(id)) {
+      throw new NegentropyError('invalid_config', `cluster ids must be integers, got ${id}`)
+    }
+    const g = groups.get(id)
+    if (g) g.push(i)
+    else groups.set(id, [i])
+  }
+  const clusterIndices = [...groups.values()]
+  const clusterCount = clusterIndices.length
+  const within = new KahanSum()
+  const between = new KahanSum()
+  const clusterZ = new Float64Array(clusterCount)
+  for (let t = 0; t < steps; t++) {
+    for (let c = 0; c < clusterCount; c++) {
+      const members = clusterIndices[c] as number[]
+      let sum = 0
+      for (const i of members) sum += (zBySource[i] as Float64Array)[t] as number
+      const cz = sum / Math.sqrt(members.length)
+      clusterZ[c] = cz
+      within.add(cz * cz)
+    }
+    const zg = stoufferZ(clusterZ)
+    between.add(zg * zg)
+  }
+  return {
+    statistic: between.value,
+    df: steps,
+    pValue: chiSquareP(between.value, steps),
+    n: steps,
+    sources: [...sources],
+    within: within.value,
+    between: between.value,
+    clusterCount,
+  }
+}
+
+/**
+ * Pearson correlation between an onsite and a global network stream (e.g. two
+ * `networkCoherence` `perStep` series), with a p-value from the Fisher
+ * z-transform z = atanh(r)·√(n − 3) ~ N(0, 1). Mirrors the GCP 2.0
+ * onsite↔global coherence-correlation analysis (reported r ≈ 0.27). One-sided
+ * by default (positive coupling); `df = n − 3`.
+ */
+export function onsiteVsGlobal(
+  onsite: Float64Array,
+  global: Float64Array,
+): StatResult & { r: number } {
+  if (onsite.length !== global.length) {
+    throw new NegentropyError(
+      'invalid_config',
+      `streams must be equal length: onsite ${onsite.length}, global ${global.length}`,
+    )
+  }
+  const n = onsite.length
+  if (n < 4) {
+    throw new NegentropyError('insufficient_data', `onsiteVsGlobal needs ≥ 4 steps, got ${n}`)
+  }
+  let sx = 0
+  let sy = 0
+  for (let i = 0; i < n; i++) {
+    sx += onsite[i] as number
+    sy += global[i] as number
+  }
+  const mx = sx / n
+  const my = sy / n
+  let sxy = 0
+  let sxx = 0
+  let syy = 0
+  for (let i = 0; i < n; i++) {
+    const dx = (onsite[i] as number) - mx
+    const dy = (global[i] as number) - my
+    sxy += dx * dy
+    sxx += dx * dx
+    syy += dy * dy
+  }
+  if (!(sxx > 0) || !(syy > 0)) {
+    throw new NegentropyError('insufficient_data', 'a stream is constant — correlation undefined')
+  }
+  const r = Math.max(-1, Math.min(1, sxy / Math.sqrt(sxx * syy)))
+  // clamp |r| off exactly 1 so atanh stays finite
+  const rc = Math.max(-1 + 1e-15, Math.min(1 - 1e-15, r))
+  const z = Math.atanh(rc) * Math.sqrt(n - 3)
+  return {
+    statistic: z,
+    df: n - 3,
+    pValue: normalP(z, 'upper'),
+    n,
+    sources: ['onsite', 'global'],
+    r,
+  }
+}
