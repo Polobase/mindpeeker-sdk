@@ -1,0 +1,53 @@
+{
+  "name": "@mindpeeker/gematria",
+  "version": "0.1.0",
+  "description": "Pure, deterministic, multi-tradition gematria & isopsephy — Hebrew, Greek and English/Latin ciphers with exact integer values, honest equal-value commonness, and an optional entropy-bridge oracle draw.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./oracle": {
+      "types": "./dist/oracle.d.ts",
+      "default": "./dist/oracle.js"
+    },
+    "./lexicon": {
+      "types": "./dist/lexicon.d.ts",
+      "default": "./dist/lexicon.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/oracle": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "gematria",
+    "isopsephy",
+    "kabbalah",
+    "hebrew",
+    "greek",
+    "atbash",
+    "notariqon",
+    "temurah",
+    "agrippa",
+    "milesian",
+    "deterministic",
+    "cipher"
+  ]
+}

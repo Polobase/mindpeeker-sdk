@@ -1,0 +1,65 @@
+{
+  "note": "Hand-authored authoritative gematria/isopsephy reference vectors, each value computed from a cited classical table (no external generator needed — exact integer math). Hebrew Mispar Hechrachi per torahcalc.com; Greek Milesian isopsephy; English Ordinal A=1..Z=26.",
+  "sources": {
+    "hebrew": "torahcalc.com (Mispar Hechrachi charts); aleph=1..tav=400",
+    "greek": "Milesian isopsephy; chi-xi-stigma = 666 is Revelation 13:18",
+    "english": "Ordinal / 'Simple' cipher A=1..Z=26",
+    "jewish": "gematrix.org / Gematrinator default English-letter cipher",
+    "milui": "Mispar Shemi: value of each letter's spelled-out name; aleph alef=111, bet bit=412",
+    "kidmi": "triangular/cumulative: running sum of Hechrachi values (a=1, b=1+2=3, ...)",
+    "perati": "squared: each letter's Hechrachi value squared",
+    "neelam": "hidden: milui(letter) - hechrachi(letter)",
+    "katan-mispari": "integral reduced: digital root of the whole word's Hechrachi total",
+    "naeq": "Crowley, Liber Trigrammaton XXVII: the ALW / NAEQ English Qabalah",
+    "abjad": "Arabic Hisab al-Jummal (Mashriqi order); alif=1 .. ghayn=1000"
+  },
+  "vectors": [
+    { "text": "אחד", "cipher": "he-hechrachi", "value": 13, "gloss": "echad — One / Unity" },
+    { "text": "אהבה", "cipher": "he-hechrachi", "value": 13, "gloss": "ahavah — love" },
+    { "text": "חי", "cipher": "he-hechrachi", "value": 18, "gloss": "chai — life" },
+    { "text": "יהוה", "cipher": "he-hechrachi", "value": 26, "gloss": "YHVH — the Tetragrammaton" },
+    { "text": "θελημα", "cipher": "gr-isopsephy", "value": 93, "gloss": "Thelema — Will" },
+    { "text": "αγαπη", "cipher": "gr-isopsephy", "value": 93, "gloss": "Agape — Love" },
+    {
+      "text": "χξϛ",
+      "cipher": "gr-isopsephy",
+      "value": 666,
+      "gloss": "the number of the beast, Rev 13:18"
+    },
+    {
+      "text": "gematria",
+      "cipher": "en-ordinal",
+      "value": 74,
+      "gloss": "the word itself, Ordinal / Simple"
+    },
+    {
+      "text": "gematria",
+      "cipher": "la-jewish",
+      "value": 233,
+      "gloss": "the word itself, Jewish Gematria (gematrix.org default)"
+    },
+    {
+      "text": "אב",
+      "cipher": "he-milui",
+      "value": 523,
+      "gloss": "av — Milui: alef(111) + bit(412)"
+    },
+    { "text": "אב", "cipher": "he-kidmi", "value": 4, "gloss": "av — Kidmi triangular: 1 + 3" },
+    { "text": "אב", "cipher": "he-perati", "value": 5, "gloss": "av — Perati squares: 1 + 4" },
+    {
+      "text": "א",
+      "cipher": "he-neelam",
+      "value": 110,
+      "gloss": "aleph — Neelam: milui 111 − hechrachi 1"
+    },
+    {
+      "text": "יהוה",
+      "cipher": "he-katan-mispari",
+      "value": 8,
+      "gloss": "YHVH — Katan Mispari: digital root of 26"
+    },
+    { "text": "ALW", "cipher": "en-naeq", "value": 6, "gloss": "the ALW cipher name, A1 L2 W3" },
+    { "text": "ابجد", "cipher": "ar-abjad", "value": 10, "gloss": "abjad — 1 + 2 + 3 + 4" },
+    { "text": "الله", "cipher": "ar-abjad", "value": 66, "gloss": "Allah — Abjad 1 + 30 + 30 + 5" }
+  ]
+}

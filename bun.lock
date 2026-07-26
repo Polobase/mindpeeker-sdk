@@ -18,6 +18,13 @@
       "name": "@mindpeeker/flow",
       "version": "0.1.0",
     },
+    "packages/gematria": {
+      "name": "@mindpeeker/gematria",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mindpeeker/oracle": "workspace:*",
+      },
+    },
     "packages/negentropy": {
       "name": "@mindpeeker/negentropy",
       "version": "0.1.0",
@@ -85,6 +92,8 @@
     "@mindpeeker/entropy": ["@mindpeeker/entropy@workspace:packages/entropy"],
 
     "@mindpeeker/flow": ["@mindpeeker/flow@workspace:packages/flow"],
+
+    "@mindpeeker/gematria": ["@mindpeeker/gematria@workspace:packages/gematria"],
 
     "@mindpeeker/negentropy": ["@mindpeeker/negentropy@workspace:packages/negentropy"],
 
