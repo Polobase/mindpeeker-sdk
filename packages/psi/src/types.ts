@@ -20,3 +20,12 @@ export type {
  * — high minus low — so common-mode drift of the device cancels.
  */
 export type Intention = 'high' | 'low' | 'baseline'
+
+/**
+ * Epoch class in a presentiment (time-reversed) experiment: `target` epochs
+ * precede the stimulus of interest (e.g. an arousing or "hit" event),
+ * `control` epochs precede a neutral one. The presentiment hypothesis is that
+ * pre-stimulus randomness deviates more before `target` than `control`
+ * stimuli (Radin 1997; Mossbridge, Tressoldi & Utts 2012 meta-analysis).
+ */
+export type Stimulus = 'target' | 'control'

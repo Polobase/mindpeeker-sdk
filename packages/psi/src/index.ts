@@ -7,6 +7,13 @@ export { analyzeEvent } from './gcp/event.js'
 export type { RollingOptions, RollingPoint } from './monitor/rolling.js'
 export { rollingNetvar, rollingStouffer } from './monitor/rolling.js'
 export type {
+  PresentimentAnalysis,
+  PresentimentEpoch,
+  PresentimentPlan,
+  WindowEffect,
+} from './protocol/presentiment.js'
+export { analyzePresentiment, presentimentEpochs } from './protocol/presentiment.js'
+export type {
   IntentionSummary,
   RunTripolarOptions,
   TripolarAnalysis,
@@ -21,11 +28,16 @@ export {
   recordSession,
   serializeRecordLine,
 } from './record/jsonl.js'
-export type { Surrogate, SurrogateOptions } from './resample/surrogates.js'
-export { permutationP, timeOffsetSurrogates } from './resample/surrogates.js'
+export type { LabelShuffleOptions, Surrogate, SurrogateOptions } from './resample/surrogates.js'
+export {
+  labelShuffleSurrogates,
+  permutationP,
+  timeOffsetSurrogates,
+} from './resample/surrogates.js'
 export type {
   Intention,
   StatResult,
+  Stimulus,
   Trial,
   TrialSeries,
   TrialSource,

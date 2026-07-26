@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { permutationP, timeOffsetSurrogates } from '../../src/resample/surrogates.js'
+import { PsiError } from '../../src/errors.js'
+import {
+  labelShuffleSurrogates,
+  permutationP,
+  timeOffsetSurrogates,
+} from '../../src/resample/surrogates.js'
 import type { TrialSeries } from '../../src/types.js'
 import { prngUniforms } from '../helpers/trial-sources.js'
 
@@ -112,5 +117,32 @@ describe('permutationP', () => {
     expect(() => permutationP(1, [Number.POSITIVE_INFINITY])).toThrow(
       expect.objectContaining({ code: 'invalid_plan' }) as unknown as Error,
     )
+  })
+})
+
+describe('labelShuffleSurrogates', () => {
+  test('rotates labels, preserves counts, excludes the observed labeling', () => {
+    const labels = ['target', 'control', 'target', 'control', 'target'] as const
+    const surrogates = [...labelShuffleSurrogates(labels)]
+    expect(surrogates.length).toBeGreaterThan(0)
+    for (const relabel of surrogates) {
+      expect(relabel.length).toBe(labels.length)
+      // same multiset (3 targets, 2 controls)
+      expect(relabel.filter((s) => s === 'target').length).toBe(3)
+      // never identical to the observed arrangement
+      expect(relabel.join(',')).not.toBe(labels.join(','))
+    }
+  })
+
+  test('skips rotations that reproduce a periodic labeling', () => {
+    // [t,c,t,c] rotated by 2 is itself → must be skipped
+    const labels = ['target', 'control', 'target', 'control'] as const
+    for (const relabel of labelShuffleSurrogates(labels)) {
+      expect(relabel.join(',')).not.toBe(labels.join(','))
+    }
+  })
+
+  test('needs at least 2 labels', () => {
+    expect(() => [...labelShuffleSurrogates(['target'])]).toThrow(PsiError)
   })
 })

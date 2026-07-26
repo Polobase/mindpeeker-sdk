@@ -123,6 +123,49 @@ export function* timeOffsetSurrogates(
   }
 }
 
+/** Options for {@link labelShuffleSurrogates}. */
+export interface LabelShuffleOptions {
+  /** Explicit circular offsets (integers, nonzero modulo the label count). */
+  offsets?: readonly number[]
+  /** When `offsets` is omitted: how many evenly spaced rotations. Default `min(n − 1, 100)`. */
+  count?: number
+}
+
+/**
+ * Label-shuffle surrogates: circularly rotate a sequence of condition labels
+ * relative to the fixed epoch data, preserving the exact count of each label
+ * while breaking its association with the epochs. Recomputing a target-vs-
+ * control statistic over these relabelings and calling {@link permutationP}
+ * gives the honest null for "does the target/control assignment explain the
+ * effect?" — the presentiment analogue of {@link timeOffsetSurrogates}.
+ *
+ * Deterministic (no RNG): rotations, evenly spaced or explicit. Rotations that
+ * reproduce the original labeling (periodic label vectors) are skipped so the
+ * null never contains copies of the observed arrangement.
+ */
+export function* labelShuffleSurrogates<T>(
+  labels: readonly T[],
+  opts: LabelShuffleOptions = {},
+): Generator<readonly T[]> {
+  const n = labels.length
+  if (n < 2) {
+    throw new PsiError('insufficient_data', `label-shuffle surrogates need ≥ 2 labels, got ${n}`)
+  }
+  const offsets = resolveOffsets(n, { offsets: opts.offsets, count: opts.count })
+  for (const offset of offsets) {
+    const rotated = labels.map((_, i) => labels[(i + offset) % n] as T)
+    // skip a rotation that lands back on the observed labeling (periodic vectors)
+    let identical = true
+    for (let i = 0; i < n; i++) {
+      if (rotated[i] !== labels[i]) {
+        identical = false
+        break
+      }
+    }
+    if (!identical) yield Object.freeze(rotated)
+  }
+}
+
 /**
  * Permutation/randomization p-value with the +1 correction:
  * $$p = \frac{1 + \left|\{ i : s_i \ge s_{\text{obs}} \}\right|}{1 + m}$$

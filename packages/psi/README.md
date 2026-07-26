@@ -11,6 +11,9 @@ top of them:
 - **PEAR-style tripolar protocols** — intention-tagged runs
   (high / low / baseline) over a live source, with the high-minus-low
   primary statistic and per-bit effect sizes
+- **Presentiment (time-reversed) protocol** — pre-stimulus target-minus-control
+  deviation with a post-stimulus sanity control and a label-shuffle
+  permutation null (`analyzePresentiment`, `presentimentEpochs`)
 - **GCP-style formal event analysis** — the full netvar / devvar /
   cumulative-deviation bundle over recorded multi-source data
 - **Rolling monitors** — dashboard-ready Stouffer and netvar windows over
