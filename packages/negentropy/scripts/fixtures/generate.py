@@ -214,9 +214,129 @@ def health_fixture() -> None:
     write("health.json", {"apt": cases})
 
 
+def _acf_biased(x, maxlag):
+    x = np.asarray(x, dtype=np.float64)
+    n = len(x)
+    xm = x - x.mean()
+    c0 = float(np.sum(xm * xm))
+    return [float(np.sum(xm[: n - lag] * xm[lag:]) / c0) for lag in range(maxlag + 1)]
+
+
+def _spectral_entropy(x):
+    psd = np.abs(np.fft.rfft(np.asarray(x, dtype=np.float64))) ** 2  # k = 0..n//2
+    p = psd / psd.sum()
+    p = p[p > 0]
+    return float(-np.sum(p * np.log2(p)))
+
+
+def _spectral_test(bits):
+    n = len(bits)
+    s = 2 * np.asarray(bits, dtype=np.float64) - 1
+    mags = np.abs(np.fft.fft(s))[: n // 2]  # k = 0..n//2 - 1
+    threshold = np.sqrt(np.log(1 / 0.05) * n)
+    n1 = int(np.sum(mags < threshold))
+    n0 = 0.95 * (n / 2)
+    d = (n1 - n0) / np.sqrt(n * 0.95 * 0.05 / 4)
+    return float(d), float(special.erfc(abs(d) / np.sqrt(2)))
+
+
+def _phi(x, m, r, self_match):
+    """Richman–Moorman template-match counter (Chebyshev ≤ r)."""
+    n = len(x)
+    templates = n - m + 1
+    total = 0
+    logsum = 0.0
+    for i in range(templates):
+        count = 0
+        for j in range(templates):
+            if not self_match and i == j:
+                continue
+            d = max(abs(x[i + k] - x[j + k]) for k in range(m))
+            if d <= r:
+                count += 1
+        total += count
+        if self_match:
+            logsum += np.log(count / templates)
+    return total, (logsum / templates if self_match else None)
+
+
+def _sampen(x, m, r):
+    b, _ = _phi(x, m, r, False)
+    a, _ = _phi(x, m + 1, r, False)
+    return float(-np.log(a / b))
+
+
+def _apen(x, m, r):
+    _, phim = _phi(x, m, r, True)
+    _, phim1 = _phi(x, m + 1, r, True)
+    return float(phim - phim1)
+
+
+def estimators_fixture() -> None:
+    rng = np.random.default_rng(20260726)
+
+    # autocorrelation (biased / c0 normalization) — white noise and an AR(1)
+    ar1 = np.zeros(400)
+    e = rng.standard_normal(400)
+    for t in range(1, 400):
+        ar1[t] = 0.6 * ar1[t - 1] + e[t]
+    acf_cases = [
+        {"label": "normal300", "samples": rng.standard_normal(300).tolist(), "maxLag": 20},
+        {"label": "ar1-0.6", "samples": ar1.tolist(), "maxLag": 20},
+    ]
+    for c in acf_cases:
+        c["acf"] = _acf_biased(c["samples"], c["maxLag"])
+
+    # spectral entropy — white noise, a pure sinusoid, and a noisy sinusoid
+    t = np.arange(1024)
+    sine = np.sin(2 * np.pi * 5 * t / 1024)
+    spec_entropy_cases = [
+        {"label": "white1024", "samples": rng.standard_normal(1024).tolist()},
+        {"label": "sine1024", "samples": sine.tolist()},
+        {"label": "noisy-sine", "samples": (sine + 0.5 * rng.standard_normal(1024)).tolist()},
+    ]
+    for c in spec_entropy_cases:
+        c["entropy"] = _spectral_entropy(c["samples"])
+
+    # NIST SP 800-22 spectral test — a random bit block, full statistic + p
+    bits = rng.integers(0, 2, 4096)
+    d, p = _spectral_test(bits)
+    spectral_test_cases = [{"label": "random4096", "bits": bits.tolist(), "d": d, "pValue": p}]
+
+    # sample / approximate entropy — cross-language Richman–Moorman reference
+    samp_cases = []
+    for label, x in [
+        ("white200", rng.standard_normal(200)),
+        ("sine200", np.sin(np.arange(200) / 4.0)),
+    ]:
+        x = np.asarray(x, dtype=np.float64)
+        r = 0.2 * float(np.std(x))  # ddof=0, matches the TS populationSd default
+        samp_cases.append(
+            {
+                "label": label,
+                "samples": x.tolist(),
+                "m": 2,
+                "r": r,
+                "sampleEntropy": _sampen(x, 2, r),
+                "approximateEntropy": _apen(x, 2, r),
+            }
+        )
+
+    write(
+        "estimators.json",
+        {
+            "autocorrelation": acf_cases,
+            "spectralEntropy": spec_entropy_cases,
+            "spectralTest": spectral_test_cases,
+            "sampleApprox": samp_cases,
+        },
+    )
+
+
 if __name__ == "__main__":
     special_fixture()
     gaussian_constants_fixture()
     moments_fixture()
     vasicek_fixture()
     health_fixture()
+    estimators_fixture()

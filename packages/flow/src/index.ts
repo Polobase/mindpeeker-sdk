@@ -10,6 +10,8 @@ export {
 export type { FlowErrorCode, FlowErrorOptions } from './errors.js'
 export { FlowError } from './errors.js'
 export { xorshift32 } from './internal/prng.js'
+export type { PermutationEntropyOptions } from './permutation-entropy.js'
+export { permutationEntropy, weightedPermutationEntropy } from './permutation-entropy.js'
 export type {
   EffectiveTransferEntropyOptions,
   EffectiveTransferEntropyResult,

@@ -1,6 +1,7 @@
 export type { NegentropyErrorCode, NegentropyErrorOptions } from './errors.js'
 
 export { NegentropyError } from './errors.js'
+export { autocorrelation } from './estimators/autocorrelation.js'
 export {
   markovMinEntropyPerBit,
   mcvMinEntropy,
@@ -22,6 +23,9 @@ export {
 } from './estimators/negentropy.js'
 export type { DitherOptions } from './estimators/pipeline.js'
 export { ditheredTrialZ, probitBytes } from './estimators/pipeline.js'
+export { approximateEntropy, sampleEntropy } from './estimators/sample-entropy.js'
+export type { SpectralEntropyOptions } from './estimators/spectral.js'
+export { spectralEntropy, spectralTest } from './estimators/spectral.js'
 export { negentropyVasicek, vasicekEntropy } from './estimators/vasicek.js'
 export type {
   WindowedEstimator,
