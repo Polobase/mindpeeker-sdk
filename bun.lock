@@ -14,6 +14,14 @@
       "name": "@mindpeeker/entropy",
       "version": "0.1.0",
     },
+    "packages/field": {
+      "name": "@mindpeeker/field",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mindpeeker/negentropy": "workspace:*",
+        "@mindpeeker/oracle": "workspace:*",
+      },
+    },
     "packages/flow": {
       "name": "@mindpeeker/flow",
       "version": "0.1.0",
@@ -90,6 +98,8 @@
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.2", "", { "os": "win32", "cpu": "x64" }, "sha512-4InchVpdVmdkkkgjQqKpgvyu+VPnoF/7RPSw5YATgEVpt2j72wcCAeV5TwaE9ZGJUZWZn7v2CwSAj6CrMJEx8A=="],
 
     "@mindpeeker/entropy": ["@mindpeeker/entropy@workspace:packages/entropy"],
+
+    "@mindpeeker/field": ["@mindpeeker/field@workspace:packages/field"],
 
     "@mindpeeker/flow": ["@mindpeeker/flow@workspace:packages/flow"],
 

@@ -21,6 +21,7 @@ investigate. The math is asserted; the metaphysics is not.
 | [`@mindpeeker/oracle`](packages/oracle) | Bias-free mapping from entropy streams to archetypal systems (I-Ching, Tarot, Elder Futhark runes, geomancy) with exact probabilities and entropy accounting | — |
 | [`@mindpeeker/vdf`](packages/vdf) | Pietrzak verifiable delay function over RSA-2048: sequential-squaring time-locks, O(log T) proofs, beacon freshness seals | — |
 | [`@mindpeeker/scan`](packages/scan) | Honest radionic scanning + broadcasting: catalog resonance scan with a real chance-deviation null model, rate/signature stream modulation, and a pre-registered tripolar MMI protocol | `oracle`, `rate`, `psi` |
+| [`@mindpeeker/field`](packages/field) | Spatial negentropy: unbiased point fields with attractor/void detection, Ripley's K/L and Clark–Evans statistics against a complete-spatial-randomness null, plus `./geo` helpers (the rigorous core of a Randonautica-style engine) | `oracle`, `negentropy` |
 | [`@mindpeeker/visualizer`](packages/visualizer) | Bun-native WebSocket server + zero-dependency WebGL2 dashboard for live byte streams, statistic series, matrices, and rate cards | `entropy`, `negentropy` (demo CLI) |
 
 ## Dependency graph
@@ -40,6 +41,8 @@ graph TD
   scan["@mindpeeker/scan"] --> oracle["@mindpeeker/oracle<br/>(zero-dep)"]
   scan --> rate["@mindpeeker/rate<br/>(zero-dep)"]
   scan --> psi
+  field["@mindpeeker/field"] --> oracle
+  field -- "p-values (./numerics)" --> negentropy
   flow["@mindpeeker/flow<br/>(zero-dep)"]
   vdf["@mindpeeker/vdf<br/>(zero-dep)"]
 ```

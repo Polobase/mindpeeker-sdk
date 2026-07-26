@@ -1,0 +1,50 @@
+{
+  "name": "@mindpeeker/field",
+  "version": "0.1.0",
+  "description": "Spatial negentropy — turn an entropy stream into a point field and test it for order: attractors, voids, Ripley's K/L clustering, and Clark–Evans nearest-neighbour statistics against a complete-spatial-randomness null. The rigorous core of a Randonautica-style engine, plus browser-safe geo helpers.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./geo": {
+      "types": "./dist/geo.d.ts",
+      "default": "./dist/geo.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/negentropy": "workspace:*",
+    "@mindpeeker/oracle": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "spatial",
+    "point-pattern",
+    "ripley-k",
+    "clark-evans",
+    "complete-spatial-randomness",
+    "attractor",
+    "void",
+    "randonautica",
+    "quantum-random",
+    "unbiased-sampling",
+    "haversine",
+    "mind-matter-interaction"
+  ]
+}
