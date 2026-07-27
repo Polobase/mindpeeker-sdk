@@ -22,15 +22,18 @@ investigate. The math is asserted; the metaphysics is not.
 | [`@mindpeeker/vdf`](packages/vdf) | Pietrzak verifiable delay function over RSA-2048: sequential-squaring time-locks, O(log T) proofs, beacon freshness seals | — |
 | [`@mindpeeker/scan`](packages/scan) | Honest radionic scanning + broadcasting: catalog resonance scan with a real chance-deviation null model, rate/signature stream modulation, and a pre-registered tripolar MMI protocol | `oracle`, `rate`, `psi` |
 | [`@mindpeeker/field`](packages/field) | Spatial negentropy: unbiased point fields with attractor/void detection, Ripley's K/L and Clark–Evans statistics against a complete-spatial-randomness null, plus `./geo` helpers (the rigorous core of a Randonautica-style engine) | `oracle`, `negentropy` |
+| [`@mindpeeker/gematria`](packages/gematria) | Multi-tradition gematria & isopsephy — 41 exact-integer ciphers across Hebrew (Hechrachi/Gadol/Siduri/Katan + the extended Milui/Kidmi/Perati/Neelam/Katan-Mispari), Greek isopsephy, Arabic Abjad, and English/Latin (Agrippa, Jewish, NAEQ, the ×6 wordplay, the gematriaq.com calculator set, and Peter Plichta's Prime Number Cross); plus Aiq Beker chambers, Temurah, Notariqon, `numberProperties` lore, a bundled Sepher Sephiroth `./lexicon`, and an entropy→word `./oracle` bridge | `oracle` (`./oracle`) |
 | [`@mindpeeker/visualizer`](packages/visualizer) | Bun-native WebSocket server + zero-dependency WebGL2 dashboard for live byte streams, statistic series, matrices, and rate cards | `entropy`, `negentropy` (demo CLI) |
 
 ## Dependency graph
 
-Most packages are zero-dependency; the three that aren't (`psi`, `scan`, `visualizer`) point only
-at workspace siblings. Everything interoperates *structurally*: live sources are anything shaped
-like `{ name, stream(opts?): AsyncIterable<Uint8Array> }`, so one entropy provider plugs into
-flow, psi, rate, oracle, scan, and the visualizer without a single shared import. `@mindpeeker/scan`
-is the one application-level composite — it orchestrates the primitives into radionic scan/broadcast.
+Most package cores are zero-dependency; the ones that compose a sibling (`psi`, `scan`, `field`,
+the `visualizer` demo, and `@mindpeeker/gematria`'s `./oracle` subpath) point only at workspace
+packages, never third-party code. Everything interoperates *structurally*: live sources are anything
+shaped like `{ name, stream(opts?): AsyncIterable<Uint8Array> }`, so one entropy provider plugs into
+flow, psi, rate, oracle, scan, gematria's oracle bridge, and the visualizer without a single shared
+import. `@mindpeeker/scan` is the one application-level composite — it orchestrates the primitives
+into radionic scan/broadcast.
 
 ```mermaid
 graph TD
@@ -43,6 +46,7 @@ graph TD
   scan --> psi
   field["@mindpeeker/field"] --> oracle
   field -- "p-values (./numerics)" --> negentropy
+  gematria["@mindpeeker/gematria<br/>(zero-dep core)"] -- "./oracle subpath" --> oracle
   flow["@mindpeeker/flow<br/>(zero-dep)"]
   vdf["@mindpeeker/vdf<br/>(zero-dep)"]
 ```

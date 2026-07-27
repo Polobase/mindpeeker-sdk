@@ -1,9 +1,10 @@
 # @mindpeeker/gematria
 
 Pure, deterministic, multi-tradition **gematria & isopsephy** — assign numeric
-values to the letters of a word and relate words of equal value. Hebrew, Greek
-and English/Latin, with the classical ciphers plus the modern online ones
-(clearly labelled as such).
+values to the letters of a word and relate words of equal value. Hebrew, Greek,
+Arabic and English/Latin — the classical ciphers plus the full modern
+online-calculator set (clearly labelled as such), including Peter Plichta's
+Prime Number Cross. **41 ciphers** in all.
 
 The value *computation* is exact integer arithmetic: `value(text, cipher)` is a
 fixed function of the letters and consumes **zero entropy**. The same word
@@ -34,7 +35,10 @@ notariqon('Atah Gibor Le-olam Adonai') // 'AGLA'
 A **cipher** maps each letter of one script to a non-negative integer; a word's
 value is the sum of its letters. The first ten ids are a drop-in superset of the
 mindpeeker frontend engine (`server/utils/gematria.ts`) — identical ids, labels
-and values — so `profile()` can replace it row-for-row.
+and values — so `profile()` can replace it row-for-row. The registry spans **41
+ciphers** in total: the SDK-added *extended* methods (`extended: true`) are kept
+out of the default `profile()`, and the modern calculator ciphers (`modern:
+true`) can be dropped with `includeModern: false`.
 
 ### Hebrew (22 letters, aleph=1 … tav=400)
 
@@ -46,9 +50,17 @@ and values — so `profile()` can replace it row-for-row.
 | `he-katan` | Reduced (Mispar Katan) | each letter's digital root (ק100→1), summed |
 | `he-atbash` | Atbash (temurah) | letter $i \mapsto 21 - i$ (א↔ת), scored Hechrachi |
 | `he-albam` | Albam (temurah) | letter $i \mapsto (i+11) \bmod 22$, scored Hechrachi |
+| `he-milui` | Full Spelling (Milui / Mispar Shemi) — **extended** | value of each letter's spelled-out name (alef → אלף = 111) |
+| `he-kidmi` | Triangular (Kidmi) — **extended** | cumulative Σ of standard values up to each letter (א1 ב3 ג6 …) |
+| `he-perati` | Squared (Perati) — **extended** | each letter's standard value squared |
+| `he-neelam` | Hidden (Neelam) — **extended** | milui(letter) − hechrachi(letter) |
+| `he-katan-mispari` | Integral Reduced — **extended** | digital root of the whole word's Hechrachi total |
 
 In every method except Gadol the final ("sofit") forms fold to their base
 letter. Niqqud and cantillation marks are stripped; RTL is irrelevant to a sum.
+The five **extended** methods (`extended: true`) go beyond the frontend set and
+sit out the default `profile()`. `milui(text, variant?)` additionally exposes
+the four divine-name spellings of יהוה — **AB=72, SAG=63, MAH=45, BAN=52**.
 _Sources: torahcalc.com; Mathers, *The Kabbalah Unveiled*; Scholem, *Kabbalah*._
 
 ### Greek isopsephy (Milesian)
@@ -59,6 +71,17 @@ letters are the archaic decade numerals (digamma/stigma, koppa, sampi). Text is
 lowercased and its accents, breathings and iota subscripts are stripped before
 summing. _Source: standard Milesian isopsephy tables._
 
+### Arabic Abjad (Ḥisāb al-Jummal, Mashriqi order)
+
+`ar-abjad` — the 28-letter Eastern Abjad numerals filling the ones, tens,
+hundreds and a final thousand: ا1 ب2 ج3 د4 ه5 و6 ز7 ح8 ط9 ي10 ك20 ل30 م40 ن50
+س60 ع70 ف80 ص90 ق100 ر200 ش300 ت400 ث500 خ600 ذ700 ض800 ظ900 **غ1000**. The
+alef variants (آ أ إ ٱ) fold to bare alef, tāʾ marbūṭa ة folds to hāʾ (5), and
+the free-standing hamza ء plus the harakāt/tatwīl marks are dropped; summing is
+order-independent, so RTL needs no special handling. `modern: false` — the Abjad
+numerals are the historical pre-Hindu-Arabic number system of the script.
+_Sources: standard Ḥisāb al-Jummal tables; Chumbley, *Qutub*._
+
 ### English / Latin
 
 | id | cipher | rule | note |
@@ -68,6 +91,7 @@ summing. _Source: standard Milesian isopsephy tables._
 | `en-reverse` | Reverse ordinal | $27 - n$ (A26 … Z1) | |
 | `la-agrippa` | Agrippa's Latin | A1 … T100 V200 X300 Y400 Z500, with J600 U700 W900 | **reconstructed historical** |
 | `la-jewish` | Jewish Gematria | A1 … T100 U200 V700 W900 X300 Y400 Z500, with J600 | **English-letter convention** |
+| `en-naeq` | New Aeon English Qabalah (NAEQ / ALW) | A1 L2 W3 H4 S5 D6 O7 Z8 K9 V10 … P26 | **extended** (Thelemic) |
 | `en-english`, `en-sumerian` | "English"/"Sumerian" ×6 | ordinal × 6 (A6 … Z156) | **modern wordplay** |
 | `en-english-reverse`, `en-sumerian-reverse` | their reverse variants | reverse ordinal × 6 | **modern wordplay** |
 
@@ -84,6 +108,44 @@ gematria** — for that, value Hebrew text under `he-hechrachi`. The `en-english
 online calculators (gematrinator.com, bartoll.se); every such cipher has
 `modern: true`. _Pass `profile(text, { includeModern: false })` for the
 historical set only (`la-jewish` included — it is not one of the ×6 ciphers)._
+
+#### Modern calculator ciphers (gematriaq.com parity)
+
+Beyond the ×6 family the package ships the full modern online-calculator set —
+all `modern: true`, all 20th–21st-century inventions with no ancient pedigree
+(Latin has no native numerals). They are in `profile()` by default; pass
+`includeModern: false` to drop them.
+
+| id | cipher | rule |
+|---|---|---|
+| `en-standard` | Standard | A–I ones 1–9, J–R tens 10–90, S–Z hundreds 100–800 |
+| `en-reverse-reduction` | Reverse Reduction | digital root of the reverse ordinal |
+| `en-satanic`, `en-reverse-satanic` | Satanic / reverse | ordinal (or reverse ordinal) + 35 (A36 … Z61) |
+| `en-primes`, `en-reverse-primes` | Primes / reverse | the nth prime by ordinal position, A2 B3 … Z101 |
+| `en-squares`, `en-reverse-squares` | Squares / reverse | the ordinal squared, A1 … Z676 |
+| `en-trigonal`, `en-reverse-trigonal` | Trigonal / reverse | triangular number T(n)=n(n+1)/2, A1 … Z351 |
+| `en-fibonacci` | Fibonacci | the nth Fibonacci number, A1 B1 C2 D3 … Z121393 |
+| `en-chaldean` | Chaldean | traditional 1–8 table (9 held sacred, never assigned) |
+| `en-septenary` | Septenary | ordinal cycled through seven, (n−1) mod 7 + 1 |
+| `en-keypad` | Keypad | the E.161 telephone-keypad digit (ABC=2 … WXYZ=9) |
+
+#### Prime Number Cross (Peter Plichta)
+
+Four ciphers built on Peter Plichta's **Prime Number Cross** (*God's Secret
+Formula: The Prime Number Code*, 1997): the integers laid on a 24-spoke wheel
+where — since 1, 2, 3 are indivisible — 6 is flanked by 5 and 7, and every prime
+$> 3$ has the form **6n±1**, so all such primes fall on just eight "prime rays".
+`modern: true`.
+
+| id | cipher | rule |
+|---|---|---|
+| `en-prime-cross` | Prime Cross | the successive 6n±1 numbers, A1 B5 C7 … Z77 (composites 25, 35, 49, … kept) |
+| `en-reverse-prime-cross` | Reverse Prime Cross | that same sequence assigned Z1 … A77 |
+| `en-prime-cross-primes` | Prime Cross (Primes) | only the primes on the cross, keeping the central 1: A1 B5 C7 … Z103 (1 + every prime except 2, 3) |
+| `en-reverse-prime-cross-primes` | Reverse Prime Cross (Primes) | that 1-plus-primes sequence assigned Z1 … A103 |
+
+The two forward ciphers agree A–H, then diverge at I (25 vs 29) — the cross's
+own distinction between candidate numbers and the primes among them.
 
 ### Friendly aliases
 
