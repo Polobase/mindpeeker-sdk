@@ -15,8 +15,10 @@ export type Script = 'hebrew' | 'greek' | 'latin' | 'arabic'
  * Stable machine ids for every supported cipher. The first ten are a superset
  * of the mindpeeker frontend engine (`server/utils/gematria.ts`) — identical
  * ids, labels and values — so `profile()` is a drop-in replacement. The rest
- * are SDK additions: Agrippa's reconstructed Latin table and the modern ×6
- * "English/Sumerian" wordplay ciphers (see {@link Cipher.modern}).
+ * are SDK additions: Agrippa's reconstructed Latin table, the Thelemic NAEQ,
+ * and the modern calculator ciphers — the ×6 "English/Sumerian" wordplay, the
+ * gematriaq.com-parity set (Standard, Primes, Squares, Fibonacci, Chaldean,
+ * Keypad, …), and Peter Plichta's Prime Number Cross (see {@link Cipher.modern}).
  */
 export type CipherId =
   | 'he-hechrachi'
@@ -42,6 +44,27 @@ export type CipherId =
   | 'en-sumerian'
   | 'en-english-reverse'
   | 'en-sumerian-reverse'
+  // The gematriaq.com-parity modern calculator ciphers (all `modern: true`).
+  | 'en-standard'
+  | 'en-reverse-reduction'
+  | 'en-satanic'
+  | 'en-reverse-satanic'
+  | 'en-primes'
+  | 'en-reverse-primes'
+  | 'en-squares'
+  | 'en-reverse-squares'
+  | 'en-trigonal'
+  | 'en-reverse-trigonal'
+  | 'en-fibonacci'
+  | 'en-chaldean'
+  | 'en-septenary'
+  | 'en-keypad'
+  // Peter Plichta's Prime Number Cross (numbers of the form 6n±1): the full
+  // cross and its primes-only subset, each with a reverse.
+  | 'en-prime-cross'
+  | 'en-reverse-prime-cross'
+  | 'en-prime-cross-primes'
+  | 'en-reverse-prime-cross-primes'
 
 /**
  * Friendly names accepted anywhere a cipher is chosen, matching the labels
@@ -73,6 +96,12 @@ export interface Cipher {
   readonly id: CipherId
   /** Human-readable label (matches the frontend for the shared ten). */
   readonly label: string
+  /**
+   * A one-line description of the cipher — its rule, origin, and honest framing.
+   * Optional: the frontend-parity Hebrew/Greek/Arabic and historical Latin
+   * ciphers omit it, while the modern calculator ciphers supply it.
+   */
+  readonly description?: string
   readonly script: Script
   /**
    * `true` iff this is a 20th–21st-century invention with no historical

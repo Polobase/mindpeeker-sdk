@@ -47,6 +47,7 @@
 
 import { digitRoot } from '../normalize.js'
 import type { Cipher, CipherId, LetterValue } from '../types.js'
+import { ENGLISH_MODERN_CIPHERS } from './english-modern.js'
 
 /** a … z, the domain of every Latin cipher table. */
 const LATIN_ALPHABET: readonly string[] = 'abcdefghijklmnopqrstuvwxyz'.split('')
@@ -211,9 +212,11 @@ function latinCipher(
 }
 
 /**
- * The English/Latin ciphers: the historical set, the extended NAEQ, then the
- * modern ×6 family. NAEQ is `extended` (kept out of the default profile) rather
- * than `modern` — it is a documented historical Thelemic cipher, not wordplay.
+ * The English/Latin ciphers: the historical set, the extended NAEQ, the modern
+ * ×6 family, then the gematriaq.com-parity calculator ciphers and Plichta's
+ * Prime Number Cross (both from `english-modern.ts`). NAEQ is `extended` (kept
+ * out of the default profile) rather than `modern` — it is a documented
+ * historical Thelemic cipher, not wordplay.
  */
 export const ENGLISH_CIPHERS: readonly Cipher[] = Object.freeze([
   latinCipher('en-ordinal', 'Ordinal', ordinal, false),
@@ -226,4 +229,5 @@ export const ENGLISH_CIPHERS: readonly Cipher[] = Object.freeze([
   latinCipher('en-sumerian', 'Sumerian (×6, modern)', english6, true),
   latinCipher('en-english-reverse', 'Reverse English (×6, modern)', reverse6, true),
   latinCipher('en-sumerian-reverse', 'Reverse Sumerian (×6, modern)', reverse6, true),
+  ...ENGLISH_MODERN_CIPHERS,
 ])

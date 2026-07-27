@@ -10,8 +10,8 @@ import {
 } from '../src/registry.js'
 
 describe('cipher registry', () => {
-  test('holds all 23 ciphers with unique ids, deeply frozen', () => {
-    expect(CIPHERS.length).toBe(23)
+  test('holds all 41 ciphers with unique ids, deeply frozen', () => {
+    expect(CIPHERS.length).toBe(41)
     const ids = CIPHERS.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(Object.isFrozen(CIPHERS)).toBe(true)
@@ -39,7 +39,7 @@ describe('cipher registry', () => {
     expect(CIPHERS_BY_SCRIPT.hebrew.length).toBe(11)
     expect(CIPHERS_BY_SCRIPT.greek).toEqual(['gr-isopsephy'])
     expect(CIPHERS_BY_SCRIPT.arabic).toEqual(['ar-abjad'])
-    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(10)
+    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(28)
     const total =
       CIPHERS_BY_SCRIPT.hebrew.length +
       CIPHERS_BY_SCRIPT.greek.length +

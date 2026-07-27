@@ -12,16 +12,24 @@ describe('english / latin ciphers', () => {
     }
   })
 
-  test('only the ×6 english/sumerian family is flagged modern', () => {
-    const modern = ENGLISH_CIPHERS.filter((c) => c.modern).map((c) => c.id)
-    expect(modern.sort()).toEqual([
-      'en-english',
-      'en-english-reverse',
-      'en-sumerian',
-      'en-sumerian-reverse',
+  test('the historical set + NAEQ are not modern; the calculator ciphers are', () => {
+    // the non-modern set is the stable invariant: the five historical ciphers
+    // plus the extended NAEQ. Everything else (the ×6 wordplay, the
+    // gematriaq-parity set, Plichta's prime cross) is a modern calculator cipher.
+    const nonModern = ENGLISH_CIPHERS.filter((c) => !c.modern)
+      .map((c) => c.id)
+      .sort()
+    expect(nonModern).toEqual([
+      'en-naeq',
+      'en-ordinal',
+      'en-reduction',
+      'en-reverse',
+      'la-agrippa',
+      'la-jewish',
     ])
-    expect(ENGLISH_CIPHERS.find((c) => c.id === 'la-agrippa')?.modern).toBe(false)
-    expect(ENGLISH_CIPHERS.find((c) => c.id === 'la-jewish')?.modern).toBe(false)
+    expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-english')?.modern).toBe(true)
+    expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-primes')?.modern).toBe(true)
+    expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-prime-cross')?.modern).toBe(true)
   })
 
   test('ordinal A=1 … Z=26', () => {
