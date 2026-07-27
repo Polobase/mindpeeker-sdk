@@ -1,0 +1,63 @@
+/* Panel styling for the reused visualizer WebGL grid, scoped under .viz-dash so
+   it overrides the site's generic .panel rules. Colors come from theme.css. */
+
+.viz-dash {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+}
+.viz-dash .panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0;
+}
+.viz-dash .panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.viz-dash .panel h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+.viz-dash .status {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.viz-dash .status.live {
+  color: var(--good);
+}
+.viz-dash .status.ended {
+  color: var(--warn);
+}
+.viz-dash .status.error {
+  color: var(--bad);
+}
+.viz-dash .canvas-wrap {
+  position: relative;
+  height: 240px;
+}
+.viz-dash .canvas-wrap.failed {
+  display: grid;
+  place-items: center;
+  color: var(--bad);
+  padding: 12px;
+  text-align: center;
+}
+.viz-dash .canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.viz-dash .canvas-wrap .overlay {
+  pointer-events: none;
+}

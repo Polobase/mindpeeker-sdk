@@ -1,0 +1,28 @@
+{
+  "name": "@mindpeeker/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static, client-side demo site for the mindpeeker-sdk packages (published to GitHub Pages).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@mindpeeker/entropy": "workspace:*",
+    "@mindpeeker/negentropy": "workspace:*",
+    "@mindpeeker/flow": "workspace:*",
+    "@mindpeeker/psi": "workspace:*",
+    "@mindpeeker/rate": "workspace:*",
+    "@mindpeeker/oracle": "workspace:*",
+    "@mindpeeker/vdf": "workspace:*",
+    "@mindpeeker/scan": "workspace:*",
+    "@mindpeeker/field": "workspace:*",
+    "@mindpeeker/gematria": "workspace:*",
+    "@mindpeeker/visualizer": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
+}

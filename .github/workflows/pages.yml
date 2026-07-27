@@ -1,0 +1,51 @@
+name: Deploy site to GitHub Pages
+
+# Builds the static demo site (site/) and publishes it to GitHub Pages.
+# One-time setup: repo Settings → Pages → Source = "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'packages/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a newer deploy cancel an in-flight one; never run two Pages deploys at once.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.1'
+      - run: bun install --frozen-lockfile
+      # Build every workspace package to dist first, then the site (Vite resolves
+      # @mindpeeker/* to those dist builds; the site is built last regardless).
+      - run: bun run build
+      - run: bun run --filter '@mindpeeker/site' build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
