@@ -10,3 +10,5 @@ dist/
 .mcp.json
 CLAUDE.md
 .npmrc
+
+experiments
