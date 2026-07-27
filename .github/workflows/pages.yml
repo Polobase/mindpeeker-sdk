@@ -31,10 +31,11 @@ jobs:
         with:
           bun-version: '1.3.1'
       - run: bun install --frozen-lockfile
-      # Build every workspace package to dist first, then the site (Vite resolves
-      # @mindpeeker/* to those dist builds; the site is built last regardless).
-      - run: bun run build
-      - run: bun run --filter '@mindpeeker/site' build
+      # The site resolves @mindpeeker/* to package SOURCE (see site/vite.config.ts),
+      # so it builds without any package `dist` or workspace build ordering.
+      - name: Build site
+        working-directory: site
+        run: bun run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

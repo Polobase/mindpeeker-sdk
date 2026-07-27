@@ -43,13 +43,44 @@ for (const page of PAGES) {
   if (existsSync(html)) input[page] = html
 }
 
+// Resolve every @mindpeeker/* import to the package SOURCE, so the site builds
+// straight from TypeScript and needs no package `dist` (and no workspace build
+// order) — critical for a clean CI checkout. The `jsToTs` plugin then handles
+// each package's internal NodeNext `.js` specifiers.
+const pkg = (p: string) => resolve(repo, 'packages', p)
+const BARE = [
+  'entropy',
+  'negentropy',
+  'flow',
+  'psi',
+  'rate',
+  'oracle',
+  'vdf',
+  'scan',
+  'field',
+  'gematria',
+]
+const alias = [
+  // Exact subpaths first, so the bare-root regexes below never swallow them.
+  { find: '@mindpeeker/entropy/providers', replacement: pkg('entropy/src/providers/index.ts') },
+  { find: '@mindpeeker/negentropy/numerics', replacement: pkg('negentropy/src/numerics.ts') },
+  { find: '@mindpeeker/gematria/oracle', replacement: pkg('gematria/src/oracle.ts') },
+  { find: '@mindpeeker/gematria/lexicon', replacement: pkg('gematria/src/lexicon.ts') },
+  { find: '@mindpeeker/field/geo', replacement: pkg('field/src/geo.ts') },
+  // Bare package roots, anchored so they match only the exact specifier.
+  ...BARE.map((p) => ({
+    find: new RegExp(`^@mindpeeker/${p}$`),
+    replacement: pkg(`${p}/src/index.ts`),
+  })),
+  // The visualizer package does not export its browser client; reach it by path.
+  { find: '@viz', replacement: pkg('visualizer') },
+]
+
 export default defineConfig({
   // Project page served under https://polobase.github.io/mindpeeker-sdk/
   base: '/mindpeeker-sdk/',
   plugins: [jsToTs()],
-  // The visualizer package does not export its browser client, so the
-  // visualizer page reaches it by source path through this alias.
-  resolve: { alias: { '@viz': resolve(repo, 'packages/visualizer') } },
+  resolve: { alias },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
