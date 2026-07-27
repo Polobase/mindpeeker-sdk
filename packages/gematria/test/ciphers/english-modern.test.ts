@@ -33,10 +33,10 @@ describe('gematriaq-parity modern English ciphers', () => {
       'en-chaldean',
       'en-septenary',
       'en-keypad',
+      'en-cross',
+      'en-reverse-cross',
       'en-prime-cross',
       'en-reverse-prime-cross',
-      'en-prime-cross-primes',
-      'en-reverse-prime-cross-primes',
     ]) {
       expect(ids.has(id as (typeof ENGLISH_MODERN_CIPHERS)[number]['id'])).toBe(true)
     }
@@ -77,33 +77,43 @@ describe('gematriaq-parity modern English ciphers', () => {
     expect(value('z', 'en-fibonacci')).toBe(121393)
   })
 
-  test("Plichta's prime cross runs the 6n±1 sequence A=1…Z=77 (composites kept)", () => {
+  test('the plain Cross runs the whole 6n±1 lattice A=1…Z=77 (composites kept)', () => {
+    expect(value('a', 'en-cross')).toBe(1)
+    expect(value('h', 'en-cross')).toBe(23)
+    expect(value('i', 'en-cross')).toBe(25) // 25 = 5², a composite on the cross
+    expect(value('z', 'en-cross')).toBe(77) // 77 = 7×11, also composite
+    // the reverse reads the same table from the other end
+    expect(value('z', 'en-reverse-cross')).toBe(1)
+    expect(value('a', 'en-reverse-cross')).toBe(77)
+  })
+
+  test('the Prime Cross is all primes: central 1, then the primes only (no composites)', () => {
     expect(value('a', 'en-prime-cross')).toBe(1)
     expect(value('h', 'en-prime-cross')).toBe(23)
-    expect(value('i', 'en-prime-cross')).toBe(25) // 25 = 5², a composite on the cross
-    expect(value('z', 'en-prime-cross')).toBe(77) // 77 = 7×11, also composite
-    // the reverse reads the same table from the other end
+    expect(value('i', 'en-prime-cross')).toBe(29) // 25 dropped → next prime
+    expect(value('z', 'en-prime-cross')).toBe(103)
     expect(value('z', 'en-reverse-prime-cross')).toBe(1)
-    expect(value('a', 'en-reverse-prime-cross')).toBe(77)
-  })
-
-  test('the primes-only cross keeps the central 1, then skips composites', () => {
-    expect(value('a', 'en-prime-cross-primes')).toBe(1)
-    expect(value('h', 'en-prime-cross-primes')).toBe(23)
-    expect(value('i', 'en-prime-cross-primes')).toBe(29) // 25 dropped → next prime
-    expect(value('z', 'en-prime-cross-primes')).toBe(103)
-    expect(value('z', 'en-reverse-prime-cross-primes')).toBe(1)
-    expect(value('a', 'en-reverse-prime-cross-primes')).toBe(103)
-  })
-
-  test('the two cross ciphers agree through H, then diverge at the first composite', () => {
-    for (const ch of 'abcdefgh') {
-      expect(value(ch, 'en-prime-cross')).toBe(value(ch, 'en-prime-cross-primes'))
+    expect(value('a', 'en-reverse-prime-cross')).toBe(103)
+    // every Prime Cross value except the central 1 is actually prime
+    const isPrime = (v: number) => {
+      if (v < 2) return false
+      for (let d = 2; d * d <= v; d++) if (v % d === 0) return false
+      return true
     }
-    expect(value('i', 'en-prime-cross')).not.toBe(value('i', 'en-prime-cross-primes'))
+    for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
+      const v = value(ch, 'en-prime-cross')
+      expect(v === 1 || isPrime(v)).toBe(true)
+    }
+  })
+
+  test('Cross and Prime Cross agree through H, then diverge at the first composite', () => {
+    for (const ch of 'abcdefgh') {
+      expect(value(ch, 'en-cross')).toBe(value(ch, 'en-prime-cross'))
+    }
+    expect(value('i', 'en-cross')).not.toBe(value('i', 'en-prime-cross'))
   })
 })
 
-// Authoritative word readouts for the four Plichta prime-cross ciphers (over the
+// Authoritative word readouts for the four Plichta cross ciphers (over the
 // shared "gematria" fixture word) live in the checked-in
 // `test/fixtures/reference-vectors.json`, run generically by `value.test.ts`.

@@ -134,17 +134,18 @@ all `modern: true`, all 20th–21st-century inventions with no ancient pedigree
 Four ciphers built on Peter Plichta's **Prime Number Cross** (*God's Secret
 Formula: The Prime Number Code*, 1997): the integers laid on a 24-spoke wheel
 where — since 1, 2, 3 are indivisible — 6 is flanked by 5 and 7, and every prime
-$> 3$ has the form **6n±1**, so all such primes fall on just eight "prime rays".
-`modern: true`.
+$> 3$ has the form **6n±1**, so all such primes fall on the cross's rays.
+`modern: true`. The **Cross** is the whole 6n±1 lattice (composites and all);
+the **Prime Cross** keeps only the numbers on it that are actually prime.
 
 | id | cipher | rule |
 |---|---|---|
-| `en-prime-cross` | Prime Cross | the successive 6n±1 numbers, A1 B5 C7 … Z77 (composites 25, 35, 49, … kept) |
-| `en-reverse-prime-cross` | Reverse Prime Cross | that same sequence assigned Z1 … A77 |
-| `en-prime-cross-primes` | Prime Cross (Primes) | only the primes on the cross, keeping the central 1: A1 B5 C7 … Z103 (1 + every prime except 2, 3) |
-| `en-reverse-prime-cross-primes` | Reverse Prime Cross (Primes) | that 1-plus-primes sequence assigned Z1 … A103 |
+| `en-cross` | Cross | the successive 6n±1 numbers — the whole lattice, A1 B5 C7 … Z77 (composites 25, 35, 49, 65, 77 kept) |
+| `en-reverse-cross` | Reverse Cross | that same sequence assigned Z1 … A77 |
+| `en-prime-cross` | Prime Cross | only the primes on the cross, keeping the central 1: A1 B5 C7 … Z103 (1 + every prime except 2, 3) — no composites |
+| `en-reverse-prime-cross` | Reverse Prime Cross | that 1-plus-primes sequence assigned Z1 … A103 |
 
-The two forward ciphers agree A–H, then diverge at I (25 vs 29) — the cross's
+Cross and Prime Cross agree A–H, then diverge at I (25 vs 29) — the cross's
 own distinction between candidate numbers and the primes among them.
 
 ### Friendly aliases

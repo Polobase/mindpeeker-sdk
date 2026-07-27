@@ -12,7 +12,7 @@
     "katan-mispari": "integral reduced: digital root of the whole word's Hechrachi total",
     "naeq": "Crowley, Liber Trigrammaton XXVII: the ALW / NAEQ English Qabalah",
     "abjad": "Arabic Hisab al-Jummal (Mashriqi order); alif=1 .. ghayn=1000",
-    "prime-cross": "Peter Plichta, God's Secret Formula (1997): numbers on the Prime Number Cross's 6n±1 rays — full cross A=1..Z=77 (composites kept), primes-only-with-1 A=1..Z=103"
+    "prime-cross": "Peter Plichta, God's Secret Formula (1997): numbers on the Prime Number Cross's 6n±1 rays — the plain Cross is the whole lattice A=1..Z=77 (composites kept), the Prime Cross keeps only the primes-with-1 A=1..Z=103"
   },
   "vectors": [
     { "text": "אחד", "cipher": "he-hechrachi", "value": 13, "gloss": "echad — One / Unity" },
@@ -64,27 +64,27 @@
     { "text": "الله", "cipher": "ar-abjad", "value": 66, "gloss": "Allah — Abjad 1 + 30 + 30 + 5" },
     {
       "text": "gematria",
-      "cipher": "en-prime-cross",
+      "cipher": "en-cross",
       "value": 208,
-      "gloss": "the word itself, Prime Cross (all 6n±1 numbers)"
+      "gloss": "the word itself, Cross (the whole 6n±1 lattice, composites kept)"
+    },
+    {
+      "text": "gematria",
+      "cipher": "en-reverse-cross",
+      "value": 416,
+      "gloss": "the word itself, Reverse Cross"
+    },
+    {
+      "text": "gematria",
+      "cipher": "en-prime-cross",
+      "value": 246,
+      "gloss": "the word itself, Prime Cross (primes only, with the central 1)"
     },
     {
       "text": "gematria",
       "cipher": "en-reverse-prime-cross",
-      "value": 416,
-      "gloss": "the word itself, Reverse Prime Cross"
-    },
-    {
-      "text": "gematria",
-      "cipher": "en-prime-cross-primes",
-      "value": 246,
-      "gloss": "the word itself, Prime Cross (primes, with the central 1)"
-    },
-    {
-      "text": "gematria",
-      "cipher": "en-reverse-prime-cross-primes",
       "value": 524,
-      "gloss": "the word itself, Reverse Prime Cross (primes)"
+      "gloss": "the word itself, Reverse Prime Cross"
     }
   ]
 }

@@ -33,16 +33,18 @@
  *   values, $(n-1) \bmod 7 + 1$.
  * - **Keypad** (`en-keypad`) — the digit of each letter's key on the
  *   international E.161 telephone keypad (ABC=2 … WXYZ=9).
+ * - **Cross** / **Reverse Cross** (`en-cross`, `en-reverse-cross`) — the
+ *   numbers on Peter Plichta's Prime Number Cross: the successive $6n\pm1$
+ *   values (the rays of the 24-wheel, on which every prime $> 3$ falls), A=1,
+ *   B=5, C=7…Z=77. This is the whole cross lattice, so its composites (25, 35,
+ *   49, 65, 77, …) are kept — it is the *cross*, not its primes. The reverse
+ *   assigns the same sequence from Z to A.
  * - **Prime Cross** / **Reverse Prime Cross** (`en-prime-cross`,
- *   `en-reverse-prime-cross`) — the numbers on Peter Plichta's Prime Number
- *   Cross: the successive $6n\pm1$ values (the eight "prime rays" of the
- *   24-wheel, on which every prime $> 3$ falls), A=1, B=5, C=7…Z=77 —
- *   composites such as 25 and 49 included; the reverse assigns that same
- *   sequence from Z to A.
- * - **Prime Cross (Primes)** / **Reverse** (`en-prime-cross-primes`,
- *   `en-reverse-prime-cross-primes`) — only the numbers on that cross which are
+ *   `en-reverse-prime-cross`) — only the numbers on that cross which are
  *   actually prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed by
- *   every prime except 2 and 3).
+ *   every prime except 2 and 3). Named the *prime* cross, so — unlike the plain
+ *   Cross — it carries no composite values. The reverse assigns the same
+ *   sequence from Z to A.
  *
  * Sources: gematriaq.com (the reference calculator this set reaches parity
  * with); traditional Chaldean numerology tables (e.g. Cheiro, *Cheiro's Book
@@ -129,37 +131,39 @@ function reversePrimes(ch: string): number {
 // Peter Plichta's Prime Number Cross (*God's Secret Formula*, 1997) lays the
 // integers on a 24-spoke wheel; since 1, 2, 3 are indivisible, 6 is flanked by
 // 5 and 7, and every prime > 3 has the form 6n±1, so all such primes fall on
-// eight "prime rays". CROSS_26 is those rays' numbers in order — A=1 … Z=77,
-// composites (25, 35, 49, …) included — a lookup sequence, hence a frozen table.
+// the cross's rays. CROSS_26 is those rays' numbers in order — A=1 … Z=77, the
+// whole lattice with its composites (25, 35, 49, 65, 77, …) kept — a lookup
+// sequence, hence a frozen table.
 const CROSS_26: readonly number[] = Object.freeze([
   1, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49, 53, 55, 59, 61, 65, 67, 71, 73,
   77,
 ])
 
-function primeCross(ch: string): number {
+function cross(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? (CROSS_26[o - 1] as number) : 0
 }
 
-// Reverse-Prime-Cross reads CROSS_26 from the other end: A (index 25) = 77, Z = 1.
-function reversePrimeCross(ch: string): number {
+// Reverse Cross reads CROSS_26 from the other end: A (index 25) = 77, Z = 1.
+function reverseCross(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? (CROSS_26[26 - o] as number) : 0
 }
 
-// Only the numbers on Plichta's cross that are actually prime, keeping the
-// central 1: 1 followed by every prime except 2 and 3, A=1 … Z=103.
+// The Prime Cross proper: only the numbers on Plichta's cross that are actually
+// prime, keeping the central 1 — 1 followed by every prime except 2 and 3,
+// A=1 … Z=103. Being the *prime* cross, it carries none of CROSS_26's composites.
 const CROSS_PRIMES_26: readonly number[] = Object.freeze([
   1, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
   103,
 ])
 
-function primeCrossPrimes(ch: string): number {
+function primeCross(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? (CROSS_PRIMES_26[o - 1] as number) : 0
 }
 
-function reversePrimeCrossPrimes(ch: string): number {
+function reversePrimeCross(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? (CROSS_PRIMES_26[26 - o] as number) : 0
 }
@@ -368,37 +372,37 @@ export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
     true,
   ),
   latinCipher(
+    'en-cross',
+    'Cross',
+    "Modern cipher after Peter Plichta's Prime Number Cross: letters take the successive numbers " +
+      'of the form 6n±1 (the rays of the 24-wheel, on which every prime >3 falls), A=1, B=5, ' +
+      'C=7…Z=77 — the whole cross lattice, composites such as 25, 35, 49, 65 and 77 included.',
+    cross,
+    true,
+  ),
+  latinCipher(
+    'en-reverse-cross',
+    'Reverse Cross',
+    'Modern cipher assigning the same 6n±1 cross sequence from the other end of the alphabet: ' +
+      'Z=1…A=77.',
+    reverseCross,
+    true,
+  ),
+  latinCipher(
     'en-prime-cross',
     'Prime Cross',
-    "Modern cipher after Peter Plichta's Prime Number Cross: letters take the successive numbers " +
-      'of the form 6n±1 (the eight "prime rays" of the 24-wheel, on which every prime >3 falls), ' +
-      'A=1, B=5, C=7…Z=77 — composites such as 25 and 49 included.',
+    "Modern cipher taking only the numbers on Plichta's Prime Number Cross that are actually " +
+      'prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed by the primes 5, 7, 11, …, ' +
+      'i.e. every prime except 2 and 3) — so, unlike the plain Cross, no composite values.',
     primeCross,
     true,
   ),
   latinCipher(
     'en-reverse-prime-cross',
     'Reverse Prime Cross',
-    'Modern cipher assigning the same 6n±1 prime-cross sequence from the other end of the ' +
-      'alphabet: Z=1…A=77.',
+    'Modern cipher assigning that same 1-plus-primes prime-cross sequence from the other end of ' +
+      'the alphabet: Z=1…A=103.',
     reversePrimeCross,
-    true,
-  ),
-  latinCipher(
-    'en-prime-cross-primes',
-    'Prime Cross (Primes)',
-    "Modern cipher taking only the numbers on Plichta's Prime Number Cross that are actually " +
-      'prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed by the primes 5, 7, 11, …, ' +
-      'i.e. all primes except 2 and 3).',
-    primeCrossPrimes,
-    true,
-  ),
-  latinCipher(
-    'en-reverse-prime-cross-primes',
-    'Reverse Prime Cross (Primes)',
-    'Modern cipher assigning that same 1-plus-primes cross sequence from the other end of the ' +
-      'alphabet: Z=1…A=103.',
-    reversePrimeCrossPrimes,
     true,
   ),
 ])

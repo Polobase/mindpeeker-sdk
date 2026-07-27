@@ -60,11 +60,12 @@ export type CipherId =
   | 'en-septenary'
   | 'en-keypad'
   // Peter Plichta's Prime Number Cross (numbers of the form 6n±1): the full
-  // cross and its primes-only subset, each with a reverse.
+  // cross lattice (composites kept) and the primes-only Prime Cross, each with
+  // a reverse.
+  | 'en-cross'
+  | 'en-reverse-cross'
   | 'en-prime-cross'
   | 'en-reverse-prime-cross'
-  | 'en-prime-cross-primes'
-  | 'en-reverse-prime-cross-primes'
 
 /**
  * Friendly names accepted anywhere a cipher is chosen, matching the labels
