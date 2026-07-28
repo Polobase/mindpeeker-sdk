@@ -30,6 +30,8 @@ const alias = [
   ...['entropy', 'negentropy', 'flow', 'psi', 'rate', 'oracle', 'vdf', 'scan', 'field', 'gematria'].map(
     (p) => ({ find: new RegExp(`^@mindpeeker/${p}$`), replacement: pkg(`${p}/src/index.ts`) }),
   ),
+  // The visualizer package doesn't export its browser client; reach it by path.
+  { find: '@viz', replacement: pkg('visualizer') },
 ]
 
 export default defineNuxtConfig({

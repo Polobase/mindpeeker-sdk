@@ -31,3 +31,13 @@ export async function getBytes(n: number): Promise<Uint8Array> {
 export async function localBytes(n: number): Promise<Uint8Array> {
   return (await local.getBytes(n)).bytes
 }
+
+/** Selected source as an AsyncIterable (for oracle casts / scan / field). */
+export function stream(opts?: { chunkBytes?: number; signal?: AbortSignal }) {
+  return provider.stream(opts)
+}
+
+/** Local CSPRNG stream — for high-rate live panels. */
+export function localStream(opts?: { chunkBytes?: number; signal?: AbortSignal }) {
+  return local.stream(opts)
+}

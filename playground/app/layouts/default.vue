@@ -8,7 +8,7 @@ function onSource(val: string) {
   setSourceId(val)
   location.reload()
 }
-const navLinks = PACKAGES.filter((p) => p.ready)
+const navLinks = PACKAGES
 </script>
 
 <template>

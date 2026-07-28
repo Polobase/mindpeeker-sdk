@@ -29,19 +29,11 @@ const pkgs = (g: string) => PACKAGES.filter((p) => p.group === g)
         {{ GROUP_LABELS[g] }}
       </h2>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <UCard
-          v-for="p in pkgs(g)"
-          :key="p.id"
-          :class="p.ready ? 'transition hover:ring-primary' : 'opacity-60'"
-        >
+        <UCard v-for="p in pkgs(g)" :key="p.id" class="transition hover:ring-primary">
           <div class="font-mono text-xs text-primary">{{ p.pkg }}</div>
-          <div class="mt-1 flex items-center gap-2">
-            <h3 class="font-semibold">{{ p.title }}</h3>
-            <UBadge v-if="!p.ready" size="sm" color="neutral" variant="subtle">soon</UBadge>
-          </div>
+          <h3 class="mt-1 font-semibold">{{ p.title }}</h3>
           <p class="mt-2 text-sm text-muted">{{ p.tagline }}</p>
           <UButton
-            v-if="p.ready"
             :to="`/${p.id}`"
             class="mt-3"
             size="xs"
