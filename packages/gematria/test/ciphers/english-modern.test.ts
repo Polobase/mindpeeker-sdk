@@ -3,8 +3,8 @@ import { ENGLISH_MODERN_CIPHERS } from '../../src/ciphers/english-modern.js'
 import { value } from '../../src/value.js'
 
 describe('gematriaq-parity modern English ciphers', () => {
-  test('all eighteen are deeply frozen, modern, with a complete 26-letter table', () => {
-    expect(ENGLISH_MODERN_CIPHERS.length).toBe(18)
+  test('all eleven are deeply frozen, modern, with a complete 26-letter table', () => {
+    expect(ENGLISH_MODERN_CIPHERS.length).toBe(11)
     for (const c of ENGLISH_MODERN_CIPHERS) {
       expect(Object.isFrozen(c)).toBe(true)
       expect(Object.isFrozen(c.table)).toBe(true)
@@ -20,23 +20,16 @@ describe('gematriaq-parity modern English ciphers', () => {
     const ids = new Set(ENGLISH_MODERN_CIPHERS.map((c) => c.id))
     for (const id of [
       'en-standard',
-      'en-reverse-reduction',
       'en-satanic',
-      'en-reverse-satanic',
       'en-primes',
-      'en-reverse-primes',
       'en-squares',
-      'en-reverse-squares',
       'en-trigonal',
-      'en-reverse-trigonal',
       'en-fibonacci',
       'en-chaldean',
       'en-septenary',
       'en-keypad',
       'en-cross',
-      'en-reverse-cross',
       'en-prime-cross',
-      'en-reverse-prime-cross',
     ]) {
       expect(ids.has(id as (typeof ENGLISH_MODERN_CIPHERS)[number]['id'])).toBe(true)
     }
@@ -55,19 +48,13 @@ describe('gematriaq-parity modern English ciphers', () => {
     for (const ch of 'wxyz') expect(value(ch, 'en-keypad')).toBe(9)
   })
 
-  test('primes/squares/trigonal reverse variants mirror the forward sequence', () => {
+  test('primes/squares/trigonal run their sequence A→Z', () => {
     expect(value('a', 'en-primes')).toBe(2)
     expect(value('z', 'en-primes')).toBe(101)
-    expect(value('a', 'en-reverse-primes')).toBe(101)
-    expect(value('z', 'en-reverse-primes')).toBe(2)
     expect(value('a', 'en-squares')).toBe(1)
     expect(value('z', 'en-squares')).toBe(676)
-    expect(value('a', 'en-reverse-squares')).toBe(676)
-    expect(value('z', 'en-reverse-squares')).toBe(1)
     expect(value('a', 'en-trigonal')).toBe(1)
     expect(value('z', 'en-trigonal')).toBe(351)
-    expect(value('a', 'en-reverse-trigonal')).toBe(351)
-    expect(value('z', 'en-reverse-trigonal')).toBe(1)
   })
 
   test('fibonacci starts A=1, B=1, C=2 and ends Z=121393', () => {
@@ -82,9 +69,6 @@ describe('gematriaq-parity modern English ciphers', () => {
     expect(value('h', 'en-cross')).toBe(23)
     expect(value('i', 'en-cross')).toBe(25) // 25 = 5², a composite on the cross
     expect(value('z', 'en-cross')).toBe(77) // 77 = 7×11, also composite
-    // the reverse reads the same table from the other end
-    expect(value('z', 'en-reverse-cross')).toBe(1)
-    expect(value('a', 'en-reverse-cross')).toBe(77)
   })
 
   test('the Prime Cross is all primes: central 1, then the primes only (no composites)', () => {
@@ -92,8 +76,6 @@ describe('gematriaq-parity modern English ciphers', () => {
     expect(value('h', 'en-prime-cross')).toBe(23)
     expect(value('i', 'en-prime-cross')).toBe(29) // 25 dropped → next prime
     expect(value('z', 'en-prime-cross')).toBe(103)
-    expect(value('z', 'en-reverse-prime-cross')).toBe(1)
-    expect(value('a', 'en-reverse-prime-cross')).toBe(103)
     // every Prime Cross value except the central 1 is actually prime
     const isPrime = (v: number) => {
       if (v < 2) return false
@@ -114,6 +96,6 @@ describe('gematriaq-parity modern English ciphers', () => {
   })
 })
 
-// Authoritative word readouts for the four Plichta cross ciphers (over the
+// Authoritative word readouts for the two Plichta cross ciphers (over the
 // shared "gematria" fixture word) live in the checked-in
 // `test/fixtures/reference-vectors.json`, run generically by `value.test.ts`.

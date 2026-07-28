@@ -2,21 +2,32 @@ import { describe, expect, test } from 'bun:test'
 import { analyze, letterValues, value } from '../src/value.js'
 
 describe('reverse option (value / analyze / letterValues)', () => {
-  test('reverse reproduces the historic reverse-cipher ids exactly', () => {
+  test('reverse ordinal is the classic 27 − n (A26 … Z1)', () => {
+    expect(value('a', 'en-ordinal', true)).toBe(26)
+    expect(value('z', 'en-ordinal', true)).toBe(1)
+    expect(value('gematria', 'en-ordinal', true)).toBe(27 * 8 - value('gematria', 'en-ordinal'))
+  })
+
+  test('the ×6 ciphers reversed are the reverse ordinal × 6 (A156 … Z6)', () => {
+    expect(value('a', 'en-english', true)).toBe(156)
+    expect(value('z', 'en-english', true)).toBe(6)
     for (const w of ['love', 'gematria', 'chaos', 'wizard']) {
-      expect(value(w, 'en-ordinal', true)).toBe(value(w, 'en-reverse'))
-      expect(value(w, 'en-reduction', true)).toBe(value(w, 'en-reverse-reduction'))
-      expect(value(w, 'en-satanic', true)).toBe(value(w, 'en-reverse-satanic'))
-      expect(value(w, 'en-primes', true)).toBe(value(w, 'en-reverse-primes'))
-      expect(value(w, 'en-squares', true)).toBe(value(w, 'en-reverse-squares'))
-      expect(value(w, 'en-trigonal', true)).toBe(value(w, 'en-reverse-trigonal'))
-      expect(value(w, 'en-cross', true)).toBe(value(w, 'en-reverse-cross'))
-      expect(value(w, 'en-prime-cross', true)).toBe(value(w, 'en-reverse-prime-cross'))
-      expect(value(w, 'en-english', true)).toBe(value(w, 'en-english-reverse'))
+      expect(value(w, 'en-english', true)).toBe(value(w, 'en-ordinal', true) * 6)
+      expect(value(w, 'en-sumerian', true)).toBe(value(w, 'en-english', true))
     }
   })
 
-  test('reverse assigns each letter its mirror value — even for ciphers with no reverse id', () => {
+  test('reverse assigns each letter its mirror value, on every cipher', () => {
+    for (const c of [
+      'en-primes',
+      'en-squares',
+      'en-trigonal',
+      'en-cross',
+      'en-prime-cross',
+    ] as const) {
+      expect(value('a', c, true)).toBe(value('z', c))
+      expect(value('z', c, true)).toBe(value('a', c))
+    }
     expect(value('a', 'la-agrippa', true)).toBe(value('z', 'la-agrippa'))
     expect(value('a', 'en-fibonacci', true)).toBe(value('z', 'en-fibonacci'))
     expect(value('a', 'en-chaldean', true)).toBe(value('z', 'en-chaldean'))

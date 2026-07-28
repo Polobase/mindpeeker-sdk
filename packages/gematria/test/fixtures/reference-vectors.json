@@ -70,21 +70,9 @@
     },
     {
       "text": "gematria",
-      "cipher": "en-reverse-cross",
-      "value": 416,
-      "gloss": "the word itself, Reverse Cross"
-    },
-    {
-      "text": "gematria",
       "cipher": "en-prime-cross",
       "value": 246,
       "gloss": "the word itself, Prime Cross (primes only, with the central 1)"
-    },
-    {
-      "text": "gematria",
-      "cipher": "en-reverse-prime-cross",
-      "value": 524,
-      "gloss": "the word itself, Reverse Prime Cross"
     }
   ]
 }

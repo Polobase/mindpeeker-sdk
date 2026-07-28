@@ -44,7 +44,6 @@ export const ALIASES: Readonly<Record<CipherAlias, CipherId>> = Object.freeze({
   english: 'en-english',
   simple: 'en-ordinal',
   ordinal: 'en-ordinal',
-  reverse: 'en-reverse',
   sumerian: 'en-sumerian',
   isopsephy: 'gr-isopsephy',
 })

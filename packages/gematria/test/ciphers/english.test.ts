@@ -13,20 +13,13 @@ describe('english / latin ciphers', () => {
   })
 
   test('the historical set + NAEQ are not modern; the calculator ciphers are', () => {
-    // the non-modern set is the stable invariant: the five historical ciphers
+    // the non-modern set is the stable invariant: the four historical ciphers
     // plus the extended NAEQ. Everything else (the ×6 wordplay, the
     // gematriaq-parity set, Plichta's prime cross) is a modern calculator cipher.
     const nonModern = ENGLISH_CIPHERS.filter((c) => !c.modern)
       .map((c) => c.id)
       .sort()
-    expect(nonModern).toEqual([
-      'en-naeq',
-      'en-ordinal',
-      'en-reduction',
-      'en-reverse',
-      'la-agrippa',
-      'la-jewish',
-    ])
+    expect(nonModern).toEqual(['en-naeq', 'en-ordinal', 'en-reduction', 'la-agrippa', 'la-jewish'])
     expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-english')?.modern).toBe(true)
     expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-primes')?.modern).toBe(true)
     expect(ENGLISH_CIPHERS.find((c) => c.id === 'en-prime-cross')?.modern).toBe(true)
@@ -45,11 +38,6 @@ describe('english / latin ciphers', () => {
     expect(value('abc', 'en-reduction')).toBe(6)
   })
 
-  test('reverse ordinal is 27 − n', () => {
-    expect(value('a', 'en-reverse')).toBe(26)
-    expect(value('z', 'en-reverse')).toBe(1)
-  })
-
   test('Agrippa Latin table with reconstructed J/U/W extensions', () => {
     // A1..Z500 core plus J600 U700 W900
     expect(value('a', 'la-agrippa')).toBe(1)
@@ -62,11 +50,11 @@ describe('english / latin ciphers', () => {
     expect(value('w', 'la-agrippa')).toBe(900)
   })
 
-  test('modern ×6: A=6 … Z=156, reverse A=156 … Z=6', () => {
+  test('modern ×6: A=6 … Z=156, and reversed A=156 … Z=6', () => {
     expect(value('a', 'en-english')).toBe(6)
     expect(value('z', 'en-english')).toBe(156)
-    expect(value('a', 'en-english-reverse')).toBe(156)
-    expect(value('z', 'en-english-reverse')).toBe(6)
+    expect(value('a', 'en-english', true)).toBe(156)
+    expect(value('z', 'en-english', true)).toBe(6)
   })
 
   test('Jewish Gematria table, distinct from Agrippa only at U and V', () => {

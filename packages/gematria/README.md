@@ -4,7 +4,8 @@ Pure, deterministic, multi-tradition **gematria & isopsephy** — assign numeric
 values to the letters of a word and relate words of equal value. Hebrew, Greek,
 Arabic and English/Latin — the classical ciphers plus the full modern
 online-calculator set (clearly labelled as such), including Peter Plichta's
-Prime Number Cross. **41 ciphers** in all.
+Prime Number Cross. **31 ciphers** in all, each of which also mirrors on demand
+(`value(text, cipher, true)`).
 
 The value *computation* is exact integer arithmetic: `value(text, cipher)` is a
 fixed function of the letters and consumes **zero entropy**. The same word
@@ -25,7 +26,8 @@ value('θελημα', 'gr-isopsephy') // 93  (Thelema)
 value('αγαπη', 'gr-isopsephy') // 93  (Agape)
 value('χξϛ', 'gr-isopsephy') // 666 (Rev 13:18)
 
-profile('gematria') // every Latin cipher: ordinal 74, reduction 38, reverse 142, …
+profile('gematria') // every Latin cipher: ordinal 74, reduction 38, Agrippa 233, …
+value('gematria', 'en-ordinal', true) // 142 — reverse is a parameter, not a cipher
 atbash('אבג') // 'תשר'  (temurah substitution)
 notariqon('Atah Gibor Le-olam Adonai') // 'AGLA'
 ```
@@ -33,12 +35,24 @@ notariqon('Atah Gibor Le-olam Adonai') // 'AGLA'
 ## Ciphers
 
 A **cipher** maps each letter of one script to a non-negative integer; a word's
-value is the sum of its letters. The first ten ids are a drop-in superset of the
-mindpeeker frontend engine (`server/utils/gematria.ts`) — identical ids, labels
-and values — so `profile()` can replace it row-for-row. The registry spans **41
-ciphers** in total: the SDK-added *extended* methods (`extended: true`) are kept
-out of the default `profile()`, and the modern calculator ciphers (`modern:
-true`) can be dropped with `includeModern: false`.
+value is the sum of its letters. The frontend-parity ids are a drop-in superset
+of the mindpeeker frontend engine (`server/utils/gematria.ts`) — identical ids,
+labels and values — so `profile()` can replace it row-for-row. The registry
+spans **31 ciphers** in total: the SDK-added *extended* methods (`extended:
+true`) are kept out of the default `profile()`, and the modern calculator
+ciphers (`modern: true`) can be dropped with `includeModern: false`.
+
+**Reverse is a parameter, not a cipher.** `value(text, cipher, true)` mirrors
+*any* cipher — each letter takes the value the cipher gives its mirror in
+alphabet order (a↔z for Latin, aleph↔tav for Hebrew) — so there are no separate
+reverse ids. `analyze(text, cipher, { reverse: true })` and
+`letterValues(cipher, true)` take the same switch.
+
+```ts
+value('gematria', 'en-ordinal') // 74
+value('gematria', 'en-ordinal', true) // 142 — the reverse ordinal, 27 − n
+value('gematria', 'la-agrippa', true) // reverse works on every cipher, not just ordinal
+```
 
 ### Hebrew (22 letters, aleph=1 … tav=400)
 
@@ -88,12 +102,14 @@ _Sources: standard Ḥisāb al-Jummal tables; Chumbley, *Qutub*._
 |---|---|---|---|
 | `en-ordinal` | Ordinal ("Simple") | A1 … Z26 | |
 | `en-reduction` | Reduction (Pythagorean) | per-letter digital root of the ordinal | |
-| `en-reverse` | Reverse ordinal | $27 - n$ (A26 … Z1) | |
 | `la-agrippa` | Agrippa's Latin | A1 … T100 V200 X300 Y400 Z500, with J600 U700 W900 | **reconstructed historical** |
 | `la-jewish` | Jewish Gematria | A1 … T100 U200 V700 W900 X300 Y400 Z500, with J600 | **English-letter convention** |
 | `en-naeq` | New Aeon English Qabalah (NAEQ / ALW) | A1 L2 W3 H4 S5 D6 O7 Z8 K9 V10 … P26 | **extended** (Thelemic) |
 | `en-english`, `en-sumerian` | "English"/"Sumerian" ×6 | ordinal × 6 (A6 … Z156) | **modern wordplay** |
-| `en-english-reverse`, `en-sumerian-reverse` | their reverse variants | reverse ordinal × 6 | **modern wordplay** |
+
+The reverse ordinal ($27 - n$, A26 … Z1) is `value(text, 'en-ordinal', true)`,
+and the reverse ×6 is `value(text, 'en-english', true)` — see
+[Ciphers](#ciphers) above.
 
 `la-agrippa` reconstructs Agrippa's 23-letter table (*Three Books of Occult
 Philosophy*, Bk II, 1533) with the common J/U/W extensions — classical Latin had
@@ -119,11 +135,10 @@ all `modern: true`, all 20th–21st-century inventions with no ancient pedigree
 | id | cipher | rule |
 |---|---|---|
 | `en-standard` | Standard | A–I ones 1–9, J–R tens 10–90, S–Z hundreds 100–800 |
-| `en-reverse-reduction` | Reverse Reduction | digital root of the reverse ordinal |
-| `en-satanic`, `en-reverse-satanic` | Satanic / reverse | ordinal (or reverse ordinal) + 35 (A36 … Z61) |
-| `en-primes`, `en-reverse-primes` | Primes / reverse | the nth prime by ordinal position, A2 B3 … Z101 |
-| `en-squares`, `en-reverse-squares` | Squares / reverse | the ordinal squared, A1 … Z676 |
-| `en-trigonal`, `en-reverse-trigonal` | Trigonal / reverse | triangular number T(n)=n(n+1)/2, A1 … Z351 |
+| `en-satanic` | Satanic | the ordinal + 35 (A36 … Z61) |
+| `en-primes` | Primes | the nth prime by ordinal position, A2 B3 … Z101 |
+| `en-squares` | Squares | the ordinal squared, A1 … Z676 |
+| `en-trigonal` | Trigonal | triangular number T(n)=n(n+1)/2, A1 … Z351 |
 | `en-fibonacci` | Fibonacci | the nth Fibonacci number, A1 B1 C2 D3 … Z121393 |
 | `en-chaldean` | Chaldean | traditional 1–8 table (9 held sacred, never assigned) |
 | `en-septenary` | Septenary | ordinal cycled through seven, (n−1) mod 7 + 1 |
@@ -131,7 +146,7 @@ all `modern: true`, all 20th–21st-century inventions with no ancient pedigree
 
 #### Prime Number Cross (Peter Plichta)
 
-Four ciphers built on Peter Plichta's **Prime Number Cross** (*God's Secret
+Two ciphers built on Peter Plichta's **Prime Number Cross** (*God's Secret
 Formula: The Prime Number Code*, 1997): the integers laid on a 24-spoke wheel
 where — since 1, 2, 3 are indivisible — 6 is flanked by 5 and 7, and every prime
 $> 3$ has the form **6n±1**, so all such primes fall on the cross's rays.
@@ -141,9 +156,7 @@ the **Prime Cross** keeps only the numbers on it that are actually prime.
 | id | cipher | rule |
 |---|---|---|
 | `en-cross` | Cross | the successive 6n±1 numbers — the whole lattice, A1 B5 C7 … Z77 (composites 25, 35, 49, 65, 77 kept) |
-| `en-reverse-cross` | Reverse Cross | that same sequence assigned Z1 … A77 |
 | `en-prime-cross` | Prime Cross | only the primes on the cross, keeping the central 1: A1 B5 C7 … Z103 (1 + every prime except 2, 3) — no composites |
-| `en-reverse-prime-cross` | Reverse Prime Cross | that 1-plus-primes sequence assigned Z1 … A103 |
 
 Cross and Prime Cross agree A–H, then diverge at I (25 vs 29) — the cross's
 own distinction between candidate numbers and the primes among them.
@@ -160,7 +173,6 @@ instead of the canonical id — the way online calculators label them:
 | `latin` | `la-agrippa` |
 | `english` | `en-english` |
 | `simple`, `ordinal` | `en-ordinal` |
-| `reverse` | `en-reverse` |
 | `sumerian` | `en-sumerian` |
 | `isopsephy` | `gr-isopsephy` |
 
@@ -174,13 +186,15 @@ Pure core (`@mindpeeker/gematria`). Every `cipher` parameter below accepts a
 canonical `CipherId` or a friendly `CipherAlias` (a `CipherRef`) — see
 [Friendly aliases](#friendly-aliases):
 
-- `value(text, cipher): number` — the integer value.
-- `analyze(text, cipher): GematriaResult` — value, digital-root `reduced`, and a
-  per-letter `byLetter` breakdown. `result.cipher` is always the resolved
-  canonical id, even if you passed an alias.
+- `value(text, cipher, reverse?): number` — the integer value; `reverse` scores
+  the cipher's mirror (a↔z, …).
+- `analyze(text, cipher, opts?): GematriaResult` — value, digital-root `reduced`,
+  and a per-letter `byLetter` breakdown. `result.cipher` is always the resolved
+  canonical id, even if you passed an alias. `opts.reverse` mirrors the cipher.
 - `profile(text, opts?): GematriaProfile` — every cipher for the detected script
   (`{ text, script, values, byLetter }`); a superset of the frontend result.
-- `letterValues(cipher): readonly LetterValue[]` — the frozen alphabet table.
+- `letterValues(cipher, reverse?): readonly LetterValue[]` — the frozen alphabet
+  table, mirrored when `reverse` is set.
 - `reduce(n): number` — the digital root (Mispar Katan / Pythagorean reduction).
 - `atbash(text): string`, `albam(text): string` — temurah substitutions (each an
   involution on base-form Hebrew). The substituted string valued as `he-hechrachi`
@@ -271,7 +285,7 @@ Two things keep the tool honest:
   visibly a coincidence. A match at commonness 0.2 is noise.
 - **The modern English ciphers are wordplay.** Hebrew and Greek letters *were*
   their numerals; Latin never had native alphabetic numerals of this kind, so
-  Ordinal/Reduction/Reverse and the ×6 "English"/"Sumerian" ciphers are recent
+  Ordinal/Reduction and the ×6 "English"/"Sumerian" ciphers are recent
   inventions, not ancient systems. They are flagged `modern: true`. `la-jewish`
   is a related case: it borrows Hebrew's numeral *scale*, but it is still a
   20th–21st-century English-letter convention, not Hebrew gematria itself.

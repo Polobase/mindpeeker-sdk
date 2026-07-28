@@ -5,7 +5,6 @@
  * - **Ordinal** (`en-ordinal`, "Simple") — A=1 … Z=26.
  * - **Reduction** (`en-reduction`, Pythagorean) — each letter's ordinal reduced
  *   to its digital root (A=1…I=9, J=1…), then summed.
- * - **Reverse** (`en-reverse`) — reverse ordinal, A=26 … Z=1, i.e. $27 - n$.
  * - **Agrippa** (`la-agrippa`) — Heinrich Cornelius Agrippa's 23-letter Latin
  *   table (*Three Books of Occult Philosophy*, Book II, ch. 20, 1533),
  *   A1 B2 C3 D4 E5 F6 G7 H8 I9 K10 L20 M30 N40 O50 P60 Q70 R80 S90 T100 V200
@@ -34,8 +33,9 @@
  * - **English/Sumerian ×6** (`en-english`, `en-sumerian`) — the ordinal times
  *   six, A=6 … Z=156. "English" and "Sumerian" name the same values on the
  *   online calculators.
- * - their **reverse** variants (`en-english-reverse`, `en-sumerian-reverse`) —
- *   the reverse ordinal times six, A=156 … Z=6.
+ *
+ * No cipher here has a *reverse* twin: reverse is a parameter, so
+ * `value(text, cipher, true)` mirrors any of them (a↔z) on demand.
  *
  * Sources: Agrippa, *De Occulta Philosophia* Bk II (Latin table). Jewish
  * Gematria/gematrix.org, Gematrinator (jewish-gematria.com,
@@ -61,11 +61,6 @@ function ordinal(ch: string): number {
 function reduction(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? digitRoot(o) : 0
-}
-
-function reverse(ch: string): number {
-  const o = ordinal(ch)
-  return o > 0 ? 27 - o : 0
 }
 
 // Agrippa's Latin table: I and V cover I/J and U/V; J/U/W are the documented
@@ -184,11 +179,6 @@ function english6(ch: string): number {
   return ordinal(ch) * 6
 }
 
-function reverse6(ch: string): number {
-  const o = ordinal(ch)
-  return o > 0 ? (27 - o) * 6 : 0
-}
-
 function table(fn: (ch: string) => number): readonly LetterValue[] {
   return Object.freeze(LATIN_ALPHABET.map((char) => Object.freeze({ char, value: fn(char) })))
 }
@@ -221,13 +211,10 @@ function latinCipher(
 export const ENGLISH_CIPHERS: readonly Cipher[] = Object.freeze([
   latinCipher('en-ordinal', 'Ordinal', ordinal, false),
   latinCipher('en-reduction', 'Reduction (Pythagorean)', reduction, false),
-  latinCipher('en-reverse', 'Reverse', reverse, false),
   latinCipher('la-agrippa', 'Agrippa (Latin, reconstructed)', agrippa, false),
   latinCipher('la-jewish', 'Jewish', jewish, false),
   latinCipher('en-naeq', 'New Aeon English Qabalah (NAEQ / ALW)', naeq, false, true),
   latinCipher('en-english', 'English (×6, modern)', english6, true),
   latinCipher('en-sumerian', 'Sumerian (×6, modern)', english6, true),
-  latinCipher('en-english-reverse', 'Reverse English (×6, modern)', reverse6, true),
-  latinCipher('en-sumerian-reverse', 'Reverse Sumerian (×6, modern)', reverse6, true),
   ...ENGLISH_MODERN_CIPHERS,
 ])

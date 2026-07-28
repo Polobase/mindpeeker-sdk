@@ -37,10 +37,10 @@ describe('value', () => {
     expect(value(word, 'en-sumerian')).toBe(value(word, 'en-english'))
   })
 
-  test('reverse variants are 6× reverse ordinal', () => {
+  test('the ×6 ciphers reversed are 6× the reversed ordinal', () => {
     const word = 'chaos'
-    expect(value(word, 'en-english-reverse')).toBe(value(word, 'en-reverse') * 6)
-    expect(value(word, 'en-sumerian-reverse')).toBe(value(word, 'en-english-reverse'))
+    expect(value(word, 'en-english', true)).toBe(value(word, 'en-ordinal', true) * 6)
+    expect(value(word, 'en-sumerian', true)).toBe(value(word, 'en-english', true))
   })
 
   test('rejects a non-string and an unknown cipher', () => {
@@ -100,7 +100,7 @@ describe('profile — frontend superset', () => {
     'he-albam',
   ]
   const FRONTEND_GREEK = ['gr-isopsephy']
-  const FRONTEND_LATIN = ['en-ordinal', 'en-reduction', 'en-reverse']
+  const FRONTEND_LATIN = ['en-ordinal', 'en-reduction']
 
   test('hebrew profile emits exactly the six frontend ciphers in order', () => {
     const p = profile('שלום')
@@ -114,11 +114,11 @@ describe('profile — frontend superset', () => {
     expect(p.values.map((v) => v.cipher)).toEqual(FRONTEND_GREEK as CipherId[])
   })
 
-  test('latin profile leads with the three frontend ciphers, then adds SDK ones', () => {
+  test('latin profile leads with the two frontend ciphers, then adds SDK ones', () => {
     const p = profile('gematria')
     expect(p.script).toBe('latin')
     const ids = p.values.map((v) => v.cipher)
-    expect(ids.slice(0, 3)).toEqual(FRONTEND_LATIN as CipherId[])
+    expect(ids.slice(0, 2)).toEqual(FRONTEND_LATIN as CipherId[])
     for (const id of FRONTEND_LATIN) expect(ids).toContain(id as CipherId)
     expect(ids).toContain('la-agrippa')
     expect(ids).toContain('en-english')
@@ -141,7 +141,6 @@ describe('profile — frontend superset', () => {
     expect(historical.values.map((v) => v.cipher)).toEqual([
       'en-ordinal',
       'en-reduction',
-      'en-reverse',
       'la-agrippa',
       'la-jewish',
     ] as CipherId[])

@@ -10,8 +10,8 @@ import {
 } from '../src/registry.js'
 
 describe('cipher registry', () => {
-  test('holds all 41 ciphers with unique ids, deeply frozen', () => {
-    expect(CIPHERS.length).toBe(41)
+  test('holds all 31 ciphers with unique ids, deeply frozen', () => {
+    expect(CIPHERS.length).toBe(31)
     const ids = CIPHERS.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(Object.isFrozen(CIPHERS)).toBe(true)
@@ -29,7 +29,6 @@ describe('cipher registry', () => {
       'gr-isopsephy',
       'en-ordinal',
       'en-reduction',
-      'en-reverse',
     ]
     const ids = new Set(CIPHERS.map((c) => c.id))
     for (const id of frontend) expect(ids.has(id as (typeof CIPHERS)[number]['id'])).toBe(true)
@@ -39,7 +38,7 @@ describe('cipher registry', () => {
     expect(CIPHERS_BY_SCRIPT.hebrew.length).toBe(11)
     expect(CIPHERS_BY_SCRIPT.greek).toEqual(['gr-isopsephy'])
     expect(CIPHERS_BY_SCRIPT.arabic).toEqual(['ar-abjad'])
-    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(28)
+    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(18)
     const total =
       CIPHERS_BY_SCRIPT.hebrew.length +
       CIPHERS_BY_SCRIPT.greek.length +
@@ -89,7 +88,6 @@ describe('cipher aliases', () => {
     expect(resolveCipherId('english')).toBe('en-english')
     expect(resolveCipherId('simple')).toBe('en-ordinal')
     expect(resolveCipherId('ordinal')).toBe('en-ordinal')
-    expect(resolveCipherId('reverse')).toBe('en-reverse')
     expect(resolveCipherId('sumerian')).toBe('en-sumerian')
     expect(resolveCipherId('isopsephy')).toBe('gr-isopsephy')
   })

@@ -42,8 +42,9 @@ const REVERSED = new WeakMap<Cipher, (ch: string) => number>()
  * cipher assigns each letter the value the base cipher gives to its mirror in
  * alphabet order — a↔z, b↔y, … for Latin; aleph↔tav for Hebrew; and so on. This
  * turns *any* cipher into its reverse without a dedicated id, so e.g.
- * `value(t, 'en-ordinal', true)` equals the historic `en-reverse`, and reverse
- * now also works for ciphers that never had one (Agrippa, Jewish, Fibonacci, …).
+ * `value(t, 'en-ordinal', true)` is the reverse of Ordinal (A26 … Z1), and
+ * reverse works just as well for ciphers that never had a reverse id of their
+ * own (Agrippa, Jewish, Fibonacci, …).
  */
 function letterFn(cipher: Cipher, reverse: boolean): (ch: string) => number {
   if (!reverse) return cipher.letterValue

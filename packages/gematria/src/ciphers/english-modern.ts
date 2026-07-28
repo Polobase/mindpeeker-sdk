@@ -4,24 +4,21 @@
  * under the package's 500-line limit. Every cipher here is `modern: true`:
  * online-calculator inventions with no ancient pedigree (Latin has no native
  * numerals), added for parity with the gematriaq.com reference calculator.
- * All but a few are pure formulas over the `ordinal`/`reverse` primitives
- * from `latin-shared.ts`; Chaldean and the prime/Fibonacci/prime-cross
- * sequences are genuinely irregular, so those are hardcoded frozen tables.
+ * All but a few are pure formulas over the `ordinal` primitive from
+ * `latin-shared.ts`; Chaldean and the prime/Fibonacci/prime-cross sequences are
+ * genuinely irregular, so those are hardcoded frozen tables. None of them has a
+ * *reverse* twin: reverse is a parameter, so `value(text, cipher, true)` mirrors
+ * any of them (a↔z) on demand.
  *
  * - **Standard** (`en-standard`) — letters grouped in nines like Hebrew's
  *   ones/tens/hundreds scale: A–I=1–9, J–R=10–90 ($10(n-9)$ for ordinal $n$),
  *   S–Z=100–800 ($100(n-18)$).
- * - **Reverse Reduction** (`en-reverse-reduction`) — the digital root of the
- *   reverse-ordinal value, $\operatorname{dr}(27-n)$.
- * - **Satanic** / **Reverse Satanic** (`en-satanic`, `en-reverse-satanic`) —
- *   ordinal (or reverse ordinal) offset by 35: A=36…Z=61, reversed Z=36…A=61.
- * - **Primes** / **Reverse Primes** (`en-primes`, `en-reverse-primes`) — the
- *   $n$-th prime assigned by ordinal position, A=2…Z=101, or that same
- *   26-prime sequence assigned from the other end of the alphabet.
- * - **Squares** / **Reverse Squares** (`en-squares`, `en-reverse-squares`) —
- *   the ordinal (or reverse ordinal) squared, $n^2$: A=1…Z=676.
- * - **Trigonal** / **Reverse Trigonal** (`en-trigonal`, `en-reverse-trigonal`)
- *   — the ordinal's triangular number $T(n) = n(n+1)/2$: A=1…Z=351.
+ * - **Satanic** (`en-satanic`) — the ordinal offset by 35: A=36…Z=61.
+ * - **Primes** (`en-primes`) — the $n$-th prime assigned by ordinal position,
+ *   A=2…Z=101.
+ * - **Squares** (`en-squares`) — the ordinal squared, $n^2$: A=1…Z=676.
+ * - **Trigonal** (`en-trigonal`) — the ordinal's triangular number
+ *   $T(n) = n(n+1)/2$: A=1…Z=351.
  * - **Fibonacci** (`en-fibonacci`) — the $n$-th Fibonacci number by ordinal
  *   position, A=1, B=1, C=2, D=3 … Z=121393 (the calculator convention of
  *   starting both A and B at 1, rather than a leading $F(0)=0$).
@@ -33,18 +30,15 @@
  *   values, $(n-1) \bmod 7 + 1$.
  * - **Keypad** (`en-keypad`) — the digit of each letter's key on the
  *   international E.161 telephone keypad (ABC=2 … WXYZ=9).
- * - **Cross** / **Reverse Cross** (`en-cross`, `en-reverse-cross`) — the
- *   numbers on Peter Plichta's Prime Number Cross: the successive $6n\pm1$
- *   values (the rays of the 24-wheel, on which every prime $> 3$ falls), A=1,
- *   B=5, C=7…Z=77. This is the whole cross lattice, so its composites (25, 35,
- *   49, 65, 77, …) are kept — it is the *cross*, not its primes. The reverse
- *   assigns the same sequence from Z to A.
- * - **Prime Cross** / **Reverse Prime Cross** (`en-prime-cross`,
- *   `en-reverse-prime-cross`) — only the numbers on that cross which are
- *   actually prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed by
- *   every prime except 2 and 3). Named the *prime* cross, so — unlike the plain
- *   Cross — it carries no composite values. The reverse assigns the same
- *   sequence from Z to A.
+ * - **Cross** (`en-cross`) — the numbers on Peter Plichta's Prime Number Cross:
+ *   the successive $6n\pm1$ values (the rays of the 24-wheel, on which every
+ *   prime $> 3$ falls), A=1, B=5, C=7…Z=77. This is the whole cross lattice, so
+ *   its composites (25, 35, 49, 65, 77, …) are kept — it is the *cross*, not its
+ *   primes.
+ * - **Prime Cross** (`en-prime-cross`) — only the numbers on that cross which
+ *   are actually prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed
+ *   by every prime except 2 and 3). Named the *prime* cross, so — unlike the
+ *   plain Cross — it carries no composite values.
  *
  * Sources: gematriaq.com (the reference calculator this set reaches parity
  * with); traditional Chaldean numerology tables (e.g. Cheiro, *Cheiro's Book
@@ -53,9 +47,8 @@
  * Number Code* (1997), for the Prime Number Cross.
  */
 
-import { digitRoot } from '../normalize.js'
 import type { Cipher } from '../types.js'
-import { latinCipher, ordinal, reverse } from './latin-shared.js'
+import { latinCipher, ordinal } from './latin-shared.js'
 
 // A–I take the ones, J–R the tens, S–Z the hundreds — the same grouping
 // `en-standard` this file is named for.
@@ -67,28 +60,14 @@ function standard(ch: string): number {
   return (o - 18) * 100
 }
 
-function reverseReduction(ch: string): number {
-  return digitRoot(reverse(ch))
-}
-
 function satanic(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? o + 35 : 0
 }
 
-function reverseSatanic(ch: string): number {
-  const r = reverse(ch)
-  return r > 0 ? r + 35 : 0
-}
-
 function squares(ch: string): number {
   const o = ordinal(ch)
   return o * o
-}
-
-function reverseSquares(ch: string): number {
-  const r = reverse(ch)
-  return r * r
 }
 
 /** The $n$-th triangular number $T(n) = n(n+1)/2$; $T(0) = 0$. */
@@ -98,10 +77,6 @@ function triangular(n: number): number {
 
 function trigonal(ch: string): number {
   return triangular(ordinal(ch))
-}
-
-function reverseTrigonal(ch: string): number {
-  return triangular(reverse(ch))
 }
 
 function septenary(ch: string): number {
@@ -121,13 +96,6 @@ function primes(ch: string): number {
   return o > 0 ? (PRIMES_26[o - 1] as number) : 0
 }
 
-// Reverse-Primes reuses PRIMES_26 read from the other end, so A (index 25 of
-// the same table) lands on 101 and Z (index 0) lands on 2.
-function reversePrimes(ch: string): number {
-  const o = ordinal(ch)
-  return o > 0 ? (PRIMES_26[26 - o] as number) : 0
-}
-
 // Peter Plichta's Prime Number Cross (*God's Secret Formula*, 1997) lays the
 // integers on a 24-spoke wheel; since 1, 2, 3 are indivisible, 6 is flanked by
 // 5 and 7, and every prime > 3 has the form 6n±1, so all such primes fall on
@@ -144,12 +112,6 @@ function cross(ch: string): number {
   return o > 0 ? (CROSS_26[o - 1] as number) : 0
 }
 
-// Reverse Cross reads CROSS_26 from the other end: A (index 25) = 77, Z = 1.
-function reverseCross(ch: string): number {
-  const o = ordinal(ch)
-  return o > 0 ? (CROSS_26[26 - o] as number) : 0
-}
-
 // The Prime Cross proper: only the numbers on Plichta's cross that are actually
 // prime, keeping the central 1 — 1 followed by every prime except 2 and 3,
 // A=1 … Z=103. Being the *prime* cross, it carries none of CROSS_26's composites.
@@ -161,11 +123,6 @@ const CROSS_PRIMES_26: readonly number[] = Object.freeze([
 function primeCross(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? (CROSS_PRIMES_26[o - 1] as number) : 0
-}
-
-function reversePrimeCross(ch: string): number {
-  const o = ordinal(ch)
-  return o > 0 ? (CROSS_PRIMES_26[26 - o] as number) : 0
 }
 
 // The first 26 Fibonacci numbers starting 1, 1, 2, 3 … — also hardcoded,
@@ -255,8 +212,8 @@ function keypad(ch: string): number {
 }
 
 /**
- * The fourteen further modern English/Latin ciphers that bring this package
- * to parity with the gematriaq.com cipher set. Concatenated onto {@link
+ * The eleven further modern English/Latin ciphers that bring this package to
+ * parity with the gematriaq.com cipher set. Concatenated onto {@link
  * ../ciphers/english.js}'s `ENGLISH_CIPHERS`; every entry is `modern: true`.
  */
 export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
@@ -269,27 +226,11 @@ export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
     true,
   ),
   latinCipher(
-    'en-reverse-reduction',
-    'Reverse Reduction',
-    'Modern cipher: the reverse-ordinal value of each letter (Z=1…A=26) reduced to a single ' +
-      'digit (its digital root) before summing.',
-    reverseReduction,
-    true,
-  ),
-  latinCipher(
     'en-satanic',
     'Satanic',
     "Modern cipher offsetting every letter's ordinal value by 35, A=36…Z=61 — an online " +
       "'Satanic gematria' calculator invention with no historical basis.",
     satanic,
-    true,
-  ),
-  latinCipher(
-    'en-reverse-satanic',
-    'Reverse Satanic',
-    "Modern cipher offsetting every letter's reverse-ordinal value by 35, Z=36…A=61 — the " +
-      'mirror of the Satanic cipher.',
-    reverseSatanic,
     true,
   ),
   latinCipher(
@@ -301,26 +242,10 @@ export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
     true,
   ),
   latinCipher(
-    'en-reverse-primes',
-    'Reverse Primes',
-    'Modern cipher assigning that same 26-prime sequence in reverse alphabetical order: Z=2, ' +
-      'Y=3…A=101.',
-    reversePrimes,
-    true,
-  ),
-  latinCipher(
     'en-squares',
     'Squares',
     "Modern cipher squaring each letter's ordinal value: A=1²=1, B=2²=4…Z=26²=676.",
     squares,
-    true,
-  ),
-  latinCipher(
-    'en-reverse-squares',
-    'Reverse Squares',
-    'Modern cipher assigning the square-number sequence in reverse alphabetical order: Z=1, ' +
-      'Y=4…A=676.',
-    reverseSquares,
     true,
   ),
   latinCipher(
@@ -329,14 +254,6 @@ export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
     'Modern cipher assigning each letter its triangular number T(n)=n(n+1)/2 by ordinal ' +
       'position: A=1, B=3, C=6…Z=351.',
     trigonal,
-    true,
-  ),
-  latinCipher(
-    'en-reverse-trigonal',
-    'Reverse Trigonal',
-    'Modern cipher assigning the triangular-number sequence in reverse alphabetical order: ' +
-      'Z=1, Y=3…A=351.',
-    reverseTrigonal,
     true,
   ),
   latinCipher(
@@ -381,28 +298,12 @@ export const ENGLISH_MODERN_CIPHERS: readonly Cipher[] = Object.freeze([
     true,
   ),
   latinCipher(
-    'en-reverse-cross',
-    'Reverse Cross',
-    'Modern cipher assigning the same 6n±1 cross sequence from the other end of the alphabet: ' +
-      'Z=1…A=77.',
-    reverseCross,
-    true,
-  ),
-  latinCipher(
     'en-prime-cross',
     'Prime Cross',
     "Modern cipher taking only the numbers on Plichta's Prime Number Cross that are actually " +
       'prime, keeping the central 1: A=1, B=5, C=7…Z=103 (1 followed by the primes 5, 7, 11, …, ' +
       'i.e. every prime except 2 and 3) — so, unlike the plain Cross, no composite values.',
     primeCross,
-    true,
-  ),
-  latinCipher(
-    'en-reverse-prime-cross',
-    'Reverse Prime Cross',
-    'Modern cipher assigning that same 1-plus-primes prime-cross sequence from the other end of ' +
-      'the alphabet: Z=1…A=103.',
-    reversePrimeCross,
     true,
   ),
 ])

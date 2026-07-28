@@ -12,13 +12,15 @@
 export type Script = 'hebrew' | 'greek' | 'latin' | 'arabic'
 
 /**
- * Stable machine ids for every supported cipher. The first ten are a superset
- * of the mindpeeker frontend engine (`server/utils/gematria.ts`) — identical
- * ids, labels and values — so `profile()` is a drop-in replacement. The rest
- * are SDK additions: Agrippa's reconstructed Latin table, the Thelemic NAEQ,
- * and the modern calculator ciphers — the ×6 "English/Sumerian" wordplay, the
- * gematriaq.com-parity set (Standard, Primes, Squares, Fibonacci, Chaldean,
+ * Stable machine ids for every supported cipher. The nine leading them are a
+ * superset of the mindpeeker frontend engine (`server/utils/gematria.ts`) —
+ * identical ids, labels and values — so `profile()` is a drop-in replacement.
+ * The rest are SDK additions: Agrippa's reconstructed Latin table, the Thelemic
+ * NAEQ, and the modern calculator ciphers — the ×6 "English/Sumerian" wordplay,
+ * the gematriaq.com-parity set (Standard, Primes, Squares, Fibonacci, Chaldean,
  * Keypad, …), and Peter Plichta's Prime Number Cross (see {@link Cipher.modern}).
+ * No id is a *reverse* cipher: reverse is a parameter (`value(text, cipher,
+ * true)`), so every cipher here mirrors on demand.
  */
 export type CipherId =
   | 'he-hechrachi'
@@ -36,36 +38,25 @@ export type CipherId =
   | 'ar-abjad'
   | 'en-ordinal'
   | 'en-reduction'
-  | 'en-reverse'
   | 'la-agrippa'
   | 'la-jewish'
   | 'en-naeq'
   | 'en-english'
   | 'en-sumerian'
-  | 'en-english-reverse'
-  | 'en-sumerian-reverse'
   // The gematriaq.com-parity modern calculator ciphers (all `modern: true`).
   | 'en-standard'
-  | 'en-reverse-reduction'
   | 'en-satanic'
-  | 'en-reverse-satanic'
   | 'en-primes'
-  | 'en-reverse-primes'
   | 'en-squares'
-  | 'en-reverse-squares'
   | 'en-trigonal'
-  | 'en-reverse-trigonal'
   | 'en-fibonacci'
   | 'en-chaldean'
   | 'en-septenary'
   | 'en-keypad'
   // Peter Plichta's Prime Number Cross (numbers of the form 6n±1): the full
-  // cross lattice (composites kept) and the primes-only Prime Cross, each with
-  // a reverse.
+  // cross lattice (composites kept) and the primes-only Prime Cross.
   | 'en-cross'
-  | 'en-reverse-cross'
   | 'en-prime-cross'
-  | 'en-reverse-prime-cross'
 
 /**
  * Friendly names accepted anywhere a cipher is chosen, matching the labels
@@ -79,7 +70,6 @@ export type CipherAlias =
   | 'english'
   | 'simple'
   | 'ordinal'
-  | 'reverse'
   | 'sumerian'
   | 'isopsephy'
 
