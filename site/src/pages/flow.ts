@@ -4,7 +4,7 @@
 
 import { transferEntropy } from '@mindpeeker/flow'
 import { el, fmt, replace } from '../shared/dom'
-import { getBytes } from '../shared/entropy'
+import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
 const content = shell({
@@ -58,9 +58,9 @@ function bar(label: string, te: number, teMax: number, color: string): HTMLEleme
 async function run(): Promise<void> {
   const c = Number(coupling.value) / 100
   couplingLabel.textContent = c.toFixed(2)
-  const xBytes = await getBytes(Math.ceil(N / 8))
-  const freshBytes = await getBytes(Math.ceil(N / 8))
-  const decBytes = await getBytes(N)
+  const xBytes = await localBytes(Math.ceil(N / 8))
+  const freshBytes = await localBytes(Math.ceil(N / 8))
+  const decBytes = await localBytes(N)
   const bit = (buf: Uint8Array, i: number) => ((buf[i >> 3] as number) >> (7 - (i & 7))) & 1
   const x = new Uint8Array(N)
   const y = new Uint8Array(N)

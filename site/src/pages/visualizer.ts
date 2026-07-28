@@ -13,7 +13,7 @@ import { mountDashboard } from '@viz/client/mount'
 import { PROTOCOL_VERSION } from '@viz/src/protocol'
 import type { DirectoryMessage } from '@viz/src/types'
 import { el, fmt } from '../shared/dom'
-import { getBytes } from '../shared/entropy'
+import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 import './visualizer.css'
 
@@ -95,7 +95,7 @@ const hist = new Float32Array(256)
 
 async function tick(): Promise<void> {
   if (!running) return
-  const chunk = await getBytes(256)
+  const chunk = await localBytes(256)
   dashboard.pushFrame({ kind: 'bytes', channelId: 0, bytes: chunk })
 
   const h = shannonEntropy(chunk)

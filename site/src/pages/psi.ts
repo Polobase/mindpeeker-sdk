@@ -5,7 +5,7 @@
 
 import { binomialBayesFactor } from '@mindpeeker/psi'
 import { el, fmt } from '../shared/dom'
-import { getBytes } from '../shared/entropy'
+import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
 const content = shell({
@@ -79,7 +79,7 @@ function draw(): void {
 async function runBatch(trials: number): Promise<void> {
   const aim = intention.value
   for (let t = 0; t < trials; t++) {
-    const bytes = await getBytes(BITS / 8)
+    const bytes = await localBytes(BITS / 8)
     let ones = 0
     for (const b of bytes) ones += popcount(b)
     hits += aim === 'low' ? BITS - ones : ones

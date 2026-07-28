@@ -4,7 +4,26 @@
 
 import './theme.css'
 import { el } from './dom'
+import { currentSourceId, SOURCES, setSourceId } from './entropy'
 import { PACKAGES, pageHref, REPO_URL } from './manifest'
+
+/** A compact entropy-source selector; changing it persists and reloads the page. */
+function sourcePicker(): HTMLElement {
+  const select = el(
+    'select',
+    {
+      class: 'source-select',
+      title: 'Entropy source for every demo',
+      onchange: (e: Event) => {
+        setSourceId((e.target as HTMLSelectElement).value)
+        location.reload()
+      },
+    },
+    ...SOURCES.map((s) => el('option', { value: s.id, title: s.note }, s.label)),
+  ) as HTMLSelectElement
+  select.value = currentSourceId()
+  return el('label', { class: 'source' }, el('span', {}, 'entropy'), select)
+}
 
 export function header(active?: string): HTMLElement {
   if (!document.querySelector('link[rel="icon"]')) {
@@ -30,6 +49,7 @@ export function header(active?: string): HTMLElement {
         el('span', { class: 'dot' }),
         'mindpeeker-sdk',
       ),
+      sourcePicker(),
       el('nav', { class: 'nav' }, ...links),
     ),
   )

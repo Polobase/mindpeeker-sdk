@@ -4,7 +4,7 @@
 
 import { shannonEntropy } from '@mindpeeker/negentropy'
 import { el, fmt } from '../shared/dom'
-import { getBytes, provider } from '../shared/entropy'
+import { getBytes, sourceLabel } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
 const content = shell({
@@ -14,7 +14,9 @@ const content = shell({
   intro:
     'Every provider exposes the same shape — a named source with a byte stream and SP 800-90B ' +
     'health accounting — so a QRNG, a public beacon, or your browser’s CSPRNG all plug in ' +
-    'identically. This page rains bits straight from crypto.getRandomValues.',
+    'identically. This page rains bits from the source picked in the header — switch it to a ' +
+    'public beacon or a quantum RNG and watch the throughput change (network sources fall back to ' +
+    'the local CSPRNG if blocked).',
 })
 
 const W = 256
@@ -33,7 +35,7 @@ const st = (k: string) => {
 const rate = st('throughput')
 const ent = st('Shannon (bits/byte)')
 const src = st('source')
-src.v.textContent = `${provider.name} · ${provider.kind}`
+src.v.textContent = sourceLabel()
 
 const PROVIDERS: readonly (readonly [string, string])[] = [
   ['crypto', 'browser CSPRNG — live here'],

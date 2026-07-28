@@ -8,6 +8,7 @@ import { drawWord } from '@mindpeeker/gematria/oracle'
 import { el, fmt, replace } from '../shared/dom'
 import { getBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
+import { loadWordLibrary } from '../shared/words'
 
 // Registers the bundled lexicon as the default (for the 2-arg matches/lookup).
 const LEXICON = defaultLexicon()
@@ -76,24 +77,23 @@ const drawBtn = el(
     onclick: async () => {
       ;(drawBtn as HTMLButtonElement).disabled = true
       try {
+        const lib = await loadWordLibrary()
         const bytes = await getBytes(64)
-        const { word, bytesConsumed } = await drawWord(LEXICON, bytes)
-        const top = profile(word).values[0]
-        const peers = top ? matches(word, top.cipher) : undefined
+        const { word, bytesConsumed } = await drawWord(lib, bytes)
+        const v = analyze(word, state.focus).value
+        const peers = matches(word, lib, state.focus).exact.filter((w) => w !== word)
         replace(
           oracleBox,
           el(
             'div',
             { class: 'stat' },
-            el('span', { class: 'k' }, `drew a word · ${bytesConsumed} byte(s) of entropy`),
-            el('span', { class: 'v' }, top ? `${word} = ${fmt(top.value)}` : word),
+            el('span', { class: 'k' }, `drew a word · ${bytesConsumed} byte(s) · ${state.focus}`),
+            el('span', { class: 'v' }, `${word} = ${fmt(v)}`),
           ),
           el(
             'p',
             { class: 'note' },
-            top
-              ? `${top.label} · ${peers?.matches.length ?? 0} equal-value peer(s) · commonness ${((peers?.commonness ?? 0) * 100).toFixed(1)}%`
-              : '',
+            `reduced ${reduce(v)}${peers.length ? ` · also = ${peers.slice(0, 8).join(', ')}` : ' · no equal-value word in the list'}`,
           ),
         )
       } finally {

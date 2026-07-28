@@ -10,7 +10,7 @@ import {
   spectralTest,
 } from '@mindpeeker/negentropy'
 import { el, fmt, replace } from '../shared/dom'
-import { getBytes } from '../shared/entropy'
+import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
 const content = shell({
@@ -79,7 +79,7 @@ function row(name: string, value: string, note: string): HTMLElement {
 }
 
 async function run(): Promise<void> {
-  const bytes = await getBytes(N)
+  const bytes = await localBytes(N)
   const bits = bytesToBits(bytes)
   const chi = chiSquareBytes(bytes)
   const mb = monobit(bits)
