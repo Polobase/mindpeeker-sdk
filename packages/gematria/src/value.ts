@@ -34,6 +34,32 @@ function finalize(cipher: Cipher, sum: number): number {
   return cipher.postSum ? cipher.postSum(sum) : sum
 }
 
+/** Per-cipher cache of the reversed per-letter function (built once, on demand). */
+const REVERSED = new WeakMap<Cipher, (ch: string) => number>()
+
+/**
+ * A cipher's per-letter value function, optionally REVERSED. The reverse of a
+ * cipher assigns each letter the value the base cipher gives to its mirror in
+ * alphabet order — a↔z, b↔y, … for Latin; aleph↔tav for Hebrew; and so on. This
+ * turns *any* cipher into its reverse without a dedicated id, so e.g.
+ * `value(t, 'en-ordinal', true)` equals the historic `en-reverse`, and reverse
+ * now also works for ciphers that never had one (Agrippa, Jewish, Fibonacci, …).
+ */
+function letterFn(cipher: Cipher, reverse: boolean): (ch: string) => number {
+  if (!reverse) return cipher.letterValue
+  const cached = REVERSED.get(cipher)
+  if (cached) return cached
+  const table = cipher.table
+  const n = table.length
+  const map = new Map<string, number>()
+  for (let i = 0; i < n; i++) {
+    map.set((table[i] as LetterValue).char, (table[n - 1 - i] as LetterValue).value)
+  }
+  const fn = (ch: string): number => map.get(ch) ?? 0
+  REVERSED.set(cipher, fn)
+  return fn
+}
+
 /**
  * The digital root of a non-negative integer — the public reduction used by
  * Mispar Katan and the Pythagorean cipher. $\operatorname{dr}(0) = 0$.
@@ -52,17 +78,19 @@ export function reduce(n: number): number {
  * values, after normalizing for the cipher's script. Characters outside the
  * script (spaces, punctuation, other alphabets) score `0`. `cipher` accepts a
  * canonical {@link CipherId} or a friendly {@link CipherAlias} (e.g.
- * `'jewish'`, `'simple'`) — see {@link resolveCipherId}.
+ * `'jewish'`, `'simple'`) — see {@link resolveCipherId}. Pass `reverse` to score
+ * the cipher's mirror (a↔z, …) without needing a separate reverse cipher id.
  *
  * @throws GematriaError `'invalid_input'` if `text` is not a string
  * @throws GematriaError `'unknown_cipher'` if `cipher` is unknown
  */
-export function value(text: string, cipher: CipherRef): number {
+export function value(text: string, cipher: CipherRef, reverse = false): number {
   requireString(text)
   const c = getCipher(cipher)
   const norm = normalizeFor(text, c.script)
+  const letter = letterFn(c, reverse)
   let sum = 0
-  for (const ch of norm) sum += c.letterValue(ch)
+  for (const ch of norm) sum += letter(ch)
   return finalize(c, sum)
 }
 
@@ -84,10 +112,11 @@ export function analyze(
   requireString(text)
   const c = getCipher(cipher)
   const norm = normalizeFor(text, c.script)
+  const letter = letterFn(c, opts.reverse ?? false)
   const byLetter: LetterBreakdown[] = []
   let sum = 0
   for (const ch of norm) {
-    const v = c.letterValue(ch)
+    const v = letter(ch)
     if (v > 0) {
       byLetter.push(Object.freeze({ char: ch, value: v }))
       sum += v
@@ -105,9 +134,19 @@ export function analyze(
   })
 }
 
-/** The frozen alphabet→value table for a cipher, given by a {@link CipherRef}. */
-export function letterValues(cipher: CipherRef): readonly LetterValue[] {
-  return getCipher(cipher).table
+/**
+ * The frozen alphabet→value table for a cipher, given by a {@link CipherRef}.
+ * Pass `reverse` for the mirrored table (each letter takes its mirror's value).
+ */
+export function letterValues(cipher: CipherRef, reverse = false): readonly LetterValue[] {
+  const table = getCipher(cipher).table
+  if (!reverse) return table
+  const n = table.length
+  return Object.freeze(
+    table.map((lv, i) =>
+      Object.freeze({ char: lv.char, value: (table[n - 1 - i] as LetterValue).value }),
+    ),
+  )
 }
 
 /**

@@ -2,7 +2,16 @@
 // breakdown, equal-value lookup against the bundled Sepher Sephiroth, and an
 // entropy-driven word draw.
 
-import { analyze, atbash, CIPHERS, lookup, matches, profile, reduce } from '@mindpeeker/gematria'
+import {
+  analyze,
+  atbash,
+  CIPHERS,
+  lookup,
+  matches,
+  profile,
+  reduce,
+  value,
+} from '@mindpeeker/gematria'
 import { defaultLexicon } from '@mindpeeker/gematria/lexicon'
 import { drawWord } from '@mindpeeker/gematria/oracle'
 import { el, fmt, replace } from '../shared/dom'
@@ -23,7 +32,7 @@ const content = shell({
     'Number Cross. Computation is exact; what equal values mean is a contested tradition.',
 })
 
-const state = { text: 'wisdom', focus: 'en-ordinal' }
+const state = { text: 'wisdom', focus: 'en-ordinal', reverse: false }
 
 const input = el('input', {
   type: 'text',
@@ -41,6 +50,14 @@ const focusSelect = el('select', {
     render()
   },
 })
+
+const reverseToggle = el('input', {
+  type: 'checkbox',
+  onchange: (e: Event) => {
+    state.reverse = (e.target as HTMLInputElement).checked
+    render()
+  },
+}) as HTMLInputElement
 
 const scriptBadge = el('span', { class: 'badge' }, '—')
 const profileBox = el('div', { class: 'tbl-scroll' })
@@ -151,14 +168,18 @@ function render(): void {
     ),
   )
 
-  // Per-letter breakdown for the focus cipher.
-  const a = analyze(state.text, state.focus)
+  // Per-letter breakdown for the focus cipher (optionally reversed).
+  const a = analyze(state.text, state.focus, { reverse: state.reverse })
   replace(
     breakdownBox,
     el(
       'div',
       { class: 'stat' },
-      el('span', { class: 'k' }, `${state.focus} · reduced ${reduce(a.value)}`),
+      el(
+        'span',
+        { class: 'k' },
+        `${state.focus}${state.reverse ? ' · reverse' : ''} · reduced ${reduce(a.value)}`,
+      ),
       el('span', { class: 'v' }, fmt(a.value)),
     ),
     el(
@@ -171,21 +192,21 @@ function render(): void {
     el('p', { class: 'note' }, `atbash: ${atbash(state.text) || '—'}`),
   )
 
-  // Equal-value matches under the focus cipher.
-  const m = matches(state.text, state.focus)
+  // Equal-value matches under the focus cipher (respecting the reverse toggle).
+  const peers = LEXICON.filter((w) => value(w, state.focus, state.reverse) === a.value)
   replace(
     matchBox,
     el(
       'p',
       {},
-      m.exact.length
-        ? `${a.value} also = ${m.exact.slice(0, 14).join(', ')}${m.exact.length > 14 ? ' …' : ''}`
-        : `no lexicon word equals ${a.value} under ${state.focus}`,
+      peers.length
+        ? `${a.value} also = ${peers.slice(0, 14).join(', ')}${peers.length > 14 ? ' …' : ''}`
+        : `no lexicon word equals ${a.value} under ${state.focus}${state.reverse ? ' (reverse)' : ''}`,
     ),
     el(
       'p',
       { class: 'note' },
-      `commonness ${(m.commonness * 100).toFixed(1)}% — the fraction of the ${LEXICON.length}-word Sepher Sephiroth at this value. Equal-value coincidences are statistically cheap.`,
+      `commonness ${((peers.length / LEXICON.length) * 100).toFixed(1)}% — the fraction of the ${LEXICON.length}-word Sepher Sephiroth at this value. Equal-value coincidences are statistically cheap.`,
     ),
   )
 }
@@ -199,6 +220,20 @@ content.append(
       { class: 'row' },
       el('div', { style: { flex: '1 1 260px' } }, el('label', {}, 'Word or phrase'), input),
       el('div', {}, el('label', {}, 'Focus cipher'), focusSelect),
+      el(
+        'label',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: 'var(--muted)',
+          },
+        },
+        reverseToggle,
+        el('span', {}, 'reverse'),
+      ),
       scriptBadge,
     ),
   ),

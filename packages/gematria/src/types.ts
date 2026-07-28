@@ -166,6 +166,8 @@ export interface GematriaResult {
 export interface AnalyzeOptions {
   /** Attach a {@link NumberProperties} portrait of the total. Default `false`. */
   numberProperties?: boolean
+  /** Score the cipher's mirror (a↔z, …) instead of the forward table. Default `false`. */
+  reverse?: boolean
 }
 
 /** One prime power in a {@link NumberProperties.factorization}. */
