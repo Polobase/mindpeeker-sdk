@@ -41,3 +41,15 @@ export function loadWordLibrary(): Promise<readonly string[]> {
   }
   return cache
 }
+
+let cacheBoth: Promise<{ en: readonly string[]; de: readonly string[] }> | undefined
+
+/** The English and German lists kept SEPARATE, for language-labelled draws. */
+export function loadWordLibraries(): Promise<{ en: readonly string[]; de: readonly string[] }> {
+  if (!cacheBoth) {
+    cacheBoth = Promise.all([fetchList(EN_URL, false, 6000), fetchList(DE_URL, true, 6000)])
+      .then(([en, de]) => ({ en: en.slice(120), de: de.slice(120) }))
+      .catch(() => ({ en: WORDS, de: WORDS }))
+  }
+  return cacheBoth
+}

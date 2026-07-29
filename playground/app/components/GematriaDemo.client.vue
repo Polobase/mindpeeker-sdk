@@ -3,7 +3,7 @@ import { analyze, atbash, CIPHERS, lookup, profile, reduce, value } from '@mindp
 import { defaultLexicon } from '@mindpeeker/gematria/lexicon'
 import { drawWord } from '@mindpeeker/gematria/oracle'
 import { getBytes } from '~/lib/entropy'
-import { loadWordLibrary } from '~/lib/words'
+import { loadWordLibraries } from '~/lib/words'
 
 const LEXICON = defaultLexicon()
 const fmt = (n: number) => n.toLocaleString('en-US')
@@ -39,21 +39,28 @@ const lookupN = ref(93)
 const lookupResult = computed(() => lookup(Math.max(0, Math.trunc(lookupN.value || 0)), focus.value))
 
 const drawing = ref(false)
-const draw = ref<{ word: string; total: number; reduced: number; bytes: number; peers: string[] }>()
+const drawBytes = ref(0)
+const draws = ref<{ lang: 'EN' | 'DE'; word: string; total: number; reduced: number }[]>([])
 async function drawFromEntropy() {
   drawing.value = true
   try {
-    const lib = await loadWordLibrary()
-    const bytes = await getBytes(64)
-    const { word, bytesConsumed } = await drawWord(lib, bytes)
-    const total = value(word, focus.value)
-    draw.value = {
-      word,
-      total,
-      reduced: reduce(total),
-      bytes: bytesConsumed,
-      peers: lib.filter((w) => w !== word && value(w, focus.value) === total).slice(0, 8),
+    const { en, de } = await loadWordLibraries()
+    const pool = await getBytes(320)
+    let off = 0
+    const next = () => pool.slice(off, (off += 16))
+    const out: { lang: 'EN' | 'DE'; word: string; total: number; reduced: number }[] = []
+    for (const [lang, list] of [['EN', en], ['DE', de]] as const) {
+      const seen = new Set<string>()
+      while (seen.size < 5 && off + 16 <= pool.length) {
+        const { word } = await drawWord(list, next())
+        if (seen.has(word)) continue
+        seen.add(word)
+        const total = value(word, focus.value)
+        out.push({ lang, word, total, reduced: reduce(total) })
+      }
     }
+    draws.value = out
+    drawBytes.value = off
   } finally {
     drawing.value = false
   }
@@ -143,14 +150,35 @@ async function drawFromEntropy() {
         </UCard>
 
         <UCard>
-          <h3 class="font-semibold">Entropy oracle (English + German)</h3>
+          <h3 class="font-semibold">Entropy oracle — ten words, English + German</h3>
           <UButton class="mt-2" :loading="drawing" @click="drawFromEntropy">
-            Draw a word from entropy
+            Draw ten words from entropy
           </UButton>
-          <div v-if="draw" class="mt-3">
-            <div class="font-mono text-2xl">{{ draw.word }} = {{ fmt(draw.total) }}</div>
-            <p class="text-xs text-muted mt-1">
-              {{ focus }} · reduced {{ draw.reduced }} · {{ draw.bytes }} byte(s){{ draw.peers.length ? ` · also = ${draw.peers.join(', ')}` : '' }}
+          <div v-if="draws.length" class="mt-3 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-muted text-xs uppercase">
+                  <th class="text-left py-1 pr-3 font-medium">Lang</th>
+                  <th class="text-left py-1 px-3 font-medium">Word</th>
+                  <th class="text-right py-1 px-3 font-medium">Value</th>
+                  <th class="text-right py-1 pl-3 font-medium">Reduced</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(d, i) in draws" :key="i" class="border-t border-default">
+                  <td class="py-1 pr-3">
+                    <UBadge size="sm" :color="d.lang === 'EN' ? 'primary' : 'neutral'" variant="subtle">
+                      {{ d.lang }}
+                    </UBadge>
+                  </td>
+                  <td class="py-1 px-3 font-mono">{{ d.word }}</td>
+                  <td class="py-1 px-3 text-right font-mono">{{ fmt(d.total) }}</td>
+                  <td class="py-1 pl-3 text-right font-mono">{{ d.reduced }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="text-xs text-muted mt-2">
+              {{ drawBytes }} byte(s) of entropy · scored under {{ focus }}
             </p>
           </div>
         </UCard>
