@@ -1,10 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { PsiError } from '../../src/errors.js'
-import {
-  labelShuffleSurrogates,
-  permutationP,
-  timeOffsetSurrogates,
-} from '../../src/resample/surrogates.js'
+import { permutationP, timeOffsetSurrogates } from '../../src/resample/surrogates.js'
 import type { TrialSeries } from '../../src/types.js'
 import { prngUniforms } from '../helpers/trial-sources.js'
 
@@ -91,6 +86,171 @@ describe('timeOffsetSurrogates', () => {
     expect(() => [...timeOffsetSurrogates([a, b], { offsets: [] })]).toThrow(bad('invalid_plan'))
     expect(() => [...timeOffsetSurrogates([a, b], { sourceIndex: 2 })]).toThrow(bad('invalid_plan'))
     expect(() => [...timeOffsetSurrogates([a, b], { count: 0 })]).toThrow(bad('invalid_plan'))
+    expect(() => [...timeOffsetSurrogates([a, b], { surrogates: 2, count: 3 })]).toThrow(
+      bad('invalid_plan'),
+    )
+    // biome-ignore lint/suspicious/noExplicitAny: deliberately unknown mode
+    expect(() => [...timeOffsetSurrogates([a, b], { rotate: 'some' as any })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [...timeOffsetSurrogates([a, b], { seed: 1 })]).toThrow(bad('invalid_plan'))
+    expect(() => [...timeOffsetSurrogates([a, b], { design: 'latin' })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [...timeOffsetSurrogates([a, b], { rotate: 'all', sourceIndex: 1 })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [...timeOffsetSurrogates([a], { rotate: 'all-but-one' })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [
+      ...timeOffsetSurrogates([a, b], { rotate: 'all-but-one', offsets: [1] }),
+    ]).toThrow(bad('invalid_plan'))
+    expect(() => [
+      ...timeOffsetSurrogates([a, b], { rotate: 'all-but-one', design: 'latin', seed: 3 }),
+    ]).toThrow(bad('invalid_plan'))
+    const tiny = [series('x', [1, 2]), series('y', [1, 2]), series('z', [1, 2])]
+    expect(() => [...timeOffsetSurrogates(tiny, { rotate: 'all-but-one' })]).toThrow(
+      bad('insufficient_data'),
+    )
+    expect(() => [...timeOffsetSurrogates([a, b], { sourceOffsets: [] })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [...timeOffsetSurrogates([a, b], { sourceOffsets: [[1]] })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [...timeOffsetSurrogates([a, b], { sourceOffsets: [[3, 13]] })]).toThrow(
+      bad('invalid_plan'),
+    )
+    expect(() => [
+      ...timeOffsetSurrogates([a, b], { sourceOffsets: [[0, 1]], rotate: 'one' }),
+    ]).toThrow(bad('invalid_plan'))
+  })
+})
+
+/** Deterministic N(0,1) draws (Box–Muller over the seeded xorshift uniforms). */
+function gaussians(n: number, seed: number): number[] {
+  const u = prngUniforms(2 * n, seed)
+  return Array.from(
+    { length: n },
+    (_, i) =>
+      Math.sqrt(-2 * Math.log(u[2 * i] as number)) *
+      Math.cos(2 * Math.PI * (u[2 * i + 1] as number)),
+  )
+}
+
+/** Pseudo-z series: sums on a k = 16 grid scaled so (sum − 8)/2 is the given value. */
+function zSeries(source: string, z: readonly number[]): TrialSeries {
+  return series(
+    source,
+    z.map((v) => 8 + 2 * v),
+  )
+}
+
+/** netvar over whole series: Σ_t (Σ_i z_i(t))² / N. */
+function netvarOf(set: readonly TrialSeries[]): number {
+  const steps = (set[0] as TrialSeries).sums.length
+  let total = 0
+  for (let t = 0; t < steps; t++) {
+    let column = 0
+    for (const s of set) column += ((s.sums[t] as number) - 8) / 2
+    total += (column * column) / set.length
+  }
+  return total
+}
+
+describe('timeOffsetSurrogates — multi-source modes', () => {
+  test("rotate: 'all-but-one' random design matches the reference and misaligns every pair", () => {
+    const set = [0, 1, 2].map((i) => zSeries(`s${i}`, gaussians(10, 100 + i)))
+    const vectors = [
+      ...timeOffsetSurrogates(set, { rotate: 'all-but-one', surrogates: 3, seed: 5 }),
+    ]
+    // independent Python partial Fisher–Yates over the same splitmix64 → xoshiro128** stream
+    expect(vectors.map((v) => v.offsets)).toEqual([
+      [0, 9, 2],
+      [0, 4, 7],
+      [0, 4, 5],
+    ])
+    expect(vectors[0]?.offset).toBe(9)
+    expect(vectors[0]?.series[0]).toBe(set[0] as TrialSeries) // reference shared by reference
+    const big = [0, 1, 2, 3].map((i) => zSeries(`b${i}`, gaussians(1000, 200 + i)))
+    const ref = [
+      ...timeOffsetSurrogates(big, {
+        rotate: 'all-but-one',
+        sourceIndex: 2,
+        surrogates: 2,
+        seed: 11,
+      }),
+    ]
+    expect(ref.map((v) => v.offsets)).toEqual([
+      [670, 752, 0, 5],
+      [497, 867, 0, 690],
+    ])
+    for (const v of [...timeOffsetSurrogates(big, { rotate: 'all-but-one', surrogates: 50 })]) {
+      expect(new Set(v.offsets).size).toBe(4) // pairwise distinct, reference 0
+      expect(v.offsets[0]).toBe(0)
+    }
+  })
+
+  test("rotate: 'all-but-one' latin design uses coprime multipliers r·g mod T", () => {
+    const set = [0, 1, 2].map((i) => zSeries(`s${i}`, gaussians(10, 300 + i)))
+    const latin = [
+      ...timeOffsetSurrogates(set, { rotate: 'all-but-one', design: 'latin', surrogates: 3 }),
+    ]
+    // starts round((j+1)·10/4) = 3, 5, 8 → coprime g = 3, 7, 9
+    expect(latin.map((v) => v.offsets)).toEqual([
+      [0, 3, 6],
+      [0, 7, 4],
+      [0, 9, 8],
+    ])
+    // φ(10) = 4 multipliers exist: asking for more yields at most 4
+    expect(
+      [...timeOffsetSurrogates(set, { rotate: 'all-but-one', design: 'latin', surrogates: 9 })]
+        .length,
+    ).toBe(4)
+  })
+
+  test("rotate: 'all' shifts every source together (pseudo-event) and keeps cross terms", () => {
+    const set = [0, 1].map((i) => zSeries(`s${i}`, gaussians(10, 400 + i)))
+    const [surrogate] = [...timeOffsetSurrogates(set, { rotate: 'all', offsets: [4] })]
+    expect(surrogate?.offsets).toEqual([4, 4])
+    for (let i = 0; i < 2; i++) {
+      const rotated = surrogate?.series[i] as TrialSeries
+      for (let t = 0; t < 10; t++) {
+        expect(rotated.sums[t]).toBe((set[i] as TrialSeries).sums[(t + 4) % 10] as number)
+      }
+    }
+    // a whole-series statistic is invariant under a common rotation
+    expect(netvarOf(surrogate?.series ?? [])).toBeCloseTo(netvarOf(set), 12)
+  })
+
+  test('explicit sourceOffsets are normalized and applied per source', () => {
+    const set = [0, 1, 2].map((i) => zSeries(`s${i}`, gaussians(10, 500 + i)))
+    const [surrogate] = [...timeOffsetSurrogates(set, { sourceOffsets: [[0, -1, 12]] })]
+    expect(surrogate?.offsets).toEqual([0, 9, 2])
+    expect(surrogate?.offset).toBe(9)
+    expect((surrogate?.series[2] as TrialSeries).sums[0]).toBe(
+      (set[2] as TrialSeries).sums[2] as number,
+    )
+  })
+
+  test("N = 3 with a shared signal on sources 1–2: 'one' keeps the effect in the null, 'all-but-one' removes it", () => {
+    const T = 400
+    const common = gaussians(T, 900)
+    const z0 = gaussians(T, 901)
+    const z1 = gaussians(T, 902).map((v, t) => 0.7 * v + 0.7 * (common[t] as number))
+    const z2 = gaussians(T, 903).map((v, t) => 0.7 * v + 0.7 * (common[t] as number))
+    const set = [zSeries('a', z0), zSeries('b', z1), zSeries('c', z2)]
+    const observed = netvarOf(set)
+    const single = [...timeOffsetSurrogates(set, { surrogates: 99 })].map((s) => netvarOf(s.series))
+    const all = [...timeOffsetSurrogates(set, { rotate: 'all-but-one', surrogates: 99 })].map((s) =>
+      netvarOf(s.series),
+    )
+    const mean = (xs: number[]) => xs.reduce((x, y) => x + y, 0) / xs.length
+    // E[single-rotation null] retains the b–c cross term; the all-but-one null centres near T·(1+…)
+    expect(mean(single)).toBeGreaterThan(mean(all) + 0.1 * T)
+    expect(permutationP(observed, all)).toBeLessThan(permutationP(observed, single))
+    expect(permutationP(observed, all)).toBeLessThanOrEqual(0.05)
   })
 })
 
@@ -117,32 +277,5 @@ describe('permutationP', () => {
     expect(() => permutationP(1, [Number.POSITIVE_INFINITY])).toThrow(
       expect.objectContaining({ code: 'invalid_plan' }) as unknown as Error,
     )
-  })
-})
-
-describe('labelShuffleSurrogates', () => {
-  test('rotates labels, preserves counts, excludes the observed labeling', () => {
-    const labels = ['target', 'control', 'target', 'control', 'target'] as const
-    const surrogates = [...labelShuffleSurrogates(labels)]
-    expect(surrogates.length).toBeGreaterThan(0)
-    for (const relabel of surrogates) {
-      expect(relabel.length).toBe(labels.length)
-      // same multiset (3 targets, 2 controls)
-      expect(relabel.filter((s) => s === 'target').length).toBe(3)
-      // never identical to the observed arrangement
-      expect(relabel.join(',')).not.toBe(labels.join(','))
-    }
-  })
-
-  test('skips rotations that reproduce a periodic labeling', () => {
-    // [t,c,t,c] rotated by 2 is itself → must be skipped
-    const labels = ['target', 'control', 'target', 'control'] as const
-    for (const relabel of labelShuffleSurrogates(labels)) {
-      expect(relabel.join(',')).not.toBe(labels.join(','))
-    }
-  })
-
-  test('needs at least 2 labels', () => {
-    expect(() => [...labelShuffleSurrogates(['target'])]).toThrow(PsiError)
   })
 })

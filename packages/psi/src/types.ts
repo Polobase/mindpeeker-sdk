@@ -24,8 +24,11 @@ export type Intention = 'high' | 'low' | 'baseline'
 /**
  * Epoch class in a presentiment (time-reversed) experiment: `target` epochs
  * precede the stimulus of interest (e.g. an arousing or "hit" event),
- * `control` epochs precede a neutral one. The presentiment hypothesis is that
- * pre-stimulus randomness deviates more before `target` than `control`
- * stimuli (Radin 1997; Mossbridge, Tressoldi & Utts 2012 meta-analysis).
+ * `control` epochs precede a neutral one. The presentiment literature (Radin
+ * 1997; Bierman & Radin 1997; Mossbridge, Tressoldi & Utts 2012 meta-analysis)
+ * concerns pre-stimulus *physiological* activity — skin conductance, heart
+ * rate, blood volume, pupil, EEG. This package implements an SDK-defined *RNG
+ * analogue*: whether pre-stimulus trial sums of a random source deviate more
+ * before `target` than `control` stimuli.
  */
 export type Stimulus = 'target' | 'control'

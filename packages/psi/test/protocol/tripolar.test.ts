@@ -2,9 +2,23 @@ import { describe, expect, test } from 'bun:test'
 import { stoufferZ, theoreticalCalibration, zScores } from '@mindpeeker/negentropy'
 import { normPpf } from '@mindpeeker/negentropy/numerics'
 import type { TripolarRun } from '../../src/protocol/tripolar.js'
-import { analyzeTripolar, runTripolar } from '../../src/protocol/tripolar.js'
-import type { Intention } from '../../src/types.js'
-import { countingSource, fakeClock, finiteSource } from '../helpers/trial-sources.js'
+import {
+  analyzeTripolar,
+  controlContrast,
+  runTripolar,
+  tripolarSchedule,
+  tripolarScheduleDigest,
+} from '../../src/protocol/tripolar.js'
+import type { Intention, TrialSource } from '../../src/types.js'
+import { chunkSource, countingSource, fakeClock, finiteSource } from '../helpers/trial-sources.js'
+
+/** Constant-byte source: `count` chunks of `bytes` copies of `value`. */
+function constantSource(name: string, value: number, count: number, bytes = 2): TrialSource {
+  return chunkSource(
+    name,
+    Array.from({ length: count }, () => new Uint8Array(bytes).fill(value)),
+  )
+}
 
 async function collect(runs: AsyncGenerator<TripolarRun>): Promise<TripolarRun[]> {
   const out: TripolarRun[] = []
@@ -113,6 +127,220 @@ describe('runTripolar', () => {
     expect(first.done).toBe(false)
     controller.abort()
     await expect(runs.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+  })
+
+  test('runs carry arm, assignment, order, safeguard flag, and the schedule digest', async () => {
+    const plan = {
+      trialsPerRun: 2,
+      bitsPerTrial: 16,
+      runsPerIntention: 2,
+      order: 'counterbalanced' as const,
+    }
+    const runs = await collect(runTripolar(finiteSource('reg', 30, 3, 2), plan))
+    const digest = await tripolarScheduleDigest(plan)
+    expect(runs.map((r) => r.intention)).toEqual([...tripolarSchedule(plan)])
+    for (const run of runs) {
+      expect(run.arm).toBe('experimental')
+      expect(run.assignment).toBe('instructed')
+      expect(run.order).toBe('counterbalanced')
+      expect(run.xorSafeguard).toBe(false)
+      expect(run.scheduleDigest).toBe(digest)
+    }
+    expect(analyzeTripolar(runs).scheduleDigest).toBe(digest)
+  })
+
+  test('instructed order follows the seeded schedule', async () => {
+    const plan = {
+      trialsPerRun: 1,
+      bitsPerTrial: 16,
+      runsPerIntention: 3,
+      order: 'instructed' as const,
+      seed: 99,
+    }
+    const runs = await collect(runTripolar(finiteSource('reg', 20, 5, 2), plan))
+    expect(runs.map((r) => r.intention)).toEqual([...tripolarSchedule(plan)])
+  })
+
+  test('xorSafeguard records odd trials as k − x (0xff bytes: 16, 0, 16, …)', async () => {
+    const runs = await collect(
+      runTripolar(constantSource('reg', 0xff, 20), {
+        trialsPerRun: 4,
+        bitsPerTrial: 16,
+        runsPerIntention: 1,
+        xorSafeguard: true,
+      }),
+    )
+    for (const run of runs) {
+      expect([...run.series.sums]).toEqual([16, 0, 16, 0])
+      expect(run.xorSafeguard).toBe(true)
+    }
+    // a constant bias cancels: every intention's Stouffer z is exactly 0
+    const analysis = analyzeTripolar(runs)
+    expect(analysis.high.z).toBe(0)
+    expect(analysis.deltaZ).toBe(0)
+  })
+
+  test('control arm: one control trial per experimental trial, twin runs, contrast', async () => {
+    const pulls: string[] = []
+    const tracked = (name: string, value: number): TrialSource => ({
+      name,
+      async *stream() {
+        for (let i = 0; i < 12; i++) {
+          pulls.push(name)
+          yield new Uint8Array(2).fill(value)
+        }
+      },
+    })
+    const runs = await collect(
+      runTripolar(
+        tracked('reg', 0xff),
+        { trialsPerRun: 2, bitsPerTrial: 16, runsPerIntention: 1 },
+        { control: tracked('csprng', 0x0f) },
+      ),
+    )
+    expect(runs.map((r) => `${r.intention}:${r.arm}:${r.series.source}`)).toEqual([
+      'high:experimental:reg',
+      'high:control:csprng',
+      'low:experimental:reg',
+      'low:control:csprng',
+      'baseline:experimental:reg',
+      'baseline:control:csprng',
+    ])
+    expect(pulls.slice(0, 4)).toEqual(['reg', 'csprng', 'reg', 'csprng'])
+    for (const run of runs.filter((r) => r.arm === 'control')) {
+      expect([...run.series.sums]).toEqual([8, 8])
+    }
+    const experimental = analyzeTripolar(runs.filter((r) => r.arm === 'experimental'))
+    const control = analyzeTripolar(runs.filter((r) => r.arm === 'control'))
+    expect(controlContrast(experimental, control).z).toBe(0) // both arms constant → no separation
+    await expect(
+      collect(
+        runTripolar(
+          countingSource('same'),
+          { runsPerIntention: 1 },
+          { control: countingSource('same') },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_plan' })
+  })
+
+  test('volitional order asks the operator before each run and enforces balance', async () => {
+    const seen: number[] = []
+    const choices: Intention[] = ['low', 'baseline', 'high', 'high', 'low', 'baseline']
+    const runs = await collect(
+      runTripolar(
+        finiteSource('reg', 30, 9, 2),
+        { trialsPerRun: 1, bitsPerTrial: 16, runsPerIntention: 2, order: 'volitional' },
+        {
+          declare: ({ sequence, remaining }) => {
+            seen.push(remaining.high + remaining.low + remaining.baseline)
+            return choices[sequence] as Intention
+          },
+        },
+      ),
+    )
+    expect(runs.map((r) => r.intention)).toEqual(choices)
+    expect(runs.every((r) => r.assignment === 'volitional')).toBe(true)
+    expect(seen).toEqual([6, 5, 4, 3, 2, 1])
+    const plan = {
+      trialsPerRun: 1,
+      bitsPerTrial: 16,
+      runsPerIntention: 1,
+      order: 'volitional' as const,
+    }
+    await expect(
+      collect(runTripolar(finiteSource('reg', 30, 9, 2), plan, { declare: () => 'high' })),
+    ).rejects.toMatchObject({ name: 'PsiError', code: 'invalid_plan' }) // high twice
+    await expect(
+      // biome-ignore lint/suspicious/noExplicitAny: deliberately unknown label
+      collect(runTripolar(finiteSource('reg', 30, 9, 2), plan, { declare: () => 'up' as any })),
+    ).rejects.toMatchObject({ name: 'PsiError', code: 'invalid_plan' })
+    await expect(collect(runTripolar(finiteSource('reg', 30, 9, 2), plan))).rejects.toMatchObject({
+      code: 'invalid_plan',
+    })
+    await expect(
+      collect(
+        runTripolar(
+          finiteSource('reg', 30, 9, 2),
+          { runsPerIntention: 1 },
+          { declare: () => 'high' },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_plan' })
+  })
+
+  test('a source that ends its stream on abort yields aborted, not insufficient_data', async () => {
+    const controller = new AbortController()
+    const polite: TrialSource = {
+      name: 'polite',
+      async *stream(opts) {
+        while (!opts?.signal?.aborted) {
+          yield new Uint8Array(25).fill(0x0f)
+          await Bun.sleep(1)
+        }
+      },
+    }
+    const runs = runTripolar(
+      polite,
+      { trialsPerRun: 2, bitsPerTrial: 200, runsPerIntention: 50 },
+      { signal: controller.signal },
+    )
+    expect((await runs.next()).done).toBe(false)
+    controller.abort()
+    await expect(collect(runs)).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+  })
+
+  test('abort pre-empts a source that ignores the signal, and the stream is released', async () => {
+    const controller = new AbortController()
+    let closed = false
+    const stubborn: TrialSource = {
+      name: 'stubborn',
+      async *stream() {
+        try {
+          for (;;) {
+            yield new Uint8Array(25).fill(0x0f)
+            await Bun.sleep(400)
+          }
+        } finally {
+          closed = true
+        }
+      },
+    }
+    const runs = runTripolar(
+      stubborn,
+      { trialsPerRun: 1, bitsPerTrial: 200, runsPerIntention: 5 },
+      { signal: controller.signal },
+    )
+    expect((await runs.next()).done).toBe(false)
+    const started = performance.now()
+    setTimeout(() => controller.abort(), 10)
+    await expect(runs.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+    expect(performance.now() - started).toBeLessThan(300)
+    await Bun.sleep(450)
+    expect(closed).toBe(true)
+  })
+
+  test('breaking out of the loop closes the source stream', async () => {
+    let closed = false
+    const source: TrialSource = {
+      name: 'reg',
+      async *stream() {
+        try {
+          for (;;) yield new Uint8Array(2).fill(0x0f)
+        } finally {
+          closed = true
+        }
+      },
+    }
+    for await (const run of runTripolar(source, {
+      trialsPerRun: 1,
+      bitsPerTrial: 16,
+      runsPerIntention: 3,
+    })) {
+      expect(run.sequence).toBe(0)
+      break
+    }
+    expect(closed).toBe(true)
   })
 
   test('invalid plans are rejected before any I/O', async () => {
