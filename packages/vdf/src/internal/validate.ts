@@ -1,15 +1,15 @@
 import { VdfError } from '../errors.js'
-import type { PietrzakProof, RsaModulus } from '../types.js'
+import type { PietrzakProof, RsaModulus, VdfCheckpoints, WesolowskiProof } from '../types.js'
 import { bitLength } from './bigint.js'
 
 /**
  * Smallest modulus the public API accepts, in bits. Generous on purpose so
  * unit tests can run fast known-factorization moduli; production deployments
- * must use $\ge 2048$ bits (see the README's security section).
+ * must use $\ge 2048$ bits (`checkModulus` enforces that by default).
  */
 export const MIN_MODULUS_BITS = 64
 
-/** Largest supported $T$: the serialization format stores $T$ as an unsigned 32-bit integer. */
+/** Largest supported $T$: the wire formats store $T$ as an unsigned 32-bit integer. */
 export const MAX_T = 0xffff_ffff
 
 /**
@@ -46,11 +46,16 @@ export function assertT(T: number): void {
 
 /**
  * Normalize a batch byte input (SDK-wide contract: `Uint8Array` or
- * `ArrayLike<number>` of integer bytes). Returns the original `Uint8Array`
- * unchanged, or a validated copy; anything else throws `invalid_input`.
+ * `ArrayLike<number>` of integer bytes) into a private copy, so later mutation
+ * of the caller's buffer cannot affect a computation. When `maxLength` is given
+ * the declared length is checked *before* anything is allocated. Anything else
+ * throws `invalid_input`.
  */
-export function toBytes(input: Uint8Array | ArrayLike<number>, what: string): Uint8Array {
-  if (input instanceof Uint8Array) return input
+export function toBytes(
+  input: Uint8Array | ArrayLike<number>,
+  what: string,
+  maxLength = Number.POSITIVE_INFINITY,
+): Uint8Array {
   if (
     input === null ||
     typeof input !== 'object' ||
@@ -59,9 +64,14 @@ export function toBytes(input: Uint8Array | ArrayLike<number>, what: string): Ui
     throw new VdfError('invalid_input', `${what} must be a Uint8Array or ArrayLike<number>`)
   }
   const { length } = input
-  if (!Number.isInteger(length) || length < 0) {
+  if (!Number.isSafeInteger(length) || length < 0) {
     throw new VdfError('invalid_input', `${what} has an invalid length ${length}`)
   }
+  if (length > maxLength) {
+    throw new VdfError('invalid_input', `${what} is too long: ${length} > ${maxLength} bytes`)
+  }
+  // `new Uint8Array(view)` always copies; `Buffer#slice` would return an aliasing view.
+  if (input instanceof Uint8Array) return new Uint8Array(input)
   const out = new Uint8Array(length)
   for (let i = 0; i < length; i++) {
     const v = input[i]
@@ -71,6 +81,20 @@ export function toBytes(input: Uint8Array | ArrayLike<number>, what: string): Ui
     out[i] = v
   }
   return out
+}
+
+/**
+ * Prover-side check of a claimed output: a bigint in the canonical range
+ * $[1, (n-1)/2]$ of $QR_n^+$, else `VdfError('invalid_input')`. (Verifiers return
+ * `false` for the same condition instead.)
+ */
+export function assertCanonicalClaim(y: bigint, n: bigint): void {
+  if (typeof y !== 'bigint' || y < 1n || y > (n - 1n) >> 1n) {
+    throw new VdfError(
+      'invalid_input',
+      'y must be a canonical group element: a bigint in [1, (n-1)/2] (see QR_n^+ in the README)',
+    )
+  }
 }
 
 /**
@@ -90,6 +114,56 @@ export function assertProofShape(proof: PietrzakProof): void {
   for (const mu of mus) {
     if (typeof mu !== 'bigint') {
       throw new VdfError('invalid_input', 'every proof midpoint must be a bigint')
+    }
+  }
+}
+
+/** Structural check of a {@link WesolowskiProof} (types only), else `VdfError('invalid_input')`. */
+export function assertWesolowskiShape(proof: WesolowskiProof): void {
+  if (
+    typeof proof !== 'object' ||
+    proof === null ||
+    typeof proof.T !== 'number' ||
+    typeof proof.y !== 'bigint' ||
+    typeof proof.pi !== 'bigint'
+  ) {
+    throw new VdfError(
+      'invalid_input',
+      'proof must be an object { T: number, y: bigint, pi: bigint }',
+    )
+  }
+}
+
+/**
+ * Validate checkpoints handed to a prover against the statement's $T$ and $n$:
+ * matching `T`, integer `interval` in $[1, T]$, exactly
+ * $\lfloor T/\mathrm{interval} \rfloor + 1$ canonical bigint powers. (That
+ * `powers[0]` equals the hashed input is checked by the prover.)
+ */
+export function assertCheckpoints(checkpoints: VdfCheckpoints, T: number, n: bigint): void {
+  if (typeof checkpoints !== 'object' || checkpoints === null) {
+    throw new VdfError('invalid_input', 'checkpoints must be an object { T, interval, powers }')
+  }
+  const { interval, powers } = checkpoints
+  if (checkpoints.T !== T) {
+    throw new VdfError(
+      'invalid_input',
+      `checkpoints were computed for T=${checkpoints.T}, not T=${T}`,
+    )
+  }
+  if (typeof interval !== 'number' || !Number.isInteger(interval) || interval < 1 || interval > T) {
+    throw new VdfError('invalid_input', `checkpoint interval must be an integer in [1, ${T}]`)
+  }
+  if (!Array.isArray(powers) || powers.length !== Math.floor(T / interval) + 1) {
+    throw new VdfError(
+      'invalid_input',
+      `checkpoints must hold floor(T / interval) + 1 = ${Math.floor(T / interval) + 1} powers`,
+    )
+  }
+  const half = (n - 1n) >> 1n
+  for (const power of powers) {
+    if (typeof power !== 'bigint' || power < 1n || power > half) {
+      throw new VdfError('invalid_input', 'every checkpoint power must be a canonical bigint')
     }
   }
 }

@@ -14,6 +14,12 @@ export const PHI = (P - 1n) * (Q - 1n)
 
 export const TEST_MODULUS: RsaModulus = Object.freeze({ n: P * Q })
 
+/** Canonical representative min(a, n − a) in the test group. */
+export function canonical(a: bigint, n: bigint = TEST_MODULUS.n): bigint {
+  const r = ((a % n) + n) % n
+  return r <= (n - 1n) / 2n ? r : n - r
+}
+
 /**
  * Euler shortcut the tests cheat with: x^(2^T) mod n = x^(2^T mod φ(n)) mod n
  * for gcd(x, n) = 1 — O(log T) work instead of T sequential squarings.

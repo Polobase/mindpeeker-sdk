@@ -13,6 +13,10 @@ describe('RSA2048', () => {
     expect(RSA2048.n.toString(16).startsWith('c7970ceedcc3b075')).toBe(true)
   })
 
+  test('is ≡ 1 (mod 4), so (−1 | n) = 1 and the Jacobi membership check never rejects an honest element', () => {
+    expect(RSA2048.n % 4n).toBe(1n)
+  })
+
   test('is odd and has no small prime factors (sanity, not a primality proof)', () => {
     expect(RSA2048.n & 1n).toBe(1n)
     const limit = 10_000

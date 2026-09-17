@@ -22,12 +22,17 @@ const RSA2048_DECIMAL =
  * stated the challenge moduli were generated on a computer with no network
  * connection and that the primes were discarded after generation, so *nobody*
  * is believed to know $\varphi(n)$ — the trapdoor-free assumption Pietrzak's
- * VDF needs. References: RSA Laboratories, "The RSA Factoring Challenge"
- * (1991–2007); Kaye, "The RSA Challenge Numbers" archive; the same modulus is
- * used by Chia's proof-of-time and the VDF Alliance.
+ * VDF needs. Reference: RSA Laboratories, "The RSA Factoring Challenge"
+ * (1991–2007). (Chia's proof-of-time does *not* use this modulus — it works in
+ * class groups of imaginary quadratic fields, which need no trusted setup.)
  *
- * Trust note: unlike a class group there is no public ceremony proving the
- * factors were destroyed. If that residual trust is unacceptable, plug in
- * your own modulus — every API takes `{ n: bigint }`.
+ * Structure note: the factors are unknown, so nobody can certify that they are
+ * safe primes; $n \equiv 1 \pmod 4$, so the verifiers' Jacobi check never rejects
+ * an honest element. The residual low-order-element assumption is discussed in
+ * the README.
+ *
+ * Trust note: there is no public ceremony proving the factors were destroyed. If
+ * that residual trust is unacceptable, plug in your own modulus — every API takes
+ * `{ n: bigint }`, and `checkModulus` rejects obviously broken ones.
  */
 export const RSA2048: RsaModulus = Object.freeze({ n: BigInt(RSA2048_DECIMAL) })
