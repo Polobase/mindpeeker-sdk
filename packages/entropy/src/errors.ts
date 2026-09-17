@@ -1,20 +1,50 @@
+/**
+ * Stable error codes carried by every `EntropyError`:
+ *
+ * - `rate_limited` — the provider throttled us (`retryAfterMs` may be set).
+ * - `auth` — missing or invalid credentials.
+ * - `permission` — the user or platform denied access to a local device
+ *   (camera, microphone, motion sensors).
+ * - `network` — transport or device I/O failure (fetch, WebSocket, serial
+ *   port, child process), or an unexpected failure inside a provider.
+ * - `bad_response` — the source answered but the payload violates the
+ *   contract (unparseable body, wrong byte count, degenerate composite).
+ * - `insufficient_entropy` — the requested bytes could not be assembled (the
+ *   source ended, or every strategy member failed).
+ * - `timeout` — the call or stream-pull `timeoutMs` budget was exceeded.
+ * - `aborted` — the caller's `AbortSignal` fired.
+ * - `invalid_request` — caller error: invalid length, option or configuration.
+ * - `health_test` — the SP 800-90B continuous or start-up health tests failed
+ *   on raw samples (after the configured number of retests): the source is
+ *   misbehaving.
+ * - `verification` — a beacon round failed opt-in verification (`verify`
+ *   option): recomputed output hash, certificate id, signature, chain linkage
+ *   or structural round checks did not hold.
+ */
 export type EntropyErrorCode =
-  | 'rate_limited' // provider throttled us (retryAfterMs may be set)
-  | 'auth' // missing/invalid credentials
-  | 'network' // fetch/WebSocket transport failure
-  | 'bad_response' // 2xx but unparseable or contract-violating body
-  | 'insufficient_entropy' // could not assemble the requested bytes (also: all strategy members failed)
-  | 'timeout' // per-request timeoutMs exceeded
-  | 'aborted' // caller's AbortSignal fired
-  | 'invalid_request' // caller error: length <= 0, non-integer, over provider max
-  | 'health_test' // continuous health test (RCT/APT) failed on raw samples — the source is misbehaving
+  | 'rate_limited'
+  | 'auth'
+  | 'permission'
+  | 'network'
+  | 'bad_response'
+  | 'insufficient_entropy'
+  | 'timeout'
+  | 'aborted'
+  | 'invalid_request'
+  | 'health_test'
+  | 'verification'
 
+/** Optional context attached to an `EntropyError`. */
 export interface EntropyErrorOptions {
+  /** Name of the provider (or composite) that raised the error. */
   provider?: string
+  /** Server-directed delay before retrying, for `rate_limited`. */
   retryAfterMs?: number
+  /** The underlying error, when this one wraps another. */
   cause?: unknown
 }
 
+/** The single error class every `@mindpeeker/entropy` API throws, discriminated by `code`. */
 export class EntropyError extends Error {
   readonly code: EntropyErrorCode
   readonly provider?: string

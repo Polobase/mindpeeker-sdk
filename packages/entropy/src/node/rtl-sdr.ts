@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { EntropyError } from '../errors.js'
+import { stderrTail } from './child.js'
 
 export interface RtlSdrOptions {
   /** Tuned frequency in Hz. Default 70 MHz — quiet spectrum, away from broadcast bands. */
@@ -58,10 +59,7 @@ export async function rtlSdrSource(opts: RtlSdrOptions = {}): Promise<RtlSdrStre
   const child = spawn(rtlSdrPath, rtlSdrArgs({ frequencyHz, sampleRate, gain, deviceIndex }), {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  let stderr = ''
-  child.stderr?.on('data', (data: Buffer) => {
-    stderr += data.toString()
-  })
+  const stderr = stderrTail(child)
   try {
     await once(child, 'spawn')
   } catch (error) {
@@ -71,6 +69,8 @@ export async function rtlSdrSource(opts: RtlSdrOptions = {}): Promise<RtlSdrStre
     })
   }
 
+  // post-spawn 'error' events (e.g. a failed kill) must not crash the process
+  child.on('error', () => {})
   let closedByUs = false
   return {
     async *[Symbol.asyncIterator]() {
@@ -79,7 +79,7 @@ export async function rtlSdrSource(opts: RtlSdrOptions = {}): Promise<RtlSdrStre
       }
       if (!closedByUs) {
         // the dongle stream must never end on its own
-        throw new EntropyError('network', `rtl_sdr exited: ${stderr.trim().slice(0, 300)}`, {
+        throw new EntropyError('network', `rtl_sdr exited: ${stderr().slice(-300)}`, {
           provider: 'sdr',
         })
       }

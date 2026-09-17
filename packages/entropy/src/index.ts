@@ -7,8 +7,17 @@ export type { EntropyErrorCode, EntropyErrorOptions } from './errors.js'
 export { EntropyError } from './errors.js'
 // Building blocks for custom providers
 export type { ByteSource } from './internal/byte-source.js'
-export type { ConditioningMode, ConditioningOptions } from './internal/condition.js'
-export type { NistFamilyOptions } from './internal/nist-pulse.js'
+export type {
+  ConditioningMode,
+  ConditioningOptions,
+  HealthFailureMode,
+} from './internal/condition.js'
+export type { BaseUrlOptions } from './internal/mirrors.js'
+export type {
+  NistFamilyOptions,
+  NistVerifyMode,
+  NistVerifyOptions,
+} from './internal/nist-pulse.js'
 export type { ProviderSpec } from './internal/provider.js'
 export { defineProvider } from './internal/provider.js'
 // Combining strategies (composable — strategies are providers themselves)
@@ -17,11 +26,16 @@ export { fallback } from './strategies/fallback.js'
 export { race } from './strategies/race.js'
 export { xorMix } from './strategies/xor.js'
 export type {
+  BeaconProvider,
+  BeaconRound,
+  BeaconRoundOptions,
+  BeaconRoundResult,
   EntropyKind,
   EntropyPrivacy,
   EntropyProvider,
   EntropyRequestOptions,
   EntropyResult,
+  EntropySourceAttribution,
   EntropySourceInfo,
   EntropyStreamOptions,
 } from './types.js'

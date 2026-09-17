@@ -1,5 +1,6 @@
 import { concatBytes } from '../internal/bytes.js'
 import { fetchJson } from '../internal/http.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
 import { defineProvider } from '../internal/provider.js'
 import { bytesFromHexField } from '../internal/validate.js'
 import type { EntropyProvider, EntropySourceInfo } from '../types.js'
@@ -9,9 +10,8 @@ const INFO: EntropySourceInfo = Object.freeze({ name: 'lfdr', kind: 'qrng', priv
 const MAX_PER_REQUEST = 1024
 const DEFAULT_BASE_URL = 'https://lfdr.de/qrng_api/qrng'
 
-export interface LfdrOptions {
+export interface LfdrOptions extends BaseUrlOptions {
   fetch?: typeof fetch
-  baseUrl?: string
 }
 
 interface LfdrResponse {
@@ -24,7 +24,8 @@ interface LfdrResponse {
  * keyless HTTP API. Hobby-grade: no SLA, no published limits.
  */
 export function lfdr(opts: LfdrOptions = {}): EntropyProvider {
-  const { baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl } = opts
+  const { fetch: fetchImpl } = opts
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
 
   return defineProvider({
     ...INFO,
@@ -33,11 +34,13 @@ export function lfdr(opts: LfdrOptions = {}): EntropyProvider {
       for (let remaining = length; remaining > 0; ) {
         const n = Math.min(MAX_PER_REQUEST, remaining)
         const query = new URLSearchParams({ length: String(n), format: 'HEX' })
-        const res = await fetchJson<LfdrResponse>(`${baseUrl}?${query}`, {
-          provider: INFO.name,
-          signal: reqOpts?.signal,
-          fetchImpl,
-        })
+        const res = await withMirrors(bases, (base) =>
+          fetchJson<LfdrResponse>(`${base}?${query}`, {
+            provider: INFO.name,
+            signal: reqOpts?.signal,
+            fetchImpl,
+          }),
+        )
         chunks.push(bytesFromHexField(res?.qrn, n, INFO.name))
         remaining -= n
       }

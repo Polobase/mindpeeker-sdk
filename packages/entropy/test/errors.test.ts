@@ -36,6 +36,12 @@ describe('EntropyError', () => {
     expect(err.provider).toBe('camera')
   })
 
+  test('supports the verification code for failed beacon checks', () => {
+    const err = new EntropyError('verification', 'signature does not verify', { provider: 'nqsn' })
+    expect(err.code).toBe('verification')
+    expect(err.provider).toBe('nqsn')
+  })
+
   test('supports AggregateError as cause for strategy failures', () => {
     const inner = new AggregateError(
       [new EntropyError('timeout', 'a timed out'), new EntropyError('network', 'b unreachable')],
@@ -44,5 +50,10 @@ describe('EntropyError', () => {
     const err = new EntropyError('insufficient_entropy', 'all providers failed', { cause: inner })
     expect(err.cause).toBeInstanceOf(AggregateError)
     expect((err.cause as AggregateError).errors).toHaveLength(2)
+  })
+
+  test('supports the permission code for denied device access', () => {
+    const err = new EntropyError('permission', 'camera permission denied', { provider: 'camera' })
+    expect(err.code).toBe('permission')
   })
 })

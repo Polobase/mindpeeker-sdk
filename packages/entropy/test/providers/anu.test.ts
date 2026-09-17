@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { EntropyError } from '../../src/errors.js'
 import { anu } from '../../src/providers/anu.js'
+import { thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -26,9 +27,9 @@ providerContract('anu', () => anu({ apiKey: 'k', fetch: anuMock().fetch }), {
 
 describe('anu', () => {
   test('requires an apiKey', () => {
-    expect(() => anu({ apiKey: '' })).toThrow(TypeError)
+    thrownEntropyError(() => anu({ apiKey: '' }), 'invalid_request')
     // @ts-expect-error missing options entirely
-    expect(() => anu()).toThrow(TypeError)
+    thrownEntropyError(() => anu(), 'invalid_request')
   })
 
   test('is named anu', () => {

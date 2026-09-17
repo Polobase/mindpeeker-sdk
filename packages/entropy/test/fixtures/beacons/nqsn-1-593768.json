@@ -1,0 +1,49 @@
+{
+  "pulse": {
+    "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/593768",
+    "version": "2.0",
+    "cipherSuite": 0,
+    "period": 60000,
+    "certificateId": "a0b3337b34f96a658652076335146d7f265c88d71415898b4f268fdd7fabd6768a270b35f910a75ccbd562040b2c0cd773e6893eca3ea93e604de6d3fd161a1e",
+    "chainIndex": 1,
+    "pulseIndex": 593768,
+    "timeStamp": "2026-09-17T12:25:00.000Z",
+    "localRandomValue": "3ce987504d131adab7e103dfc9d231d010a32c115c7305daa7956154b9049d09c33cac5ec9f3ad210b748aa1463f32445569a7db91057bf4bbb15f0a7f1d4205",
+    "external": {
+      "sourceId": "5b0c5796a905dfba92df9f8da017fdf505c675dee151ce8cb6357f4083eece2ab908322747cbfbfe7123014569a4124a89656fde15fa0f661c58f8bcebc9c2ec",
+      "statusCode": 3,
+      "value": "1d4750a82a9b0739e9a531d18b494fc92daacd726c0e74263d4e628265bff67d89d9caf0dd63ec7af3a5efb88e453b49357b3e69dd8c5ae432ce03ca87e8a90c"
+    },
+    "listValues": [
+      {
+        "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/593767",
+        "type": "previous",
+        "value": "1869aea6ad9532bf5b981b56ab1bf510f94223cc3992de831c5747cd747edd2239647d26b540a5bd5d653204e27ce017edd2fa799e1239a0a8ccb1bbdd9fc541"
+      },
+      {
+        "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/593743",
+        "type": "hour",
+        "value": "75600a99a1b0fa8ec71c00be9f898ac2259b5045c64da230ffd7333a5e2d32817fea9bc7bcec1547033893bb4b482d34d392a651ccfb40a11ed31c422b877093"
+      },
+      {
+        "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/592543",
+        "type": "day",
+        "value": "57bde9bafba5d5b2fb589f907f2e62afa3516d6ab5b60ba71d647b59b9404130893a2e2f21f4d5472c46d4cd36a906083b49b88e975ed4d4611b3458abe24df9"
+      },
+      {
+        "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/569513",
+        "type": "month",
+        "value": "61ca07b9e503ce33d0cc45d075ad3f1d2e62377ea410a67a2ac03164f315b6de9859c30a6aa538c8a710fdece69b783c2d04ae1e427029e9a97bb9b794902d28"
+      },
+      {
+        "uri": "https://quantum-entropy.sg/beacon/2.0/chain/1/pulse/219601",
+        "type": "year",
+        "value": "7e091d9efd5fe0c75b3366de841d012fb228d453f1d17ba96ed3c102926a13ab31d0a6cc0a3914d3ea398c0b308752200424f3311ef0d90c5beda7024997ec08"
+      }
+    ],
+    "precommitmentValue": "c8882791f5c1a355e50064bc6d016357eeb5138f7f2682c30b2f5d9597200737dde81e0113381e0f02d489f6923173bb875d81cc3b2bebb0acaa7dabd48dd412",
+    "statusCode": 0,
+    "signatureValue": "920337915f92237e75fefebba307a1de47f735b2a5d6bd152a26d998d1cd568370160a157723c932d6559094ea58602356038a9de4df339e0563d1f6be8d0a04904bb454b1d6249da4f7dd3304505bb2fe549aea042279f480924508f5277947f84496627275624d9c9e5bf40b6b1a531ffdeae16a10ad96c296f7a658404472c5bd97f7c0369370a1282ebcccf04a635968d78df308215db02e8642191733c86921536bad79094384f4335c9931ffc4359e43c91761009aa6948822bc9159016b72338e90a0437ecae5f833f8f9b139d793bb432e40f38c449801b5c4ad55a2891e2f61a4cddb6af6f1cdbb62cd625534cac8c017b44a713d8cfdc76a72b99c9ac67cd1e2776eda9e8ef121e6e8c82ba819b0061e23557d59ce8c02eebfa0120c14d572baea656b7886315ab064506744be8aa32ef91ef85a1f117db0d12eb164927fb2e9951bc14a1ab65dfe6b2f1d3e89b9da12eebc0ffc0a92adc4a8e6e5f63bcdeb1087d57517287adbcb39d6b1bf167644dc12aef2d46be23cd73432c8d9d0f3bdd3f724a0bba25aab7845dfdb669f70c7fa67ba24df9a8910d0aa3188269b9398dd6a4e171686f034caf291be06b0dcf95535d954f34504426642d9ee3fc0d7ac4255d17b9a7fdf015f9776105f2ebbe2d31749f500bb0d5221733e348622a4b275352f9514f926d87d29aba373772ac404a83e01ebcb816ef2b65025",
+    "outputValue": "cdf166235a4c94c86fdade777989e44d946ec3e5d605f397341a2a80c4641d549b6d333331888cfc50e063afd5813618ac9144c1271fd5ce5368f4920143d743"
+  }
+}

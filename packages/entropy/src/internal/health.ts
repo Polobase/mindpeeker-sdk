@@ -1,46 +1,34 @@
 import { EntropyError } from '../errors.js'
+import { aptCutoff, rctCutoff } from './health-cutoffs.js'
 
-const ALPHA = 2 ** -20 // false-positive rate for both tests (SP 800-90B recommendation)
+export { aptCutoff, HEALTH_ALPHA, rctCutoff } from './health-cutoffs.js'
 
 export interface HealthConfig {
-  /** Assessed min-entropy H in bits per raw sample byte. May be fractional. */
+  /** Assessed min-entropy H in bits per raw sample byte: finite, 0 < H ≤ 8. May be fractional. */
   minEntropyPerSample: number
   /** APT window: 512 (default, non-binary samples) or 1024 (binary sources). */
   windowSize?: 512 | 1024
 }
 
-/** SP 800-90B §4.4.1 Repetition Count Test cutoff: C = 1 + ceil(20 / H) at alpha 2^-20. */
-export function rctCutoff(h: number): number {
-  return 1 + Math.ceil(20 / h)
+/** One tripped continuous test. */
+export interface HealthAlarm {
+  readonly test: 'rct' | 'apt'
+  /** Run length (RCT) or in-window count of the reference value (APT) at the alarm. */
+  readonly count: number
+  readonly cutoff: number
+  readonly message: string
 }
 
 /**
- * SP 800-90B §4.4.2 Adaptive Proportion Test cutoff:
- * 1 + smallest k with P(Binomial(W, 2^-H) <= k) >= 1 - 2^-20,
- * computed via the iterative pmf recurrence (exact enough for W <= 1024).
- */
-export function aptCutoff(h: number, windowSize: number): number {
-  const p = 2 ** -h
-  let pmf = (1 - p) ** windowSize
-  let cdf = pmf
-  let k = 0
-  while (cdf < 1 - ALPHA && k < windowSize) {
-    pmf *= ((windowSize - k) / (k + 1)) * (p / (1 - p))
-    k++
-    cdf += pmf
-  }
-  return 1 + k
-}
-
-/**
- * Continuous health tests over RAW samples (run in both conditioning modes).
- * Throws EntropyError('health_test') the moment either test fails — a failing
- * source must never silently degrade to pseudo-randomness.
+ * SP 800-90B §4.4 continuous health tests (Repetition Count + Adaptive
+ * Proportion) over RAW samples, run in both conditioning modes. Each test has
+ * a false-positive probability of at most α = 2⁻²⁰ per sample when the source
+ * really delivers the assessed min-entropy H.
  */
 export class HealthTests {
-  readonly #rctCutoff: number
-  readonly #aptCutoff: number
-  readonly #windowSize: number
+  readonly rctCutoff: number
+  readonly aptCutoff: number
+  readonly windowSize: 512 | 1024
   readonly #provider: string
 
   // Repetition Count Test state
@@ -54,26 +42,56 @@ export class HealthTests {
 
   constructor(config: HealthConfig, provider: string) {
     const { minEntropyPerSample, windowSize = 512 } = config
-    if (!(minEntropyPerSample > 0)) {
-      throw new TypeError('minEntropyPerSample must be > 0')
+    if (
+      typeof minEntropyPerSample !== 'number' ||
+      !Number.isFinite(minEntropyPerSample) ||
+      !(minEntropyPerSample > 0 && minEntropyPerSample <= 8)
+    ) {
+      throw new EntropyError(
+        'invalid_request',
+        `health-test minEntropyPerSample must be a finite number in (0, 8] bits per byte, got ${String(minEntropyPerSample)}`,
+        { provider },
+      )
     }
-    this.#rctCutoff = rctCutoff(minEntropyPerSample)
-    this.#aptCutoff = aptCutoff(minEntropyPerSample, windowSize)
-    this.#windowSize = windowSize
+    if (windowSize !== 512 && windowSize !== 1024) {
+      throw new EntropyError(
+        'invalid_request',
+        `health-test windowSize must be 512 or 1024, got ${String(windowSize)}`,
+        { provider },
+      )
+    }
+    this.rctCutoff = rctCutoff(minEntropyPerSample)
+    this.aptCutoff = aptCutoff(minEntropyPerSample, windowSize)
+    this.windowSize = windowSize
     this.#provider = provider
   }
 
-  test(samples: Uint8Array): void {
+  /** Forget all test state: the next sample starts a fresh RCT run and APT window. */
+  reset(): void {
+    this.#lastSample = -1
+    this.#runLength = 0
+    this.#windowIndex = 0
+    this.#reference = -1
+    this.#referenceCount = 0
+  }
+
+  /**
+   * Feed raw samples; returns the first alarm they raise, or null when the
+   * chunk is healthy. After an alarm the state is mid-chunk: call `reset()`
+   * before feeding further samples.
+   */
+  check(samples: Uint8Array): HealthAlarm | null {
     for (const sample of samples) {
       // Repetition Count Test
       if (sample === this.#lastSample) {
         this.#runLength++
-        if (this.#runLength >= this.#rctCutoff) {
-          throw new EntropyError(
-            'health_test',
-            `repetition count test failed: ${this.#runLength} identical samples (cutoff ${this.#rctCutoff})`,
-            { provider: this.#provider },
-          )
+        if (this.#runLength >= this.rctCutoff) {
+          return {
+            test: 'rct',
+            count: this.#runLength,
+            cutoff: this.rctCutoff,
+            message: `repetition count test failed: ${this.#runLength} identical samples (cutoff ${this.rctCutoff})`,
+          }
         }
       } else {
         this.#lastSample = sample
@@ -88,17 +106,25 @@ export class HealthTests {
       } else {
         if (sample === this.#reference) {
           this.#referenceCount++
-          if (this.#referenceCount >= this.#aptCutoff) {
-            throw new EntropyError(
-              'health_test',
-              `adaptive proportion test failed: value ${this.#reference} seen ${this.#referenceCount}× in a ${this.#windowSize}-sample window (cutoff ${this.#aptCutoff})`,
-              { provider: this.#provider },
-            )
+          if (this.#referenceCount >= this.aptCutoff) {
+            return {
+              test: 'apt',
+              count: this.#referenceCount,
+              cutoff: this.aptCutoff,
+              message: `adaptive proportion test failed: value ${this.#reference} seen ${this.#referenceCount}× in a ${this.windowSize}-sample window (cutoff ${this.aptCutoff})`,
+            }
           }
         }
         this.#windowIndex++
-        if (this.#windowIndex === this.#windowSize) this.#windowIndex = 0
+        if (this.#windowIndex === this.windowSize) this.#windowIndex = 0
       }
     }
+    return null
+  }
+
+  /** Like `check`, but throws `EntropyError('health_test')` on the first alarm. */
+  test(samples: Uint8Array): void {
+    const alarm = this.check(samples)
+    if (alarm) throw new EntropyError('health_test', alarm.message, { provider: this.#provider })
   }
 }

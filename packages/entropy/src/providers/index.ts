@@ -9,18 +9,27 @@ export { anuLegacy } from './anu-legacy.js'
 export type { BitcoinBeaconOptions } from './bitcoin.js'
 export { bitcoinBeacon } from './bitcoin.js'
 export type { CameraOptions, Frame, FrameSource } from './camera.js'
-export { cameraEntropy, lsbBits, signBits } from './camera.js'
+export { cameraEntropy, lsbBits, sameSampledPixels, signBits } from './camera.js'
 export { cryptoProvider } from './crypto.js'
 export type { CurbyOptions } from './curby.js'
 export { curby } from './curby.js'
-export type { DrandOptions } from './drand.js'
+export type { DrandOptions, DrandVerifyMode } from './drand.js'
 export { drand } from './drand.js'
+export type { DrandChainInfo } from './drand-chain.js'
+export {
+  DRAND_CHAINS,
+  DRAND_SIGNATURE_BYTES,
+  drandRoundAt,
+  drandRoundTime,
+} from './drand-chain.js'
+export type { DrbgOptions } from './drbg.js'
+export { drbgProvider } from './drbg.js'
 export type { FlowBeaconOptions } from './flow.js'
 export { flowBeacon } from './flow.js'
 export type { InmetroOptions, InmetroVariant } from './inmetro.js'
 export { inmetro } from './inmetro.js'
-export type { JitterOptions } from './jitter.js'
-export { jitterEntropy } from './jitter.js'
+export type { JitterOptions, JitterStartupReport } from './jitter.js'
+export { jitterEntropy, jitterStartupTest } from './jitter.js'
 export type { LfdrOptions } from './lfdr.js'
 export { lfdr } from './lfdr.js'
 export type { MicrophoneOptions, SampleSource } from './microphone.js'
@@ -49,6 +58,21 @@ export type { SensorOptions, SensorSource } from './sensor.js'
 export { sensorEntropy, sensorReadingBytes } from './sensor.js'
 export type { SerialOptions, SerialPortLike } from './serial.js'
 export { serialEntropy } from './serial.js'
+export type {
+  OneRngMode,
+  OneRngOptions,
+  TrueRngMode,
+  TrueRngModeInfo,
+  TrueRngOptions,
+} from './serial-presets.js'
+export {
+  ONERNG_COMMANDS,
+  ONERNG_RAW_MIN_ENTROPY_PER_SAMPLE,
+  onerng,
+  TRUERNG_KNOCK_BAUD_RATES,
+  TRUERNG_MODES,
+  truerng,
+} from './serial-presets.js'
 export type { SolanaBeaconOptions } from './solana.js'
 export { solanaBeacon } from './solana.js'
 export type {

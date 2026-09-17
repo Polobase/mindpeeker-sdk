@@ -1,6 +1,7 @@
 import { EntropyError } from '../errors.js'
 import { base64ToBytes, concatBytes } from '../internal/bytes.js'
 import { fetchJson } from '../internal/http.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
 import { defineProvider } from '../internal/provider.js'
 import type { EntropyProvider, EntropySourceInfo } from '../types.js'
 
@@ -13,9 +14,8 @@ const INFO: EntropySourceInfo = Object.freeze({
 const MAX_PER_REQUEST = 256
 const DEFAULT_BASE_URL = 'https://qrng-qtech.vs-ix.net/api/get_string_get'
 
-export interface PadovaOptions {
+export interface PadovaOptions extends BaseUrlOptions {
   fetch?: typeof fetch
-  baseUrl?: string
 }
 
 interface PadovaResponse {
@@ -28,7 +28,8 @@ interface PadovaResponse {
  * base64 bytes. Academic service without an SLA.
  */
 export function padova(opts: PadovaOptions = {}): EntropyProvider {
-  const { baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl } = opts
+  const { fetch: fetchImpl } = opts
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
 
   return defineProvider({
     ...INFO,
@@ -36,11 +37,13 @@ export function padova(opts: PadovaOptions = {}): EntropyProvider {
       const chunks: Uint8Array[] = []
       for (let remaining = length; remaining > 0; ) {
         const n = Math.min(MAX_PER_REQUEST, remaining)
-        const res = await fetchJson<PadovaResponse>(`${baseUrl}?string_length=${n}`, {
-          provider: INFO.name,
-          signal: reqOpts?.signal,
-          fetchImpl,
-        })
+        const res = await withMirrors(bases, (base) =>
+          fetchJson<PadovaResponse>(`${base}?string_length=${n}`, {
+            provider: INFO.name,
+            signal: reqOpts?.signal,
+            fetchImpl,
+          }),
+        )
         if (typeof res?.string !== 'string') {
           throw new EntropyError('bad_response', 'missing string field', { provider: INFO.name })
         }

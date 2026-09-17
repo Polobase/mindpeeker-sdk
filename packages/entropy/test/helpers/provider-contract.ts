@@ -12,6 +12,12 @@ export interface ContractExpectations {
   lengths?: number[]
   /** Chunk size to request from stream() in the laziness/multi-chunk check. */
   streamChunkBytes?: number
+  /**
+   * I/O probe (e.g. the mock transport's call count) of the provider `make()`
+   * returned last. When given, the contract asserts that `stream()` and
+   * obtaining its iterator perform no I/O before the first `next()`.
+   */
+  ioCount?: () => number
 }
 
 /**
@@ -76,15 +82,23 @@ export function providerContract(
 
     test('stream is lazy and yields at least two chunks, stopping cleanly', async () => {
       const p = make()
-      const stream = p.stream({ chunkBytes })
+      const before = expected.ioCount?.()
+      const iterator = p.stream({ chunkBytes })[Symbol.asyncIterator]()
+      if (expected.ioCount) expect(expected.ioCount()).toBe(before as number)
       const chunks: Uint8Array[] = []
-      for await (const chunk of stream) {
-        expect(chunk).toBeInstanceOf(Uint8Array)
-        expect(chunk.length).toBeGreaterThan(0)
-        chunks.push(chunk)
-        if (chunks.length === 2) break
+      try {
+        while (chunks.length < 2) {
+          const { done, value } = await iterator.next()
+          if (done) break
+          expect(value).toBeInstanceOf(Uint8Array)
+          expect(value.length).toBeGreaterThan(0)
+          chunks.push(value)
+        }
+      } finally {
+        await iterator.return?.()
       }
       expect(chunks).toHaveLength(2)
+      if (expected.ioCount) expect(expected.ioCount()).toBeGreaterThan(before as number)
     })
   })
 }

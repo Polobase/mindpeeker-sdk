@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { tezosBeacon } from '../../src/providers/tezos.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -52,12 +53,16 @@ async function tezosMock(headLevel = 700) {
   let head = headLevel
   const mock = mockFetch((req) => {
     if (req.url.endsWith('/v1/head')) {
-      return jsonResponse({ hash: hashes.get(head), level: head })
+      return jsonResponse({
+        hash: hashes.get(head),
+        level: head,
+        timestamp: '2026-09-17T12:30:07Z',
+      })
     }
     const match = req.url.match(/\/v1\/blocks\/(\d+)$/)
     if (match) {
       const level = Number(match[1])
-      return jsonResponse({ hash: hashes.get(level), level })
+      return jsonResponse({ hash: hashes.get(level), level, timestamp: '2026-09-17T12:30:00Z' })
     }
     return new Response('not found', { status: 404 })
   })
@@ -108,5 +113,32 @@ describe('tezosBeacon', () => {
       .getBytes(8)
       .catch((e) => e)
     expect((err as { code?: string }).code).toBe('bad_response')
+  })
+
+  test('results carry level and timestamp per block; getRound fetches a level', async () => {
+    const mock = await tezosMock(700)
+    const p = tezosBeacon({ fetch: mock.fetch })
+    const { sources } = await p.getBytes(40)
+    expect(sources[0]?.rounds).toEqual([
+      { round: 700, timestamp: Date.parse('2026-09-17T12:30:07Z') },
+      { round: 699, timestamp: Date.parse('2026-09-17T12:30:00Z') },
+    ])
+    const result = await p.getRound(695)
+    const expected = new Uint8Array(32)
+    for (let i = 0; i < 32; i++) expected[i] = (695 + i) & 0xff
+    expect(result.bytes).toEqual(expected)
+    expect(result.round.round).toBe(695)
+  })
+
+  test('a block answered for the wrong level is bad_response', async () => {
+    const hash = await blockHashFor(700)
+    const { fetch } = mockFetch(() => jsonResponse({ hash, level: 700 }))
+    await rejectedEntropyError(tezosBeacon({ fetch }).getBytes(64), 'bad_response')
+    await rejectedEntropyError(tezosBeacon({ fetch }).getRound(12), 'bad_response')
+  })
+
+  test('validates options at construction', () => {
+    thrownEntropyError(() => tezosBeacon({ baseUrls: [] }), 'invalid_request')
+    thrownEntropyError(() => tezosBeacon({ pollIntervalMs: 0 }), 'invalid_request')
   })
 })

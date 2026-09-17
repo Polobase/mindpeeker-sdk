@@ -130,4 +130,204 @@ describe('sampledProvider', () => {
     const { bytes } = await p.getBytes(32)
     expect(bytes.length).toBe(32)
   })
+
+  test('a source that recovers after one stuck chunk is retested, not fatal (default)', async () => {
+    let state = 0x13579bdf
+    const spec = {
+      name: 'glitchy',
+      kind: 'trng',
+      privacy: 'private',
+      defaultMinEntropyPerSample: 8,
+      defaultSafetyFactor: 2,
+      async *open() {
+        let n = 0
+        while (true) {
+          if (n++ === 20) yield new Uint8Array(16).fill(1) // one RCT alarm
+          const chunk = new Uint8Array(64)
+          for (let i = 0; i < 64; i++) {
+            state ^= state << 13
+            state ^= state >>> 17
+            state ^= state << 5
+            state >>>= 0
+            chunk[i] = state & 0xff
+          }
+          yield chunk
+        }
+      },
+    } as const
+    expect((await sampledProvider(spec).getBytes(2048)).bytes).toHaveLength(2048)
+    const err = (await sampledProvider(spec, { onHealthFailure: 'throw' })
+      .getBytes(2048)
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('health_test')
+  })
+})
+
+describe('sampledProvider: option validation at construction', () => {
+  const spec = () => scriptedSpec({ opens: 0, closes: 0 })
+
+  function rejects(opts: Record<string, unknown>): void {
+    let err: unknown
+    try {
+      sampledProvider(spec(), opts)
+    } catch (e) {
+      err = e
+    }
+    expect(err).toBeInstanceOf(EntropyError)
+    expect((err as EntropyError).code).toBe('invalid_request')
+  }
+
+  test('safetyFactor must be finite and >= 1 (0 used to emit constant SHA-256(""))', () => {
+    for (const safetyFactor of [0, -1, 0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      rejects({ safetyFactor })
+    }
+    expect(() => sampledProvider(spec(), { safetyFactor: 1 })).not.toThrow()
+  })
+
+  test('minEntropyPerSample must be finite with 0 < H <= 8', () => {
+    for (const minEntropyPerSample of [0, -1, 8.01, 16, Number.NaN, Number.POSITIVE_INFINITY]) {
+      rejects({ minEntropyPerSample })
+    }
+    expect(() => sampledProvider(spec(), { minEntropyPerSample: 8 })).not.toThrow()
+  })
+
+  test('conditioning, onHealthFailure and maxHealthFailures are validated', () => {
+    rejects({ conditioning: 'whitened' })
+    rejects({ onHealthFailure: 'ignore' })
+    rejects({ maxHealthFailures: 0 })
+    rejects({ maxHealthFailures: 2.5 })
+  })
+
+  test('the former constant-output configuration now fails loudly', async () => {
+    // before: getBytes(32) resolved with e3b0c442…b855 (SHA-256 of nothing) twice in a row
+    let err: unknown
+    try {
+      await sampledProvider(spec(), { safetyFactor: 0 }).getBytes(32)
+    } catch (e) {
+      err = e
+    }
+    expect((err as EntropyError).code).toBe('invalid_request')
+  })
+})
+
+describe('sampledProvider: health-test H never looser than the credit', () => {
+  /** One bit of entropy per byte: every byte is 0 or 1. */
+  function oneBitSpec() {
+    let state = 0x2468ace1
+    return {
+      name: 'one-bit',
+      kind: 'trng',
+      privacy: 'private',
+      defaultMinEntropyPerSample: 0.25,
+      defaultHealthMinEntropyPerSample: 1,
+      defaultSafetyFactor: 1,
+      async *open() {
+        while (true) {
+          const chunk = new Uint8Array(256)
+          for (let i = 0; i < 256; i++) {
+            state ^= state << 13
+            state ^= state >>> 17
+            state ^= state << 5
+            state >>>= 0
+            chunk[i] = state & 1
+          }
+          yield chunk
+        }
+      },
+    } as const
+  }
+
+  test('defaults: credited 0.25, tested at the stricter 1 b/B — a 1-bit source passes', async () => {
+    expect((await sampledProvider(oneBitSpec()).getBytes(32)).bytes).toHaveLength(32)
+  })
+
+  test('crediting 4 b/B raises the health H to 4, so the 1-bit source now fails', async () => {
+    const err = (await sampledProvider(oneBitSpec(), { minEntropyPerSample: 4 })
+      .getBytes(32)
+      .catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('health_test')
+  })
+})
+
+describe('sampledProvider.stream error taxonomy', () => {
+  test('timeoutMs bounds each chunk and surfaces as timeout', async () => {
+    const spy = { opens: 0, closes: 0 }
+    const p = sampledProvider(scriptedSpec(spy, { hang: true }))
+    const err = (await p
+      .stream({ timeoutMs: 40 })
+      [Symbol.asyncIterator]()
+      .next()
+      .catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('timeout')
+    expect(spy.closes).toBe(1) // the session was aborted and released
+  })
+
+  test('a caller abort surfaces as EntropyError aborted, not a DOMException', async () => {
+    const spy = { opens: 0, closes: 0 }
+    const controller = new AbortController()
+    const p = sampledProvider(scriptedSpec(spy, { hang: true }))
+    const pending = p
+      .stream({ signal: controller.signal, chunkBytes: 16 })
+      [Symbol.asyncIterator]()
+      .next()
+    setTimeout(() => controller.abort(), 10)
+    const err = (await pending.catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('aborted')
+  })
+
+  test('a foreign source failure mid-stream becomes network with cause', async () => {
+    const eio = Object.assign(new Error('EIO'), { code: 'EIO' })
+    const spec = {
+      ...scriptedSpec({ opens: 0, closes: 0 }),
+      name: 'flaky',
+      async *open() {
+        yield new Uint8Array(2048).map((_, i) => (i * 131 + 7) & 0xff)
+        throw eio
+      },
+    }
+    const err = (await (async () => {
+      try {
+        for await (const _chunk of sampledProvider(spec, { conditioning: 'raw' }).stream()) {
+          /* drain */
+        }
+      } catch (e) {
+        return e
+      }
+    })()) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('network')
+    expect(err.cause).toBe(eio)
+  })
+
+  test('health failures propagate through stream() as health_test', async () => {
+    const spec = {
+      name: 'stuck',
+      kind: 'trng',
+      privacy: 'private',
+      defaultMinEntropyPerSample: 8,
+      defaultSafetyFactor: 2,
+      async *open() {
+        while (true) yield new Uint8Array(64).fill(9)
+      },
+    } as const
+    const err = (await sampledProvider(spec)
+      .stream()
+      [Symbol.asyncIterator]()
+      .next()
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('health_test')
+  })
+
+  test('chunkBytes 0 is rejected instead of yielding empty chunks forever', async () => {
+    const p = sampledProvider(scriptedSpec({ opens: 0, closes: 0 }))
+    const err = (await p
+      .stream({ chunkBytes: 0 })
+      [Symbol.asyncIterator]()
+      .next()
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('invalid_request')
+  })
 })

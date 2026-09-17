@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { MinIntervalGate } from '../../src/internal/rate-limit.js'
+import { MinIntervalGate, sleep } from '../../src/internal/rate-limit.js'
 
 describe('MinIntervalGate', () => {
   test('first wait resolves immediately', async () => {
@@ -65,5 +65,49 @@ describe('MinIntervalGate', () => {
     await gate.wait()
     const err = await gate.wait(AbortSignal.abort()).catch((e) => e)
     expect((err as Error).name).toBe('AbortError')
+  })
+
+  test('an aborted waiter gives its slot back to the next caller', async () => {
+    const gate = new MinIntervalGate(200)
+    await gate.wait()
+    const controller = new AbortController()
+    const aborted = gate.wait(controller.signal)
+    controller.abort()
+    await aborted.catch(() => {})
+    const started = Date.now()
+    await gate.wait()
+    // the next caller takes the released slot (~200 ms), not the one after it (~400 ms)
+    expect(Date.now() - started).toBeLessThan(300)
+  })
+
+  test('an aborted waiter keeps its slot when someone already queued behind it', async () => {
+    const gate = new MinIntervalGate(60)
+    await gate.wait()
+    const controller = new AbortController()
+    const first = gate.wait(controller.signal)
+    const second = gate.wait()
+    controller.abort()
+    await first.catch(() => {})
+    const started = Date.now()
+    await second
+    // second reserved slot 2 before the abort and still waits for it
+    expect(Date.now() - started).toBeGreaterThanOrEqual(90)
+  })
+})
+
+describe('sleep', () => {
+  test('rejects immediately for a pre-aborted signal', async () => {
+    const started = Date.now()
+    const err = await sleep(5000, AbortSignal.abort()).catch((e) => e)
+    expect((err as Error).name).toBe('AbortError')
+    expect(Date.now() - started).toBeLessThan(50)
+  })
+
+  test('rejects when the signal aborts during the delay and resolves otherwise', async () => {
+    const controller = new AbortController()
+    const pending = sleep(5000, controller.signal)
+    controller.abort(new Error('stop'))
+    expect(((await pending.catch((e) => e)) as Error).message).toBe('stop')
+    await sleep(1, new AbortController().signal)
   })
 })

@@ -11,8 +11,9 @@ providerContract(
 )
 
 describe('xorMix', () => {
-  test('requires at least one provider', () => {
-    expect(() => xorMix([])).toThrow(TypeError)
+  test('requires at least one provider (invalid_request)', () => {
+    expect(() => xorMix([])).toThrow(EntropyError)
+    expect(() => xorMix([{ name: 'not-a-provider' } as never])).toThrow(EntropyError)
   })
 
   test('xors all member outputs and concatenates attribution', async () => {
@@ -61,6 +62,29 @@ describe('xorMix', () => {
     expect(xorMix([priv, pub]).kind).toBe('mixed')
     expect(xorMix([priv, priv]).kind).toBe('csprng')
     expect(xorMix([priv, pub]).name).toBe('xor(p,q)')
+  })
+
+  test('byte-identical member results fail with bad_response (would XOR to zeros)', async () => {
+    const a = stub({ name: 'mirror-1', byte: 0x5a })
+    const b = stub({ name: 'mirror-2', byte: 0x5a })
+    const c = stub({ name: 'private', byte: 0x11 })
+    const err = (await xorMix([c.provider, a.provider, b.provider])
+      .getBytes(32)
+      .catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('bad_response')
+    expect(err.message).toContain('mirror-1')
+    expect(err.message).toContain('mirror-2')
+  })
+
+  test('the identity check skips requests under 8 bytes (collisions are expected there)', async () => {
+    const a = stub({ name: 'a', byte: 7 })
+    const b = stub({ name: 'b', byte: 7 })
+    expect((await xorMix([a.provider, b.provider]).getBytes(7)).bytes).toEqual(new Uint8Array(7))
+    const err = (await xorMix([a.provider, b.provider])
+      .getBytes(8)
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('bad_response')
   })
 
   test('runs members in parallel, not sequentially', async () => {

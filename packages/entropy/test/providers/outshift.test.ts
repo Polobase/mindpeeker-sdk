@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { EntropyError } from '../../src/errors.js'
 import { outshift } from '../../src/providers/outshift.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -32,7 +33,7 @@ providerContract('outshift', () => outshift({ apiKey: 'k', fetch: outshiftMock()
 
 describe('outshift', () => {
   test('requires an apiKey', () => {
-    expect(() => outshift({ apiKey: '' })).toThrow(TypeError)
+    thrownEntropyError(() => outshift({ apiKey: '' }), 'invalid_request')
   })
 
   test('is named outshift', () => {
@@ -81,5 +82,14 @@ describe('outshift', () => {
       .getBytes(2)
       .catch((e) => e)) as EntropyError
     expect(err.code).toBe('bad_response')
+  })
+
+  test('decimals must be plain integers (no parseInt leniency)', async () => {
+    for (const decimal of ['12abc', ' 12', '1.5', '-1', '']) {
+      const { fetch } = mockFetch(() =>
+        jsonResponse({ random_numbers: [{ decimal }, { decimal: '1' }] }),
+      )
+      await rejectedEntropyError(outshift({ apiKey: 'k', fetch }).getBytes(2), 'bad_response')
+    }
   })
 })

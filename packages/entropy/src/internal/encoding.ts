@@ -47,7 +47,11 @@ export function base32Decode(input: string): Uint8Array {
   return new Uint8Array(out)
 }
 
-/** Read an unsigned LEB128 varint. Returns [value, nextOffset]. */
+/**
+ * Read an unsigned LEB128 varint. Returns [value, nextOffset]. Throws
+ * `TypeError` when truncated or when the value exceeds 2⁵³ − 1 (it could not
+ * be represented exactly).
+ */
 export function readVarint(bytes: Uint8Array, offset: number): [number, number] {
   let value = 0
   let shift = 0
@@ -57,6 +61,7 @@ export function readVarint(bytes: Uint8Array, offset: number): [number, number] 
     const byte = bytes[position] as number
     position++
     value += (byte & 0x7f) * 2 ** shift
+    if (value > Number.MAX_SAFE_INTEGER) throw new TypeError('varint too large')
     if ((byte & 0x80) === 0) break
     shift += 7
     if (shift > 49) throw new TypeError('varint too large')
@@ -64,24 +69,44 @@ export function readVarint(bytes: Uint8Array, offset: number): [number, number] 
   return [value, position]
 }
 
+/** Digest sizes (bytes) of common multihash function codes. */
+const MULTIHASH_DIGEST_BYTES: Readonly<Record<number, number>> = Object.freeze({
+  18: 32, // sha2-256
+  19: 64, // sha2-512
+  20: 64, // sha3-512
+  21: 48, // sha3-384
+  22: 32, // sha3-256
+  23: 28, // sha3-224
+  27: 32, // keccak-256
+})
+
 /**
- * Extract the multihash digest bytes from a base32 CIDv1 string (e.g. a CURBy
- * twine block CID). The digest of the block's content hash is CURBy's defined
- * per-pulse randomness.
+ * Decode the multihash of a base32 CIDv1 string (e.g. a CURBy twine block
+ * CID): its hash function `code` (0x14 = sha3-512 for the CURBy-RNG chain) and
+ * the digest bytes. Throws `TypeError` when malformed, including a digest
+ * whose length contradicts a known hash function.
  */
-export function cidDigest(cid: string): Uint8Array {
+export function cidMultihash(cid: string): { code: number; digest: Uint8Array } {
   if (!cid.startsWith('b')) {
     throw new TypeError(`expected a base32 CIDv1 (multibase prefix 'b'), got '${cid.slice(0, 4)}…'`)
   }
   const bytes = base32Decode(cid.slice(1))
-  let offset = 0
-  let version: number
-  ;[version, offset] = readVarint(bytes, offset)
+  const [version, afterVersion] = readVarint(bytes, 0)
   if (version !== 1) throw new TypeError(`unsupported CID version ${version}`)
-  ;[, offset] = readVarint(bytes, offset) // content codec — irrelevant here
-  ;[, offset] = readVarint(bytes, offset) // multihash function code — irrelevant here
-  let digestLength: number
-  ;[digestLength, offset] = readVarint(bytes, offset)
+  const [, afterCodec] = readVarint(bytes, afterVersion) // content codec — irrelevant here
+  const [code, afterCode] = readVarint(bytes, afterCodec)
+  const [digestLength, offset] = readVarint(bytes, afterCode)
   if (offset + digestLength > bytes.length) throw new TypeError('truncated multihash digest')
-  return bytes.slice(offset, offset + digestLength)
+  const known = MULTIHASH_DIGEST_BYTES[code]
+  if (known !== undefined && known !== digestLength) {
+    throw new TypeError(
+      `multihash 0x${code.toString(16)} has ${known}-byte digests, CID carries ${digestLength}`,
+    )
+  }
+  return { code, digest: bytes.slice(offset, offset + digestLength) }
+}
+
+/** The multihash digest bytes of a base32 CIDv1 string (see `cidMultihash`). */
+export function cidDigest(cid: string): Uint8Array {
+  return cidMultihash(cid).digest
 }

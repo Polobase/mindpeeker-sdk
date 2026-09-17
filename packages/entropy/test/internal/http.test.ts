@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { EntropyError } from '../../src/errors.js'
-import { fetchJson, fetchText } from '../../src/internal/http.js'
+import {
+  fetchJson,
+  fetchText,
+  parseRetryAfter,
+  redactText,
+  redactUrl,
+} from '../../src/internal/http.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 
 const URL_ = 'https://api.example.com/random'
@@ -141,5 +147,113 @@ describe('fetchText', () => {
     }).catch((e) => e)
     expect(err).not.toBeInstanceOf(EntropyError)
     expect((err as Error).name).toBe('AbortError')
+  })
+})
+
+describe('body-read aborts', () => {
+  /** A 200 response whose body stream errors with the signal's reason once it aborts. */
+  function abortableBodyFetch(): typeof fetch {
+    return ((input: RequestInfo | URL, init?: RequestInit) => {
+      const signal = new Request(input, init).signal
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"partial":'))
+          signal.addEventListener('abort', () => controller.error(signal.reason))
+        },
+      })
+      return Promise.resolve(new Response(body, { status: 200 }))
+    }) as typeof fetch
+  }
+
+  test('an abort during the JSON body read passes through instead of becoming bad_response', async () => {
+    for (const read of [fetchJson, fetchText]) {
+      const controller = new AbortController()
+      const pending = read(URL_, {
+        provider: 'test',
+        fetchImpl: abortableBodyFetch(),
+        signal: controller.signal,
+      })
+      setTimeout(() => controller.abort(), 10)
+      const err = await pending.catch((e) => e)
+      expect(err).not.toBeInstanceOf(EntropyError)
+      expect((err as Error).name).toBe('AbortError')
+    }
+  })
+
+  test('a timeout during the body read passes through as TimeoutError', async () => {
+    const err = await fetchJson(URL_, {
+      provider: 'test',
+      fetchImpl: abortableBodyFetch(),
+      signal: AbortSignal.timeout(10),
+    }).catch((e) => e)
+    expect(err).not.toBeInstanceOf(EntropyError)
+    expect((err as Error).name).toBe('TimeoutError')
+  })
+})
+
+describe('redaction', () => {
+  test('redactUrl drops the query string and masks UUID path segments and secrets', () => {
+    expect(redactUrl('https://api.super-rand.io/v1/?key=SECRET')).toBe(
+      'https://api.super-rand.io/v1/?…',
+    )
+    expect(
+      redactUrl('https://qrng.qbck.io/6b1e65b9-4186-45c2-8981-b77a9842c4f0/qbck/block/hex?size=4'),
+    ).toBe('https://qrng.qbck.io/***/qbck/block/hex?…')
+    expect(redactUrl('https://proxy.example/tok-abcdef/x', ['tok-abcdef'])).toBe(
+      'https://proxy.example/***/x',
+    )
+    expect(redactUrl('not a url?key=1', ['nothing'])).toBe('not a url?…')
+    expect(redactUrl('https://api.drand.sh/v2/beacons/quicknet/rounds/5')).toBe(
+      'https://api.drand.sh/v2/beacons/quicknet/rounds/5',
+    )
+  })
+
+  test('redactText masks raw and URI-encoded secrets of 4+ characters only', () => {
+    expect(redactText('key a+b/c= and a%2Bb%2Fc%3D', ['a+b/c='])).toBe('key *** and ***')
+    expect(redactText('k is short', ['k'])).toBe('k is short')
+  })
+
+  test('HTTP error bodies echoing a secret are masked in the message', async () => {
+    const { fetch } = mockFetch(() => new Response('bad key hunter22', { status: 401 }))
+    const err = (await fetchJson(URL_, {
+      provider: 'test',
+      fetchImpl: fetch,
+      secrets: ['hunter22'],
+    }).catch((e) => e)) as EntropyError
+    expect(err.code).toBe('auth')
+    expect(err.message).toBe('HTTP 401: bad key ***')
+  })
+})
+
+describe('parseRetryAfter', () => {
+  const now = Date.UTC(2026, 9, 21, 7, 0, 0)
+
+  test('delta-seconds, including decimals', () => {
+    expect(parseRetryAfter('120', now)).toBe(120_000)
+    expect(parseRetryAfter(' 2.5 ', now)).toBe(2500)
+    expect(parseRetryAfter('0', now)).toBe(0)
+  })
+
+  test('HTTP-date (IMF-fixdate), never negative', () => {
+    expect(parseRetryAfter('Wed, 21 Oct 2026 07:28:00 GMT', now)).toBe(28 * 60_000)
+    expect(parseRetryAfter('Wed, 21 Oct 2026 06:00:00 GMT', now)).toBe(0)
+  })
+
+  test('absent, negative or garbage values are undefined', () => {
+    for (const value of [null, '-3', '', 'soon', '1e3']) {
+      expect(parseRetryAfter(value, now)).toBeUndefined()
+    }
+  })
+
+  test('a 429 with an HTTP-date sets retryAfterMs', async () => {
+    const date = new Date(Date.now() + 60_000).toUTCString()
+    const { fetch } = mockFetch(
+      () => new Response('slow', { status: 429, headers: { 'retry-after': date } }),
+    )
+    const err = (await fetchJson(URL_, { provider: 'test', fetchImpl: fetch }).catch(
+      (e) => e,
+    )) as EntropyError
+    expect(err.retryAfterMs).toBeGreaterThan(55_000)
+    expect(err.retryAfterMs).toBeLessThanOrEqual(60_000)
   })
 })

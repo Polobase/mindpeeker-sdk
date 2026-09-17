@@ -1,5 +1,6 @@
 import { concatBytes } from '../internal/bytes.js'
 import { fetchJson } from '../internal/http.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
 import { defineProvider } from '../internal/provider.js'
 import { byteArrayFrom } from '../internal/validate.js'
 import type { EntropyProvider, EntropySourceInfo } from '../types.js'
@@ -13,9 +14,8 @@ const INFO: EntropySourceInfo = Object.freeze({
 const MAX_PER_REQUEST = 1000
 const DEFAULT_BASE_URL = 'https://qrandom.io/api/random/ints'
 
-export interface QrandomIoOptions {
+export interface QrandomIoOptions extends BaseUrlOptions {
   fetch?: typeof fetch
-  baseUrl?: string
 }
 
 interface QrandomResponse {
@@ -25,10 +25,11 @@ interface QrandomResponse {
 /**
  * qrandom.io — free, keyless QRNG backed by ID Quantique Quantis hardware.
  * Responses are Falcon-512-signed by the service (signature not verified
- * here in v1). Anonymous operator: fine in a mix, not as a trust anchor.
+ * here). Anonymous operator: fine in a mix, not as a trust anchor.
  */
 export function qrandomIo(opts: QrandomIoOptions = {}): EntropyProvider {
-  const { baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl } = opts
+  const { fetch: fetchImpl } = opts
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
 
   return defineProvider({
     ...INFO,
@@ -37,11 +38,13 @@ export function qrandomIo(opts: QrandomIoOptions = {}): EntropyProvider {
       for (let remaining = length; remaining > 0; ) {
         const n = Math.min(MAX_PER_REQUEST, remaining)
         const query = new URLSearchParams({ n: String(n), min: '0', max: '255' })
-        const res = await fetchJson<QrandomResponse>(`${baseUrl}?${query}`, {
-          provider: INFO.name,
-          signal: reqOpts?.signal,
-          fetchImpl,
-        })
+        const res = await withMirrors(bases, (base) =>
+          fetchJson<QrandomResponse>(`${base}?${query}`, {
+            provider: INFO.name,
+            signal: reqOpts?.signal,
+            fetchImpl,
+          }),
+        )
         chunks.push(byteArrayFrom(res?.numbers, n, INFO.name))
         remaining -= n
       }

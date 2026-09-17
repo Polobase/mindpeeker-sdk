@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { EntropyError } from '../../src/errors.js'
 import { superRand } from '../../src/providers/superrand.js'
+import { superRandErrorCode } from '../../src/providers/superrand-ws.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { echoScript, MockWebSocket } from '../helpers/mock-websocket.js'
 import { providerContract } from '../helpers/provider-contract.js'
@@ -52,7 +54,7 @@ providerContract(
 
 describe('superRand REST', () => {
   test('requires an apiKey', () => {
-    expect(() => superRand({ apiKey: '' })).toThrow(TypeError)
+    thrownEntropyError(() => superRand({ apiKey: '' }), 'invalid_request')
   })
 
   test('POSTs an integer request with the key in the query string', async () => {
@@ -234,5 +236,136 @@ describe('superRand WebSocket stream', () => {
     } finally {
       stop()
     }
+  })
+
+  test('an abort while the socket is CONNECTING ends the pull at once and closes the socket', async () => {
+    MockWebSocket.reset() // sockets never open on their own
+    const controller = new AbortController()
+    const p = superRand({ apiKey: 'k', WebSocketCtor: MockWebSocket })
+    const iter = p.stream({ chunkBytes: 2, signal: controller.signal })[Symbol.asyncIterator]()
+    const pending = iter.next()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    controller.abort()
+    const started = Date.now()
+    await rejectedEntropyError(pending, 'aborted')
+    expect(Date.now() - started).toBeLessThan(500)
+    expect(MockWebSocket.latest().closed).toBe(true)
+  })
+
+  test('a connect that never completes times out and is retried, then fails as network', async () => {
+    MockWebSocket.reset()
+    const p = superRand({
+      apiKey: 'k',
+      WebSocketCtor: MockWebSocket,
+      connectTimeoutMs: 10,
+      reconnectBaseDelayMs: 1,
+    })
+    const iter = p.stream({ chunkBytes: 2 })[Symbol.asyncIterator]()
+    const err = await rejectedEntropyError(iter.next(), 'network')
+    expect((err.cause as { code?: string }).code).toBe('timeout')
+    expect(MockWebSocket.instances).toHaveLength(4)
+    expect(MockWebSocket.instances.every((socket) => socket.closed)).toBe(true)
+  })
+
+  test('an abort during reconnect backoff surfaces as EntropyError aborted', async () => {
+    MockWebSocket.reset()
+    const timer = setInterval(() => {
+      for (const socket of MockWebSocket.instances) if (!socket.closed) socket.fail()
+    }, 1)
+    try {
+      const controller = new AbortController()
+      const p = superRand({ apiKey: 'k', WebSocketCtor: MockWebSocket, reconnectBaseDelayMs: 5000 })
+      const pending = p.stream({ signal: controller.signal })[Symbol.asyncIterator]().next()
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      controller.abort()
+      await rejectedEntropyError(pending, 'aborted')
+    } finally {
+      clearInterval(timer)
+    }
+  })
+
+  test('no WebSocket implementation fails the first pull at once with invalid_request', async () => {
+    const g = globalThis as { WebSocket?: unknown }
+    const saved = g.WebSocket
+    let p: ReturnType<typeof superRand>
+    try {
+      g.WebSocket = undefined
+      p = superRand({ apiKey: 'k' })
+    } finally {
+      g.WebSocket = saved
+    }
+    const started = Date.now()
+    await rejectedEntropyError(p.stream()[Symbol.asyncIterator]().next(), 'invalid_request')
+    expect(Date.now() - started).toBeLessThan(200)
+  })
+
+  test('error frames map quota and key codes; they end the stream without reconnecting', async () => {
+    for (const [code, expected] of [
+      ['QUOTA_EXCEEDED', 'rate_limited'],
+      ['INVALID_API_KEY', 'auth'],
+      ['INVALID_COUNT_RANGE', 'bad_response'],
+    ] as const) {
+      MockWebSocket.reset((socket) => {
+        queueMicrotask(() => socket.message({ status: 'error', error: { code, message: 'no' } }))
+      })
+      MockWebSocket.autoOpen = true
+      const p = superRand({ apiKey: 'k', WebSocketCtor: MockWebSocket })
+      await rejectedEntropyError(p.stream()[Symbol.asyncIterator]().next(), expected)
+      expect(MockWebSocket.instances).toHaveLength(1)
+    }
+  })
+})
+
+describe('superRand error mapping and key redaction', () => {
+  test('superRandErrorCode', () => {
+    expect(superRandErrorCode('DAILY_QUOTA_EXCEEDED')).toBe('rate_limited')
+    expect(superRandErrorCode('RATE_LIMITED')).toBe('rate_limited')
+    expect(superRandErrorCode('INVALID_API_KEY')).toBe('auth')
+    expect(superRandErrorCode('UNAUTHORIZED')).toBe('auth')
+    expect(superRandErrorCode('INVALID_SCHEMA')).toBe('bad_response')
+    expect(superRandErrorCode(undefined)).toBe('bad_response')
+  })
+
+  test('REST error bodies map by SuperRand code', async () => {
+    const forbidden = mockFetch(
+      () =>
+        new Response(JSON.stringify({ status: 'error', error: { code: 'INVALID_API_KEY' } }), {
+          status: 403,
+        }),
+    )
+    await rejectedEntropyError(
+      superRand({ apiKey: 'k', fetch: forbidden.fetch }).getBytes(2),
+      'auth',
+    )
+    const quota = mockFetch(() =>
+      jsonResponse({ status: 'error', error: { code: 'QUOTA_EXCEEDED', message: 'daily' } }),
+    )
+    await rejectedEntropyError(
+      superRand({ apiKey: 'k', fetch: quota.fetch }).getBytes(2),
+      'rate_limited',
+    )
+  })
+
+  test('the query-string key never appears in network or parse error messages', async () => {
+    const key = 'SECRET-KEY-123'
+    const failing = (() => Promise.reject(new TypeError('fetch failed'))) as unknown as typeof fetch
+    const network = await rejectedEntropyError(
+      superRand({ apiKey: key, fetch: failing }).getBytes(4),
+      'network',
+    )
+    expect(network.message).not.toContain(key)
+    expect(network.message).toContain('https://api.super-rand.io/v1/?…')
+    const html = mockFetch(() => new Response('<html>cloudflare</html>', { status: 200 }))
+    const parse = await rejectedEntropyError(
+      superRand({ apiKey: key, fetch: html.fetch }).getBytes(4),
+      'bad_response',
+    )
+    expect(parse.message).not.toContain(key)
+    const echoed = mockFetch(() => new Response(`bad key ${key}`, { status: 500 }))
+    const status = await rejectedEntropyError(
+      superRand({ apiKey: key, fetch: echoed.fetch }).getBytes(4),
+      'network',
+    )
+    expect(status.message).not.toContain(key)
   })
 })

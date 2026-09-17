@@ -1,6 +1,8 @@
 import { EntropyError } from '../errors.js'
 import { concatBytes } from '../internal/bytes.js'
 import { fetchJson } from '../internal/http.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
+import { requireNonEmptyString } from '../internal/options.js'
 import { defineProvider } from '../internal/provider.js'
 import { byteArrayFrom } from '../internal/validate.js'
 import type { EntropyProvider, EntropySourceInfo } from '../types.js'
@@ -9,12 +11,10 @@ const INFO: EntropySourceInfo = Object.freeze({ name: 'anu', kind: 'qrng', priva
 const MAX_PER_REQUEST = 1024
 const DEFAULT_BASE_URL = 'https://api.quantumnumbers.anu.edu.au'
 
-export interface AnuOptions {
+export interface AnuOptions extends BaseUrlOptions {
   /** ANU Quantum Numbers API key (AWS Marketplace subscription). */
   apiKey: string
   fetch?: typeof fetch
-  /** Override for tests or a server-side proxy that hides the key. */
-  baseUrl?: string
 }
 
 interface AnuResponse {
@@ -25,10 +25,13 @@ interface AnuResponse {
 /**
  * ANU Quantum Numbers (quantum-vacuum fluctuations), keyed API.
  * https://quantumnumbers.anu.edu.au — up to 1024 numbers per request.
+ * `baseUrl` points it at a server-side proxy that hides the key. Throws
+ * `EntropyError('invalid_request')` at construction without an `apiKey`.
  */
 export function anu(opts: AnuOptions): EntropyProvider {
-  if (!opts?.apiKey) throw new TypeError('anu({ apiKey }) requires a non-empty apiKey')
-  const { apiKey, baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl } = opts
+  const apiKey = requireNonEmptyString(opts?.apiKey, 'anu({ apiKey })', INFO.name)
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
+  const { fetch: fetchImpl } = opts
 
   return defineProvider({
     ...INFO,
@@ -37,12 +40,15 @@ export function anu(opts: AnuOptions): EntropyProvider {
       for (let remaining = length; remaining > 0; ) {
         const n = Math.min(MAX_PER_REQUEST, remaining)
         const query = new URLSearchParams({ length: String(n), type: 'uint8' })
-        const res = await fetchJson<AnuResponse>(`${baseUrl}?${query}`, {
-          provider: INFO.name,
-          headers: { 'x-api-key': apiKey },
-          signal: reqOpts?.signal,
-          fetchImpl,
-        })
+        const res = await withMirrors(bases, (base) =>
+          fetchJson<AnuResponse>(`${base}?${query}`, {
+            provider: INFO.name,
+            headers: { 'x-api-key': apiKey },
+            signal: reqOpts?.signal,
+            fetchImpl,
+            secrets: [apiKey],
+          }),
+        )
         if (res?.success !== true) {
           throw new EntropyError('bad_response', 'ANU QRNG returned an unsuccessful response', {
             provider: INFO.name,

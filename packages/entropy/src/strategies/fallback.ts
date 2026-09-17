@@ -7,11 +7,12 @@ import {
   requireProviders,
   toEntropyError,
 } from '../internal/composite.js'
+import { MAX_TIMEOUT_MS, requireTimeoutMs } from '../internal/options.js'
 import { defineProvider } from '../internal/provider.js'
 import type { EntropyProvider } from '../types.js'
 
 export interface FallbackOptions {
-  /** Budget per member attempt before moving to the next. Default 10_000. */
+  /** Budget per member attempt before moving to the next: finite, 0 < ms ≤ 2³¹ − 1. Default 10_000. */
   attemptTimeoutMs?: number
 }
 
@@ -26,15 +27,19 @@ export function fallback(
 ): EntropyProvider {
   requireProviders(providers, 'fallback')
   const members = [...providers]
-  const attemptTimeoutMs = opts.attemptTimeoutMs ?? 10_000
   const name = compositeName('fallback', members)
+  const attemptTimeoutMs = requireTimeoutMs(
+    opts.attemptTimeoutMs ?? 10_000,
+    'attemptTimeoutMs',
+    name,
+  )
 
   return defineProvider({
     name,
     kind: commonKind(members),
     privacy: pessimisticPrivacy(members),
     // Leave room for every member to use its full attempt budget by default.
-    defaultTimeoutMs: attemptTimeoutMs * members.length + 1000,
+    defaultTimeoutMs: Math.min(attemptTimeoutMs * members.length + 1000, MAX_TIMEOUT_MS),
 
     async getBytes(length, reqOpts) {
       const errors: EntropyError[] = []

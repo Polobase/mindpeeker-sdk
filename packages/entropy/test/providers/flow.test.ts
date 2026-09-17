@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { flowBeacon } from '../../src/providers/flow.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -73,5 +74,36 @@ describe('flowBeacon', () => {
       .getBytes(8)
       .catch((e) => e)
     expect((err as { code?: string }).code).toBe('bad_response')
+  })
+
+  test('rejects UInt64 values that are negative, too large or not plain decimals', async () => {
+    for (const value of [
+      '-1',
+      '18446744073709551616',
+      '340282366920938463463374607431768211457',
+      '0x10',
+      '1e3',
+    ]) {
+      const cadence = `${JSON.stringify({ value, type: 'UInt64' })}\n`
+      const { fetch } = mockFetch(
+        () =>
+          new Response(JSON.stringify(btoa(cadence)), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      )
+      await rejectedEntropyError(flowBeacon({ fetch, retryDelayMs: 1 }).getBytes(8), 'bad_response')
+    }
+  })
+
+  test('accepts the UInt64 maximum', async () => {
+    const { fetch } = mockFetch(() => flowResponse(2n ** 64n - 1n))
+    const { bytes } = await flowBeacon({ fetch, retryDelayMs: 1 }).getBytes(8)
+    expect(bytes).toEqual(new Uint8Array(8).fill(255))
+  })
+
+  test('retryDelayMs must be > 0 and baseUrls non-empty', () => {
+    thrownEntropyError(() => flowBeacon({ retryDelayMs: 0 }), 'invalid_request')
+    thrownEntropyError(() => flowBeacon({ baseUrls: [] }), 'invalid_request')
   })
 })

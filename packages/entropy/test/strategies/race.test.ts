@@ -11,8 +11,9 @@ providerContract(
 )
 
 describe('race', () => {
-  test('requires at least one provider', () => {
-    expect(() => race([])).toThrow(TypeError)
+  test('requires at least one provider (invalid_request)', () => {
+    expect(() => race([])).toThrow(EntropyError)
+    expect(() => race([{ name: 'not-a-provider' } as never])).toThrow(EntropyError)
   })
 
   test('fastest provider wins and losers are cancelled', async () => {

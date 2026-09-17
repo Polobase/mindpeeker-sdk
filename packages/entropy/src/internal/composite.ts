@@ -1,9 +1,21 @@
 import { EntropyError } from '../errors.js'
 import type { EntropyKind, EntropyPrivacy, EntropyProvider } from '../types.js'
 
+/** Strategies need at least one member; throws `invalid_request` otherwise. */
 export function requireProviders(providers: readonly EntropyProvider[], strategy: string): void {
-  if (providers.length === 0) {
-    throw new TypeError(`${strategy} requires at least one provider`)
+  if (!Array.isArray(providers) || providers.length === 0) {
+    throw new EntropyError('invalid_request', `${strategy} requires at least one provider`, {
+      provider: strategy,
+    })
+  }
+  for (const [i, member] of providers.entries()) {
+    if (typeof member?.getBytes !== 'function' || typeof member.stream !== 'function') {
+      throw new EntropyError(
+        'invalid_request',
+        `${strategy}: member ${i} is not an EntropyProvider`,
+        { provider: strategy },
+      )
+    }
   }
 }
 
@@ -29,9 +41,11 @@ export function anyPrivatePrivacy(providers: readonly EntropyProvider[]): Entrop
   return providers.some((p) => p.privacy === 'private') ? 'private' : 'public'
 }
 
+/** Pass an `EntropyError` through; wrap anything else as `network` with the original as `cause`. */
 export function toEntropyError(error: unknown, provider: string): EntropyError {
   if (error instanceof EntropyError) return error
-  return new EntropyError('network', `unexpected provider error: ${String(error)}`, {
+  const message = error instanceof Error ? error.message : String(error)
+  return new EntropyError('network', `unexpected provider error: ${message}`, {
     provider,
     cause: error,
   })

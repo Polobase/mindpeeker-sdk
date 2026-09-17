@@ -1,10 +1,12 @@
 import { EntropyError } from '../errors.js'
+import { attribution, beaconRound, defineBeacon, roundResult } from '../internal/beacon.js'
 import { concatBytes } from '../internal/bytes.js'
 import { base58Decode } from '../internal/encoding.js'
 import { fetchJson } from '../internal/http.js'
-import { defineProvider } from '../internal/provider.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
+import { requireTimeoutMs } from '../internal/options.js'
 import { beaconStream } from '../internal/stream.js'
-import type { EntropyProvider, EntropySourceInfo } from '../types.js'
+import type { BeaconProvider, BeaconRound, EntropySourceInfo } from '../types.js'
 
 const INFO: EntropySourceInfo = Object.freeze({
   name: 'tezos',
@@ -18,15 +20,22 @@ const DEFAULT_BASE_URL = 'https://api.tzkt.io'
 // ~8 s blocks.
 const DEFAULT_POLL_INTERVAL_MS = 10_000
 
-export interface TezosBeaconOptions {
+export interface TezosBeaconOptions extends BaseUrlOptions {
   fetch?: typeof fetch
-  baseUrl?: string
+  /** Stream poll cadence: finite, 0 < ms ≤ 2³¹ − 1. Default 10 000. */
   pollIntervalMs?: number
 }
 
 interface HeadResponse {
   hash?: unknown
   level?: unknown
+  timestamp?: unknown
+}
+
+interface Block {
+  level: number
+  bytes: Uint8Array
+  round: BeaconRound
 }
 
 /** base58check-decode a Tezos block hash and return its 32 payload bytes. */
@@ -62,38 +71,55 @@ async function decodeBlockHash(hash: string): Promise<Uint8Array> {
 /**
  * Tezos head block hashes as a PUBLIC crypto-beacon, read through the TzKT
  * indexer — note the extra trust in a third-party indexer on top of the usual
- * baker influence. Auditable public randomness only.
+ * baker influence. Auditable public randomness only. Results carry `{ round:
+ * level, timestamp }` per block; `getRound(level)` fetches a block by level
+ * and every historical block is checked to be the level requested.
  */
-export function tezosBeacon(opts: TezosBeaconOptions = {}): EntropyProvider {
-  const {
-    baseUrl = DEFAULT_BASE_URL,
-    pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
-    fetch: fetchImpl,
-  } = opts
+export function tezosBeacon(opts: TezosBeaconOptions = {}): BeaconProvider {
+  const { fetch: fetchImpl } = opts
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
+  const pollIntervalMs = requireTimeoutMs(
+    opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
+    'pollIntervalMs',
+    INFO.name,
+  )
 
-  async function fetchBlock(
-    path: string,
-    signal?: AbortSignal,
-  ): Promise<{ level: number; bytes: Uint8Array }> {
-    const res = await fetchJson<HeadResponse>(`${baseUrl}${path}`, {
-      provider: INFO.name,
-      signal,
-      fetchImpl,
+  function fetchBlock(which: 'head' | number, signal: AbortSignal): Promise<Block> {
+    const path = which === 'head' ? '/v1/head' : `/v1/blocks/${which}`
+    return withMirrors(bases, async (base) => {
+      const res = await fetchJson<HeadResponse>(`${base}${path}`, {
+        provider: INFO.name,
+        signal,
+        fetchImpl,
+      })
+      if (typeof res?.hash !== 'string' || !Number.isSafeInteger(res?.level)) {
+        throw new EntropyError('bad_response', 'missing block hash/level', { provider: INFO.name })
+      }
+      const level = res.level as number
+      if (which !== 'head' && level !== which) {
+        throw new EntropyError('bad_response', `requested level ${which}, got ${level}`, {
+          provider: INFO.name,
+        })
+      }
+      const timestamp = typeof res.timestamp === 'string' ? Date.parse(res.timestamp) : undefined
+      return {
+        level,
+        bytes: await decodeBlockHash(res.hash),
+        round: beaconRound(level, { timestamp }),
+      }
     })
-    if (typeof res?.hash !== 'string' || !Number.isInteger(res?.level)) {
-      throw new EntropyError('bad_response', 'missing block hash/level', { provider: INFO.name })
-    }
-    return { level: res.level as number, bytes: await decodeBlockHash(res.hash) }
   }
 
-  return defineProvider({
+  return defineBeacon({
     ...INFO,
     defaultChunkBytes: HASH_BYTES,
+    minRound: 0,
 
     async getBytes(length, reqOpts) {
+      const signal = reqOpts?.signal as AbortSignal
       const blocksNeeded = Math.ceil(length / HASH_BYTES)
-      const head = await fetchBlock('/v1/head', reqOpts?.signal)
-      const chunks = [head.bytes]
+      const head = await fetchBlock('head', signal)
+      const blocks = [head]
       for (let i = 1; i < blocksNeeded; i++) {
         const level = head.level - i
         if (level < 1) {
@@ -101,19 +127,31 @@ export function tezosBeacon(opts: TezosBeaconOptions = {}): EntropyProvider {
             provider: INFO.name,
           })
         }
-        chunks.push((await fetchBlock(`/v1/blocks/${level}`, reqOpts?.signal)).bytes)
+        blocks.push(await fetchBlock(level, signal))
       }
-      return { bytes: concatBytes(chunks).slice(0, length), sources: [INFO] }
+      return {
+        bytes: concatBytes(blocks.map((b) => b.bytes)).slice(0, length),
+        sources: [
+          attribution(
+            INFO,
+            blocks.map((b) => b.round),
+          ),
+        ],
+      }
+    },
+
+    async getRound(level, { signal }) {
+      const block = await fetchBlock(level, signal)
+      return roundResult(INFO, block.round, block.bytes)
     },
 
     stream(streamOpts = {}) {
       return beaconStream(
         async (signal) => {
-          const head = await fetchBlock('/v1/head', signal)
+          const head = await fetchBlock('head', signal)
           return { id: head.level, bytes: head.bytes }
         },
         pollIntervalMs,
-        HASH_BYTES,
         INFO.name,
         streamOpts,
       )

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { EntropyError } from '../../src/errors.js'
-import { randomOrg } from '../../src/providers/random-org.js'
+import { msUntilUtcMidnight, randomOrg } from '../../src/providers/random-org.js'
+import { thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -48,7 +49,7 @@ providerContract('randomOrg', () => randomOrg({ apiKey: 'k', fetch: randomOrgMoc
 
 describe('randomOrg', () => {
   test('requires an apiKey', () => {
-    expect(() => randomOrg({ apiKey: '' })).toThrow(TypeError)
+    thrownEntropyError(() => randomOrg({ apiKey: '' }), 'invalid_request')
   })
 
   test('is named random.org with kind trng', () => {
@@ -80,16 +81,26 @@ describe('randomOrg', () => {
     expect(Date.now() - start).toBeGreaterThanOrEqual(45)
   })
 
-  test('maps quota errors (402/403) to rate_limited', async () => {
+  test('maps quota errors (402/403) to rate_limited with retryAfterMs until 00:00 UTC', async () => {
     for (const code of [402, 403]) {
       const { fetch } = mockFetch(() =>
         jsonResponse({ jsonrpc: '2.0', error: { code, message: 'allowance exceeded' }, id: 1 }),
       )
+      const before = msUntilUtcMidnight()
       const err = (await randomOrg({ apiKey: 'k', fetch })
         .getBytes(4)
         .catch((e) => e)) as EntropyError
       expect(err.code).toBe('rate_limited')
+      expect(err.retryAfterMs).toBeGreaterThan(0)
+      expect(err.retryAfterMs).toBeLessThanOrEqual(before)
+      expect(err.retryAfterMs).toBeGreaterThan(before - 5000)
     }
+  })
+
+  test('msUntilUtcMidnight counts to the next UTC day boundary', () => {
+    expect(msUntilUtcMidnight(Date.UTC(2026, 8, 17, 0, 0, 0))).toBe(86_400_000)
+    expect(msUntilUtcMidnight(Date.UTC(2026, 8, 17, 23, 59, 59, 999))).toBe(1)
+    expect(msUntilUtcMidnight(Date.UTC(2026, 8, 17, 12, 0, 0))).toBe(43_200_000)
   })
 
   test('maps key errors (400/401) to auth', async () => {

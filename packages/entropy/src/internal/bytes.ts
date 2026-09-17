@@ -11,6 +11,13 @@ export function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   return out
 }
 
+/** Lowercase hex encoding. */
+export function bytesToHex(bytes: Uint8Array): string {
+  let out = ''
+  for (const byte of bytes) out += byte.toString(16).padStart(2, '0')
+  return out
+}
+
 export function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   let binary: string
   try {

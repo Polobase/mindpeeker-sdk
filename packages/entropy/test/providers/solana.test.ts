@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { solanaBeacon } from '../../src/providers/solana.js'
+import { thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -100,5 +101,31 @@ describe('solanaBeacon', () => {
       .getBytes(8)
       .catch((e) => e)
     expect((err as { code?: string }).code).toBe('bad_response')
+  })
+
+  test('results carry the slot of every blockhash used', async () => {
+    const mock = solanaMock(1234)
+    const { sources } = await solanaBeacon({ fetch: mock.fetch, pollIntervalMs: 1 }).getBytes(64)
+    expect(sources[0]?.rounds).toEqual([{ round: 1234 }, { round: 1235 }])
+  })
+
+  test('pollIntervalMs must be > 0 (0 busy-looped on repeated slots)', () => {
+    thrownEntropyError(() => solanaBeacon({ pollIntervalMs: 0 }), 'invalid_request')
+  })
+
+  test('accepts baseUrl, baseUrls and the deprecated url alias, but not url with baseUrl', async () => {
+    for (const opts of [
+      { baseUrl: 'https://rpc.example/' },
+      { baseUrls: ['https://rpc.example/'] },
+      { url: 'https://rpc.example/' },
+    ]) {
+      const mock = solanaMock(7)
+      await solanaBeacon({ fetch: mock.fetch, ...opts }).getBytes(8)
+      expect(mock.calls[0]?.url).toBe('https://rpc.example/')
+    }
+    thrownEntropyError(
+      () => solanaBeacon({ url: 'https://a.example/', baseUrl: 'https://b.example/' }),
+      'invalid_request',
+    )
   })
 })

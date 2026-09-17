@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test'
+import { EntropyError } from '../../src/errors.js'
 import { type SerialPortLike, serialEntropy } from '../../src/providers/serial.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
-/** Endless deterministic byte counter, as chunks of 64. */
-async function* countingBytes(): AsyncGenerator<Uint8Array> {
+/** Endless deterministic byte counter, as chunks of `size` (default 64). */
+async function* countingBytes(size = 64): AsyncGenerator<Uint8Array> {
   let counter = 0
   while (true) {
-    const chunk = new Uint8Array(64)
+    const chunk = new Uint8Array(size)
     for (let i = 0; i < chunk.length; i++) chunk[i] = counter++ & 0xff
     yield chunk
   }
@@ -66,17 +67,32 @@ providerContract('serialEntropy (injected source)', () => serialEntropy({ source
 })
 
 describe('serialEntropy', () => {
-  test('requires exactly one of port | source', () => {
-    expect(() => serialEntropy({} as never)).toThrow(TypeError)
+  test('requires exactly one of port | source (invalid_request)', () => {
+    expect(() => serialEntropy({} as never)).toThrow(EntropyError)
     expect(() => serialEntropy({ port: new MockSerialPort(), source: prngBytes() })).toThrow(
-      TypeError,
+      EntropyError,
     )
   })
 
   test('init requires a port', () => {
     expect(() => serialEntropy({ source: prngBytes(), init: new Uint8Array([1]) })).toThrow(
-      TypeError,
+      EntropyError,
     )
+  })
+
+  test('validates baudRate, warmupBytes, name and conditioning options', () => {
+    const bad: Record<string, unknown>[] = [
+      { baudRate: 0 },
+      { baudRate: 9600.5 },
+      { warmupBytes: -1 },
+      { name: '' },
+      { safetyFactor: 0 },
+      { minEntropyPerSample: Number.POSITIVE_INFINITY },
+      { maxHealthFailures: 0 },
+    ]
+    for (const opts of bad) {
+      expect(() => serialEntropy({ source: prngBytes(), ...opts })).toThrow(EntropyError)
+    }
   })
 
   test('defaults: name serial, kind trng, ESP32 baud rate', async () => {
@@ -124,17 +140,38 @@ describe('serialEntropy', () => {
   })
 
   test('an injected source survives multiple getBytes calls', async () => {
-    const p = serialEntropy({ source: countingBytes(), conditioning: 'raw', warmupBytes: 0 })
+    const p = serialEntropy({ source: countingBytes(60), conditioning: 'raw', warmupBytes: 0 })
     expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([0, 1]))
-    // the rest of the first 64-byte chunk is discarded; the next call
-    // continues with the following device chunk
-    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([64, 65]))
+    // each session health-tests 1024 samples before releasing any: 18 chunks
+    // of 60 (1080 bytes) are consumed, the unread rest is discarded, and the
+    // next session continues with the following device chunk
+    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([1080 & 0xff, 1081 & 0xff]))
   })
 
   test('warmup applies once for a persistent injected source', async () => {
-    const p = serialEntropy({ source: countingBytes(), conditioning: 'raw', warmupBytes: 64 })
-    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([64, 65]))
-    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([128, 129]))
+    const p = serialEntropy({ source: countingBytes(60), conditioning: 'raw', warmupBytes: 60 })
+    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([60, 61]))
+    expect((await p.getBytes(2)).bytes).toEqual(new Uint8Array([1140 & 0xff, 1141 & 0xff]))
+  })
+
+  test('a mid-stream device error surfaces as network with the original cause', async () => {
+    const eio = Object.assign(new Error('EIO: i/o error'), { code: 'EIO' })
+    async function* unplugged(): AsyncGenerator<Uint8Array> {
+      yield* (async function* () {
+        let n = 0
+        for await (const chunk of prngBytes()) {
+          yield chunk
+          if (++n === 4) break
+        }
+      })()
+      throw eio
+    }
+    const err = (await serialEntropy({ source: unplugged(), warmupBytes: 0 })
+      .getBytes(32)
+      .catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('network')
+    expect(err.cause).toBe(eio)
   })
 
   test('name option labels attribution for conditioned mode too', async () => {

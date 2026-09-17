@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { EntropyError } from '../../src/errors.js'
 import { qci } from '../../src/providers/qci.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -45,7 +46,7 @@ providerContract('qci', () => qci({ apiToken: 't', fetch: qciMock().fetch }), {
 
 describe('qci', () => {
   test('requires an apiToken', () => {
-    expect(() => qci({ apiToken: '' })).toThrow(TypeError)
+    thrownEntropyError(() => qci({ apiToken: '' }), 'invalid_request')
   })
 
   test('is named qci', () => {
@@ -107,5 +108,64 @@ describe('qci', () => {
       .getBytes(2)
       .catch((e) => e)) as EntropyError
     expect(err.code).toBe('bad_response')
+  })
+
+  test('one caller aborting the shared token exchange does not fail the other caller', async () => {
+    let tokenRequests = 0
+    let releaseToken: (() => void) | undefined
+    const { fetch } = mockFetch(async (req) => {
+      if (req.url.endsWith('/auth/v1/access-tokens')) {
+        tokenRequests++
+        await new Promise<void>((resolve) => {
+          releaseToken = resolve
+        })
+        return jsonResponse({ access_token: 'shared', expires_in: 3600 })
+      }
+      const body = JSON.parse(req.body ?? '{}') as QciDataRequest
+      return jsonResponse(Array.from({ length: body.n_samples }, () => 5))
+    })
+    const p = qci({ apiToken: 't', fetch })
+    const controller = new AbortController()
+    const a = p.getBytes(2, { signal: controller.signal })
+    const b = p.getBytes(2)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    controller.abort()
+    await rejectedEntropyError(a, 'aborted')
+    releaseToken?.()
+    const { bytes } = await b
+    expect(bytes).toEqual(new Uint8Array([5, 5]))
+    expect(tokenRequests).toBe(1)
+  })
+
+  test('the shared token exchange is cancelled once every caller has given up', async () => {
+    let exchangeSignal: AbortSignal | undefined
+    const fetchImpl = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+      exchangeSignal = request.signal
+      return new Promise((_resolve, reject) => {
+        request.signal.addEventListener('abort', () => reject(request.signal.reason))
+      })
+    }) as typeof fetch
+    const p = qci({ apiToken: 't', fetch: fetchImpl })
+    const one = new AbortController()
+    const two = new AbortController()
+    const a = p.getBytes(2, { signal: one.signal })
+    const b = p.getBytes(2, { signal: two.signal })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    one.abort()
+    await rejectedEntropyError(a, 'aborted')
+    expect(exchangeSignal?.aborted).toBe(false)
+    two.abort()
+    await rejectedEntropyError(b, 'aborted')
+    expect(exchangeSignal?.aborted).toBe(true)
+  })
+
+  test('the api token never appears in error messages', async () => {
+    const token = 'super-secret-refresh-token'
+    const { fetch } = mockFetch(
+      () => new Response(`invalid refresh_token ${token}`, { status: 500 }),
+    )
+    const err = await rejectedEntropyError(qci({ apiToken: token, fetch }).getBytes(2), 'network')
+    expect(err.message).not.toContain(token)
   })
 })

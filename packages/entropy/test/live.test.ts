@@ -114,6 +114,49 @@ describe('live: keyed providers', () => {
   )
 })
 
+describe('live: beacon rounds and verification', () => {
+  const liveRoundTest = (label: string, run: () => Promise<void>) =>
+    test.skipIf(!LIVE)(label, run, 60_000)
+
+  liveRoundTest(
+    'nqsn verify: true (output hash, certificate, RSA signature, linkage)',
+    async () => {
+      const { bytes, sources } = await nqsn({ verify: true }).getBytes(128, { timeoutMs: 45_000 })
+      expect(bytes).toHaveLength(128)
+      expect(sources[0]?.rounds).toHaveLength(2)
+    },
+  )
+
+  liveRoundTest("nist-beacon verify: 'hash' walks two linked pulses", async () => {
+    const { sources } = await nistBeacon({ verify: 'hash' }).getBytes(128, { timeoutMs: 45_000 })
+    const [newest, previous] = sources[0]?.rounds ?? []
+    expect(previous?.round).toBe((newest?.round ?? 0) - 1)
+  })
+
+  liveRoundTest("drand verify: 'structural' and getRound reproduce the same bytes", async () => {
+    const beacon = drand({ verify: 'structural' })
+    const { bytes, sources } = await beacon.getBytes(32, { timeoutMs: 20_000 })
+    const round = sources[0]?.rounds?.[0]
+    expect(round?.timestamp).toBeGreaterThan(0)
+    const replay = await beacon.getRound(round?.round ?? 1, { timeoutMs: 20_000 })
+    expect(replay.bytes).toEqual(bytes)
+  })
+
+  liveRoundTest('curby getRound reproduces a walked pulse', async () => {
+    const beacon = curby()
+    const { bytes, sources } = await beacon.getBytes(64, { timeoutMs: 20_000 })
+    const replay = await beacon.getRound(sources[0]?.rounds?.[0]?.round ?? 1, { timeoutMs: 20_000 })
+    expect(replay.bytes).toEqual(bytes)
+  })
+
+  liveRoundTest('randao getRound reproduces a completed epoch', async () => {
+    const beacon = randao()
+    const { bytes, sources } = await beacon.getBytes(32, { timeoutMs: 20_000 })
+    const replay = await beacon.getRound(sources[0]?.rounds?.[0]?.round ?? 0, { timeoutMs: 20_000 })
+    expect(replay.bytes).toEqual(bytes)
+  })
+})
+
 describe('live: composites', () => {
   liveTest('fallback(qrandom.io → crypto)', true, () => fallback([qrandomIo(), cryptoProvider()]))
   liveTest(

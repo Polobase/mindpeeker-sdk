@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { base32Decode, base58Decode, cidDigest, readVarint } from '../../src/internal/encoding.js'
+import {
+  base32Decode,
+  base58Decode,
+  cidDigest,
+  cidMultihash,
+  readVarint,
+} from '../../src/internal/encoding.js'
 
 const ascii = (s: string) => new Uint8Array([...s].map((c) => c.charCodeAt(0)))
 
@@ -53,6 +59,14 @@ describe('readVarint', () => {
   test('throws on truncated input', () => {
     expect(() => readVarint(new Uint8Array([0x80]), 0)).toThrow(TypeError)
   })
+
+  test('decodes 2^53 - 1 exactly and rejects anything larger', () => {
+    // 2^53 - 1 = 52 one-bits: seven 7-bit groups of ones, then 0b1111 (0x0f)
+    const max = new Uint8Array([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f])
+    expect(readVarint(max, 0)).toEqual([Number.MAX_SAFE_INTEGER, 8])
+    const twoTo53 = new Uint8Array([0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x10])
+    expect(() => readVarint(twoTo53, 0)).toThrow(TypeError)
+  })
 })
 
 describe('cidDigest', () => {
@@ -68,5 +82,21 @@ describe('cidDigest', () => {
   test('rejects CIDv0 and unknown multibase prefixes', () => {
     expect(() => cidDigest('QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG')).toThrow(TypeError)
     expect(() => cidDigest('zb2rhe5P4gXftAwvA4eXQ5HJwsER2owDyS9sKaQRRVQPn93bA')).toThrow(TypeError)
+  })
+})
+
+describe('cidMultihash', () => {
+  test('a live CURBy-RNG block CID is sha3-512 (0x14) with a 64-byte digest', () => {
+    const { code, digest } = cidMultihash(
+      'bafyriqgxj3m66b7kwqeerhhuvwpwjxdd7454awyzpcj7hofxuwwx3jkyz7xwitqmajwpoajapoufgfi4k2u4r3sdrw3k4b5is7yk34khfmsj6',
+    )
+    expect(code).toBe(0x14)
+    expect(digest.length).toBe(64)
+  })
+
+  test('the sha2-256 vector reports code 0x12', () => {
+    expect(cidMultihash('bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku').code).toBe(
+      0x12,
+    )
   })
 })

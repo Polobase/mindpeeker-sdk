@@ -12,10 +12,35 @@ import { defineProvider } from '../internal/provider.js'
 import type { EntropyProvider, EntropyResult } from '../types.js'
 
 /**
+ * Requests shorter than this skip the identical-results check: two
+ * independent uniform members collide on n bytes with probability 2⁻⁸ⁿ, so a
+ * 1-byte request would fail 1 time in 256. From 8 bytes on a false alarm has
+ * probability ≤ C(m,2)·2⁻⁶⁴.
+ */
+const IDENTITY_CHECK_MIN_BYTES = 8
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+function identicalPair(outputs: readonly Uint8Array[]): [number, number] | null {
+  for (let i = 0; i < outputs.length; i++) {
+    for (let j = i + 1; j < outputs.length; j++) {
+      if (sameBytes(outputs[i] as Uint8Array, outputs[j] as Uint8Array)) return [i, j]
+    }
+  }
+  return null
+}
+
+/**
  * Fetch from ALL members in parallel and XOR the results — the output is as
  * strong as the strongest independent input. Fails closed: any member failure
  * fails the whole call (compose inside `fallback` if you want degradation).
- * Attribution lists every member's sources.
+ * Two members returning byte-identical results (the same beacon or mirror fed
+ * in twice would XOR to zeros) fail with `bad_response`; the check applies to
+ * requests of 8 bytes or more. Attribution lists every member's sources.
  */
 export function xorMix(providers: EntropyProvider[]): EntropyProvider {
   requireProviders(providers, 'xor')
@@ -58,6 +83,17 @@ export function xorMix(providers: EntropyProvider[]): EntropyProvider {
       }
 
       const results = settled.map((s) => (s as PromiseFulfilledResult<EntropyResult>).value)
+      if (length >= IDENTITY_CHECK_MIN_BYTES) {
+        const twin = identicalPair(results.map((r) => r.bytes))
+        if (twin) {
+          const [i, j] = twin
+          throw new EntropyError(
+            'bad_response',
+            `members ${members[i]?.name} and ${members[j]?.name} returned byte-identical results — XOR would cancel them (same upstream fed in twice?)`,
+            { provider: name },
+          )
+        }
+      }
       let bytes: Uint8Array
       try {
         bytes = xorBytes(results.map((r) => r.bytes))

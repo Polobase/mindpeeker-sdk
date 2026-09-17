@@ -1,6 +1,8 @@
 import { EntropyError } from '../errors.js'
 import { base64ToBytes, concatBytes } from '../internal/bytes.js'
 import { fetchJson } from '../internal/http.js'
+import { type BaseUrlOptions, resolveBaseUrls, withMirrors } from '../internal/mirrors.js'
+import { requireTimeoutMs } from '../internal/options.js'
 import { defineProvider } from '../internal/provider.js'
 import { sleep } from '../internal/rate-limit.js'
 import type { EntropyProvider, EntropySourceInfo } from '../types.js'
@@ -11,11 +13,14 @@ const DEFAULT_BASE_URL = 'https://rest-mainnet.onflow.org'
 
 const CADENCE_SCRIPT = 'access(all) fun main(): UInt64 { return revertibleRandom<UInt64>() }'
 const SCRIPT_B64 = btoa(CADENCE_SCRIPT)
+const UINT64_MAX = 0xffff_ffff_ffff_ffffn
 
-export interface FlowBeaconOptions {
+export interface FlowBeaconOptions extends BaseUrlOptions {
   fetch?: typeof fetch
-  baseUrl?: string
-  /** Wait between retries when consecutive draws are identical. Default 1000. */
+  /**
+   * Wait between retries when consecutive draws are identical: finite,
+   * 0 < ms ≤ 2³¹ − 1. Default 1000.
+   */
   retryDelayMs?: number
 }
 
@@ -23,21 +28,27 @@ export interface FlowBeaconOptions {
  * Flow protocol randomness via keyless script execution (`revertibleRandom`)
  * on the public access node. PUBLIC crypto-beacon class: 8 bytes per call,
  * re-derived per execution from Flow's DKG random beacon. Rate limits apply
- * on the public node.
+ * on the public node. The UInt64 must be a decimal string in [0, 2⁶⁴ − 1]
+ * (`bad_response` otherwise). No round metadata: a script result names no
+ * block.
  */
 export function flowBeacon(opts: FlowBeaconOptions = {}): EntropyProvider {
-  const { baseUrl = DEFAULT_BASE_URL, retryDelayMs = 1000, fetch: fetchImpl } = opts
+  const { fetch: fetchImpl } = opts
+  const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
+  const retryDelayMs = requireTimeoutMs(opts.retryDelayMs ?? 1000, 'retryDelayMs', INFO.name)
 
   async function fetchDraw(signal?: AbortSignal): Promise<bigint> {
     // The response is DOUBLE-encoded: a JSON string containing base64 of a
     // JSON-Cadence value (plus a trailing newline).
-    const outer = await fetchJson<unknown>(`${baseUrl}/v1/scripts?block_height=sealed`, {
-      provider: INFO.name,
-      method: 'POST',
-      body: { script: SCRIPT_B64, arguments: [] },
-      signal,
-      fetchImpl,
-    })
+    const outer = await withMirrors(bases, (base) =>
+      fetchJson<unknown>(`${base}/v1/scripts?block_height=sealed`, {
+        provider: INFO.name,
+        method: 'POST',
+        body: { script: SCRIPT_B64, arguments: [] },
+        signal,
+        fetchImpl,
+      }),
+    )
     if (typeof outer !== 'string') {
       throw new EntropyError('bad_response', 'expected a base64 script result', {
         provider: INFO.name,
@@ -49,7 +60,10 @@ export function flowBeacon(opts: FlowBeaconOptions = {}): EntropyProvider {
       if (cadence.type !== 'UInt64' || typeof cadence.value !== 'string') {
         throw new Error(`unexpected Cadence value of type ${cadence.type}`)
       }
-      return BigInt(cadence.value)
+      if (!/^\d+$/.test(cadence.value)) throw new Error('UInt64 is not a decimal string')
+      const draw = BigInt(cadence.value)
+      if (draw > UINT64_MAX) throw new Error('UInt64 out of range')
+      return draw
     } catch (error) {
       if (error instanceof EntropyError) throw error
       throw new EntropyError('bad_response', 'malformed JSON-Cadence payload', {

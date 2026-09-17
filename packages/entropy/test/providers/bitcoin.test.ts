@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { bitcoinBeacon } from '../../src/providers/bitcoin.js'
+import { rejectedEntropyError, thrownEntropyError } from '../helpers/errors.js'
 import { jsonResponse, mockFetch } from '../helpers/mock-fetch.js'
 import { providerContract } from '../helpers/provider-contract.js'
 
@@ -75,5 +76,26 @@ describe('bitcoinBeacon', () => {
       .getBytes(8)
       .catch((e) => e)
     expect((err as { code?: string }).code).toBe('bad_response')
+  })
+
+  test('a block answered for another hash during the walk is bad_response', async () => {
+    const { fetch } = mockFetch((req) =>
+      req.url.endsWith('/blocks/tip/hash')
+        ? new Response(hashFor(0x50), { status: 200 })
+        : jsonResponse({ id: hashFor(0x33), previousblockhash: hashFor(0x32) }),
+    )
+    const err = await rejectedEntropyError(bitcoinBeacon({ fetch }).getBytes(64), 'bad_response')
+    expect(err.message).toContain('requested block')
+  })
+
+  test('empty baseUrls and invalid poll intervals are invalid_request', () => {
+    thrownEntropyError(() => bitcoinBeacon({ baseUrls: [] }), 'invalid_request')
+    thrownEntropyError(() => bitcoinBeacon({ pollIntervalMs: 2 ** 31 }), 'invalid_request')
+  })
+
+  test('accepts a single baseUrl', async () => {
+    const { fetch, calls } = mockFetch(() => new Response(hashFor(1), { status: 200 }))
+    await bitcoinBeacon({ fetch, baseUrl: 'https://proxy.example/api' }).getBytes(8)
+    expect(calls[0]?.url).toBe('https://proxy.example/api/blocks/tip/hash')
   })
 })

@@ -1,10 +1,12 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { EntropyError } from '../../src/errors.js'
+import { packBits, vonNeumann } from '../../src/internal/bits.js'
 import {
   cameraEntropy,
   type Frame,
   type FrameSource,
   lsbBits,
+  sameSampledPixels,
   signBits,
 } from '../../src/providers/camera.js'
 import { providerContract } from '../helpers/provider-contract.js'
@@ -19,6 +21,33 @@ function rgba(pixels: number[][]): Frame {
     data.set(px, i * 4)
   })
   return { width: pixels.length, height: 1, data, channels: 4 }
+}
+
+/** Deterministic xorshift32 gray frames. */
+function randomFrames(count: number, pixelCount: number, seed = 0xfeedface): Frame[] {
+  let state = seed
+  const frames: Frame[] = []
+  for (let f = 0; f < count; f++) {
+    const data = new Uint8Array(pixelCount)
+    for (let i = 0; i < pixelCount; i++) {
+      state ^= state << 13
+      state ^= state >>> 17
+      state ^= state << 5
+      state >>>= 0
+      data[i] = state & 0xff
+    }
+    frames.push({ width: pixelCount, height: 1, data, channels: 1 })
+  }
+  return frames
+}
+
+/** Replays frames (microtask-only — no timers, like an in-memory recording). */
+function replay(frames: readonly Frame[]): FrameSource {
+  return {
+    async *frames() {
+      yield* frames
+    },
+  }
 }
 
 /** Fresh PRNG frames per session — supports repeated getBytes calls. */
@@ -40,6 +69,17 @@ function prngFrames(pixelCount = 1024, delayMs = 0): FrameSource {
       }
     },
   }
+}
+
+function expectInvalid(fn: () => unknown): void {
+  let err: unknown
+  try {
+    fn()
+  } catch (e) {
+    err = e
+  }
+  expect(err).toBeInstanceOf(EntropyError)
+  expect((err as EntropyError).code).toBe('invalid_request')
 }
 
 describe('signBits', () => {
@@ -64,12 +104,42 @@ describe('signBits', () => {
     const cur = gray([1, 9, 9, 1, 9, 9])
     expect(signBits(prev, cur, 3)).toEqual([1, 1]) // pixels 0 and 3 only
   })
+
+  test('applies the stride per pixel on RGBA frames (step = stride × 4)', () => {
+    const prev = rgba([
+      [0, 10, 0, 0],
+      [0, 10, 0, 0],
+      [0, 10, 0, 0],
+    ])
+    const cur = rgba([
+      [0, 20, 0, 0],
+      [0, 0, 0, 0],
+      [0, 5, 0, 0],
+    ])
+    expect(signBits(prev, cur, 2)).toEqual([1, 0]) // pixels 0 and 2
+  })
+
+  test('a stride of 0, negative or fractional is rejected instead of hanging', () => {
+    for (const bad of [0, -1, 0.5]) expectInvalid(() => signBits(gray([1]), gray([2]), bad))
+  })
 })
 
 describe('lsbBits', () => {
   test('extracts pixel LSBs with stride', () => {
     expect(lsbBits(gray([2, 3, 5, 4]), 1)).toEqual([0, 1, 1, 0])
     expect(lsbBits(gray([2, 3, 5, 4]), 2)).toEqual([0, 1])
+  })
+
+  test('rejects an invalid stride', () => {
+    expectInvalid(() => lsbBits(gray([1, 2]), 0))
+  })
+})
+
+describe('sameSampledPixels', () => {
+  test('compares only the sampled grid', () => {
+    expect(sameSampledPixels(gray([1, 2, 3, 4]), gray([1, 2, 3, 4]), 1)).toBe(true)
+    expect(sameSampledPixels(gray([1, 2, 3, 4]), gray([1, 9, 3, 4]), 1)).toBe(false)
+    expect(sameSampledPixels(gray([1, 2, 3, 4]), gray([1, 9, 3, 9]), 2)).toBe(true)
   })
 })
 
@@ -80,9 +150,25 @@ providerContract(
 )
 
 describe('cameraEntropy', () => {
+  afterEach(() => {
+    delete (navigator as { mediaDevices?: unknown }).mediaDevices
+  })
+
   test('is named camera; raw mode is camera(raw)', () => {
     expect(cameraEntropy({ source: prngFrames() }).name).toBe('camera')
     expect(cameraEntropy({ source: prngFrames(), conditioning: 'raw' }).name).toBe('camera(raw)')
+  })
+
+  test('validates stride, warmupFrames and bits at construction', () => {
+    const source = prngFrames()
+    for (const stride of [0, -4, 1.5, Number.NaN]) {
+      expectInvalid(() => cameraEntropy({ source, stride }))
+    }
+    for (const warmupFrames of [-1, 2.5]) {
+      expectInvalid(() => cameraEntropy({ source, warmupFrames }))
+    }
+    expectInvalid(() => cameraEntropy({ source, bits: 'msb' as 'lsb' }))
+    expectInvalid(() => cameraEntropy({ source, safetyFactor: 0 }))
   })
 
   test('debias defaults to on (guards against exposure/flicker bit runs)', async () => {
@@ -104,46 +190,31 @@ describe('cameraEntropy', () => {
   })
 
   test('discards warmup frames, then diffs against the last warmup frame', async () => {
-    let level = 0
-    const source: FrameSource = {
-      async *frames() {
-        while (true) yield gray(new Array(8).fill(level++))
-      },
-    }
+    const frames = randomFrames(400, 256)
     const { bytes } = await cameraEntropy({
-      source,
+      source: replay(frames),
       stride: 1,
       warmupFrames: 2,
       conditioning: 'raw',
-      debias: false, // keep the raw monotone pattern visible
+      debias: false,
     }).getBytes(1)
-    // every post-warmup frame is brighter everywhere → all sign bits 1
-    expect(bytes).toEqual(new Uint8Array([0xff]))
+    // frames 0 and 1 are warmup; the first bits are sign(frame 2 − frame 1)
+    const [expected] = packBits(signBits(frames[1] as Frame, frames[2] as Frame, 1))
+    expect(bytes[0]).toBe(expected[0] as number)
   })
 
   test('debias runs von Neumann over the sign bits', async () => {
-    // pixel pattern alternates direction → bits 1,0,1,0… → VN pairs (1,0) → all 1s
-    const frames = [
-      gray([0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9]),
-      gray([5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]),
-    ]
-    const source: FrameSource = {
-      async *frames() {
-        yield* frames
-        while (true) yield frames[1] as Frame
-      },
-    }
+    const frames = randomFrames(600, 256, 0x1234)
     const { bytes } = await cameraEntropy({
-      source,
+      source: replay(frames),
       stride: 1,
       warmupFrames: 0,
       debias: true,
       conditioning: 'raw',
-    })
-      .getBytes(1, { timeoutMs: 500 })
-      .catch(() => ({ bytes: new Uint8Array([0]) }))
-    // 16 alternating bits → 8 von Neumann bits, all 1
-    expect(bytes).toEqual(new Uint8Array([0xff]))
+    }).getBytes(2)
+    const bits = vonNeumann(signBits(frames[0] as Frame, frames[1] as Frame, 1))
+    const [expected] = packBits(bits)
+    expect(Array.from(bytes)).toEqual(Array.from(expected.slice(0, 2)))
   })
 
   test('frozen frames starve the pipeline into timeout', async () => {
@@ -163,30 +234,86 @@ describe('cameraEntropy', () => {
     expect(err.code).toBe('timeout')
   })
 
-  test('lsb mode extracts without needing frame pairs', async () => {
+  test('a frozen in-memory replay (no timers at all) still times out instead of hanging', async () => {
+    const still = gray(new Array(64).fill(128))
     const source: FrameSource = {
       async *frames() {
-        while (true) yield gray([3, 2, 3, 2, 3, 2, 3, 2]) // LSBs 1,0,1,0…
+        while (true) yield still
       },
     }
+    const err = (await cameraEntropy({ source, warmupFrames: 0 })
+      .getBytes(4, { timeoutMs: 80 })
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('timeout')
+  })
+
+  test('lsb mode extracts without needing frame pairs', async () => {
+    const frames = randomFrames(40, 256, 0xabcd)
     const { bytes } = await cameraEntropy({
-      source,
+      source: replay(frames),
       stride: 1,
       warmupFrames: 0,
       bits: 'lsb',
       conditioning: 'raw',
       debias: false,
-      // constant LSB pattern would eventually trip health tests on longer
-      // reads; one byte stays under the cutoffs
-    }).getBytes(1)
-    expect(bytes).toEqual(new Uint8Array([0b10101010]))
+    }).getBytes(32)
+    // frame 0 alone supplies 256 LSBs = 32 bytes
+    const [expected] = packBits(lsbBits(frames[0] as Frame, 1))
+    expect(bytes).toEqual(expected)
+  })
+
+  test('lsb mode skips duplicated frames instead of crediting them twice', async () => {
+    const frames = randomFrames(40, 256, 0x5151)
+    const doubled = frames.flatMap((f) => [f, { ...f, data: new Uint8Array(f.data) }])
+    const read = async (source: FrameSource) =>
+      (
+        await cameraEntropy({
+          source,
+          stride: 1,
+          warmupFrames: 0,
+          bits: 'lsb',
+          conditioning: 'raw',
+          debias: false,
+        }).getBytes(1024)
+      ).bytes
+    expect(await read(replay(doubled))).toEqual(await read(replay(frames)))
+  })
+
+  test('lsb mode on a frozen scene starves (a duplicate carries no fresh noise)', async () => {
+    const [still] = randomFrames(1, 256)
+    const source: FrameSource = {
+      async *frames() {
+        while (true) yield still as Frame
+      },
+    }
+    const err = (await cameraEntropy({ source, warmupFrames: 0, bits: 'lsb' })
+      .getBytes(4, { timeoutMs: 80 })
+      .catch((e) => e)) as EntropyError
+    expect(err.code).toBe('timeout')
   })
 
   test('without a source and without a browser camera, fails with a remedy', async () => {
     const err = await cameraEntropy()
       .getBytes(4)
       .catch((e) => e)
-    expect(err).toBeInstanceOf(TypeError)
+    expect(err).toBeInstanceOf(EntropyError)
+    expect((err as EntropyError).code).toBe('invalid_request')
     expect((err as Error).message).toContain('source')
+  })
+
+  test('a denied camera permission surfaces as permission', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          throw new DOMException('Permission denied', 'NotAllowedError')
+        },
+      },
+    })
+    const err = (await cameraEntropy()
+      .getBytes(4)
+      .catch((e) => e)) as EntropyError
+    expect(err).toBeInstanceOf(EntropyError)
+    expect(err.code).toBe('permission')
   })
 })

@@ -12,8 +12,16 @@ providerContract(
 )
 
 describe('fallback', () => {
-  test('requires at least one provider', () => {
-    expect(() => fallback([])).toThrow(TypeError)
+  test('validates attemptTimeoutMs', () => {
+    const a = stub({ name: 'a' }).provider
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => fallback([a], { attemptTimeoutMs: bad })).toThrow(EntropyError)
+    }
+  })
+
+  test('requires at least one provider (invalid_request)', () => {
+    expect(() => fallback([])).toThrow(EntropyError)
+    expect(() => fallback([{ name: 'not-a-provider' } as never])).toThrow(EntropyError)
   })
 
   test('first provider wins when it succeeds; later ones are never called', async () => {
