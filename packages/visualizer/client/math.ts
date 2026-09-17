@@ -157,23 +157,44 @@ export interface DialTessellation {
 /**
  * Tessellate {@link RateCardGeometry} into GL line-list vertices. Rings are
  * `segments`-gon approximations of circles; radial lines run from the
- * innermost ring to the outermost at each sector boundary. Angles follow the
- * rate-card convention: sector 0 at 12 o'clock, increasing clockwise, i.e.
+ * innermost ring to the outermost at each sector boundary — from the centre
+ * when there are fewer than two distinct ring radii (no rings: centre to
+ * radius 1; one ring: centre to that ring), so sector divisions never
+ * degenerate to points. Angles follow the rate-card convention: sector 0 at
+ * 12 o'clock, increasing clockwise, i.e.
  * $\theta_k = \pi/2 - 2\pi k / \mathrm{sectors}$.
+ *
+ * @throws {RangeError} for a non-positive or non-integer `sectors`, `segments`
+ *   below 3, a ring radius outside $(0, 1]$, or a `pointerSector` that is not
+ *   an integer in $[0, \mathrm{sectors})$.
  */
 export function tessellateDial(geometry: RateCardGeometry, segments = 128): DialTessellation {
-  const { sectors, rings } = geometry
+  const { sectors, rings, pointerSector } = geometry
   if (!Number.isInteger(sectors) || sectors < 1) {
     throw new RangeError(`sectors must be a positive integer, got ${sectors}`)
   }
   if (!Number.isInteger(segments) || segments < 3) {
     throw new RangeError(`segments must be an integer ≥ 3, got ${segments}`)
   }
+  if (!Array.isArray(rings)) throw new RangeError('rings must be an array of radii')
+  let inner = Number.POSITIVE_INFINITY
+  let outer = Number.NEGATIVE_INFINITY
   for (const r of rings) {
     if (!(r > 0 && r <= 1)) throw new RangeError(`ring radius must be in (0, 1], got ${r}`)
+    inner = Math.min(inner, r)
+    outer = Math.max(outer, r)
   }
-  const inner = rings.length > 0 ? Math.min(...rings) : 0
-  const outer = rings.length > 0 ? Math.max(...rings) : 1
+  if (
+    pointerSector !== undefined &&
+    !(Number.isInteger(pointerSector) && pointerSector >= 0 && pointerSector < sectors)
+  ) {
+    throw new RangeError(
+      `pointerSector must be an integer in [0, ${sectors}), got ${String(pointerSector)}`,
+    )
+  }
+  if (rings.length === 0) outer = 1
+  // fewer than two distinct radii: spokes start at the centre
+  if (!(inner < outer)) inner = 0
   // each ring: `segments` line segments × 2 verts; each sector line: 2 verts
   const grid = new Float32Array((rings.length * segments * 2 + sectors * 2) * 2)
   let o = 0
@@ -195,11 +216,95 @@ export function tessellateDial(geometry: RateCardGeometry, segments = 128): Dial
     grid[o++] = outer * Math.sin(theta)
   }
   let pointer = new Float32Array(0)
-  if (geometry.pointerSector !== undefined) {
-    const theta = Math.PI / 2 - (2 * Math.PI * geometry.pointerSector) / sectors
+  if (pointerSector !== undefined) {
+    const theta = Math.PI / 2 - (2 * Math.PI * pointerSector) / sectors
     pointer = new Float32Array([0, 0, outer * Math.cos(theta), outer * Math.sin(theta)])
   }
   return { grid, pointer }
+}
+
+/**
+ * How a matrix frame maps onto the colormap / bar heights: `lo ↦ 0`, `hi ↦ 1`
+ * (values outside are clamped), and `baseline` is where the value 0 lands —
+ * the edge bars grow from.
+ */
+export interface MatrixScale {
+  readonly lo: number
+  readonly hi: number
+  /** Normalized position of the value 0, clamped to $[0, 1]$. */
+  readonly baseline: number
+  /** Bar mode (one row) rather than a heatmap. */
+  readonly bars: boolean
+  /** `true` when `lo`/`hi` came from the producer's `range`. */
+  readonly fixed: boolean
+}
+
+/**
+ * Choose the normalization for one matrix frame:
+ *
+ * - a valid producer `range` (finite, `lo < hi`) is used as-is;
+ * - bars (`rows === 1`) span $[\min(0, \min v), \max(0, \max v)]$, so bar
+ *   height stays proportional to magnitude from a zero baseline (a flat
+ *   histogram renders as equal bars, not as 0–100 % noise);
+ * - heatmaps span $[\min v, \max v]$.
+ *
+ * Non-finite values are ignored; a degenerate span becomes `[lo, lo + 1]`.
+ */
+export function matrixScale(
+  data: ArrayLike<number>,
+  rows: number,
+  range?: readonly [number, number],
+): MatrixScale {
+  const bars = rows === 1
+  let lo: number
+  let hi: number
+  let fixed = false
+  if (
+    range !== undefined &&
+    Number.isFinite(range[0]) &&
+    Number.isFinite(range[1]) &&
+    range[0] < range[1]
+  ) {
+    fixed = true
+    lo = range[0]
+    hi = range[1]
+  } else {
+    let min = Number.POSITIVE_INFINITY
+    let max = Number.NEGATIVE_INFINITY
+    for (let i = 0; i < data.length; i++) {
+      const v = data[i] as number
+      if (!Number.isFinite(v)) continue
+      if (v < min) min = v
+      if (v > max) max = v
+    }
+    if (min > max) {
+      min = 0
+      max = 0
+    }
+    lo = bars ? Math.min(0, min) : min
+    hi = bars ? Math.max(0, max) : max
+    if (!(hi > lo)) hi = lo + 1
+  }
+  const baseline = Math.min(1, Math.max(0, (0 - lo) / (hi - lo)))
+  return { lo, hi, baseline, bars, fixed }
+}
+
+/**
+ * Map values through a {@link MatrixScale} into $[0, 1]$ (clamped). Non-finite
+ * values land on the baseline for bars (no bar) and on 0 for heatmaps.
+ */
+export function normalizeMatrix(data: ArrayLike<number>, scale: MatrixScale): Float32Array {
+  const out = new Float32Array(data.length)
+  const span = scale.hi - scale.lo
+  for (let i = 0; i < data.length; i++) {
+    const v = data[i] as number
+    if (!Number.isFinite(v)) {
+      out[i] = scale.bars ? scale.baseline : 0
+      continue
+    }
+    out[i] = Math.min(1, Math.max(0, (v - scale.lo) / span))
+  }
+  return out
 }
 
 /**
@@ -209,4 +314,22 @@ export function tessellateDial(geometry: RateCardGeometry, segments = 128): Dial
 export function gridColumns(panelCount: number): number {
   if (panelCount <= 1) return 1
   return Math.min(4, Math.ceil(Math.sqrt(panelCount)))
+}
+
+/** Narrowest panel, in CSS pixels, before the grid drops a column. */
+export const MIN_PANEL_WIDTH = 320
+
+/**
+ * Columns that actually fit: the {@link gridColumns} choice, reduced so every
+ * column is at least `minPanelWidth` wide (one column on a phone). A width of
+ * 0 (not laid out yet) keeps the preferred count.
+ */
+export function fitColumns(
+  panelCount: number,
+  containerWidth: number,
+  minPanelWidth = MIN_PANEL_WIDTH,
+): number {
+  const preferred = gridColumns(panelCount)
+  if (!(containerWidth > 0)) return preferred
+  return Math.max(1, Math.min(preferred, Math.floor(containerWidth / minPanelWidth)))
 }

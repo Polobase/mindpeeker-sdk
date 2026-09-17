@@ -35,7 +35,12 @@ export function bitmapPanel(shell: PanelShell): Panel {
   const texture = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, TEX_W, TEX_H, 0, gl.RED, gl.UNSIGNED_BYTE, null)
+  const allocate = (): void => {
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    // a null upload allocates zero-filled storage: an all-black raster
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, TEX_W, TEX_H, 0, gl.RED, gl.UNSIGNED_BYTE, null)
+  }
+  allocate()
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -48,7 +53,23 @@ export function bitmapPanel(shell: PanelShell): Panel {
 
   return {
     root: shell.root,
-    setStatus: shell.setStatus,
+    wrap: shell.wrap,
+    setInfo(info) {
+      shell.setStatus(info.status, info.error)
+    },
+    resize() {
+      shell.resizeGl()
+      overlay.resize()
+      dirty = true
+    },
+    reset() {
+      pending = new Uint8Array(0)
+      rowPtr = 0
+      totalBytes = 0
+      allocate()
+      dirty = true
+    },
+    dispose: shell.release,
     setStatic() {},
     frame(f: DecodedFrame) {
       if (f.kind !== 'bytes') return

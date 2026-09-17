@@ -13,6 +13,7 @@ export {
   encodeSeriesFrame,
   FRAME_KIND,
   HEADER_BYTES,
+  isValidRange,
   MATRIX_PREFIX_BYTES,
   PROTOCOL_VERSION,
   parseTextMessage,

@@ -21,6 +21,7 @@ out vec4 color;
 void main() { color = u_color; }
 `
 
+/** Create the series panel; throws if WebGL2 is unavailable (caller shows shell.fail). */
 export function seriesPanel(shell: PanelShell): Panel {
   const gl = createGL(shell.glCanvas)
   const program = createProgram(gl, CLIP_VS, FLAT_FS)
@@ -36,19 +37,46 @@ export function seriesPanel(shell: PanelShell): Panel {
   const points: SeriesPoint[] = []
   let dirty = false
 
+  const clear = (): void => {
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
+    gl.clearColor(0.05, 0.06, 0.08, 1)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    overlay.clear()
+  }
+
   return {
     root: shell.root,
-    setStatus: shell.setStatus,
+    wrap: shell.wrap,
+    setInfo(info) {
+      shell.setStatus(info.status, info.error)
+    },
+    resize() {
+      shell.resizeGl()
+      overlay.resize()
+      dirty = true
+    },
+    reset() {
+      // a reconnect replays the server's ring; keeping old points would
+      // duplicate them and draw a retrace backwards through the chart
+      points.length = 0
+      dirty = false
+      clear()
+    },
+    dispose: shell.release,
     setStatic() {},
     frame(f: DecodedFrame) {
       if (f.kind !== 'series') return
-      points.push(...f.points)
+      for (const point of f.points) points.push(point)
       if (points.length > MAX_POINTS) points.splice(0, points.length - MAX_POINTS)
       dirty = true
     },
     render() {
-      if (!dirty || points.length < 2) return
+      if (!dirty) return
       dirty = false
+      if (points.length < 2) {
+        clear()
+        return
+      }
       const first = points[0] as SeriesPoint
       const last = points[points.length - 1] as SeriesPoint
       const yBounds: number[] = []
@@ -60,9 +88,7 @@ export function seriesPanel(shell: PanelShell): Panel {
       const xScale = linearScale(first.t, last.t, -1, 1)
       const yScale = linearScale(yMin, yMax, -0.92, 0.92)
 
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
-      gl.clearColor(0.05, 0.06, 0.08, 1)
-      gl.clear(gl.COLOR_BUFFER_BIT)
+      clear()
       gl.useProgram(program)
       gl.uniform1f(rotateLoc, 0)
       gl.uniform2f(scaleLoc, 1, 1)
@@ -75,7 +101,7 @@ export function seriesPanel(shell: PanelShell): Panel {
       gl.uniform4f(colorLoc, 0.55, 0.95, 0.75, 1)
       lineBuffer.draw(gl.LINE_STRIP)
 
-      overlay.clear()
+      // same mapping as the GL clip range [-0.92, 0.92], in current CSS pixels
       const yPixel = linearScale(yMin, yMax, overlay.height * 0.96, overlay.height * 0.04)
       drawYTicks(overlay, niceTicks(yMin, yMax, 4), yPixel)
       drawCaption(overlay, `t=${formatTick(last.t)} v=${formatTick(last.value)}`)

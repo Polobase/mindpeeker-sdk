@@ -53,7 +53,14 @@
     border-bottom: 1px solid var(--border);
   }
   .panel h2 { font-size: 12px; font-weight: 600; color: var(--text); }
-  .status { font-size: 11px; color: var(--muted); }
+  .status {
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .status.live { color: var(--ok); }
   .status.ended { color: var(--warn); }
   .status.error { color: var(--down); }

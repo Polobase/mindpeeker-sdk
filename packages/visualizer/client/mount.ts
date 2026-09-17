@@ -1,16 +1,17 @@
 /**
  * Server-agnostic dashboard renderer: owns the panel grid, the channel→panel
- * routing, and the shared animation loop. Feed it decoded directory/frame/
- * static updates through the returned {@link DashboardHandle} from any
- * transport — the bundled WebSocket client (`app.ts`) or a fully client-side
- * driver (the demo site).
+ * routing, the resize tracking and the shared animation loop. Feed it decoded
+ * directory/frame/static updates through the returned {@link DashboardHandle}
+ * from any transport — the bundled WebSocket client (`app.ts`) or a fully
+ * client-side driver (the demo site).
  *
  * Browser-safe by construction: only relative + protocol imports, no bare
  * packages and no server reach, so the client-safety test covers it.
  */
 import type { DecodedFrame } from '../src/protocol.js'
 import type { ChannelInfo, DirectoryMessage } from '../src/types.js'
-import { gridColumns } from './math.js'
+import { planDirectory } from './directory.js'
+import { fitColumns } from './math.js'
 import { bitmapPanel } from './panels/bitmap.js'
 import { dialPanel } from './panels/dial.js'
 import { matrixPanel } from './panels/matrix.js'
@@ -30,16 +31,64 @@ export interface DashboardHandle {
   pushFrame(frame: DecodedFrame): void
   /** Hand a static channel its JSON document. */
   setStatic(id: number, data: unknown): void
-  /** Stop the animation loop and clear the grid. */
+  /**
+   * Clear every panel's accumulated data (series points, bitmap rows, last
+   * matrix) while keeping the panels — call it when a new connection is about
+   * to replay the server's retained frames, so history is not duplicated.
+   */
+  reset(): void
+  /** Stop the animation loop and resize tracking, release GL contexts, clear the grid. */
   destroy(): void
 }
 
 /**
  * Mount a dashboard into `grid` and start its render loop. The caller drives it
- * with directory/frame/static updates from whatever transport it likes.
+ * with directory/frame/static updates from whatever transport it likes. Every
+ * panel follows its container's size (a `ResizeObserver`) and the display's
+ * `devicePixelRatio`, so canvases stay sharp and the dial stays circular; the
+ * grid's inline column count follows the grid width (one column on a phone).
  */
 export function mountDashboard(grid: HTMLElement): DashboardHandle {
   const slots = new Map<number, Slot>()
+  const panelsByWrap = new Map<Element, Panel>()
+  const observer =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.target === grid) layoutColumns()
+            else panelsByWrap.get(entry.target)?.resize()
+          }
+        })
+      : undefined
+  observer?.observe(grid)
+
+  /** Column count last written to the grid's inline style (browsers normalize the string). */
+  let appliedColumns = 0
+  function applyColumns(columns: number): void {
+    if (columns === appliedColumns) return
+    appliedColumns = columns
+    grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`
+  }
+  /** Column count for the current grid width (one column on a phone). */
+  function layoutColumns(): void {
+    if (slots.size > 0) applyColumns(fitColumns(slots.size, grid.clientWidth))
+  }
+
+  // devicePixelRatio changes (zoom, moving to another monitor) do not resize
+  // the CSS box, so a resolution media query re-armed per ratio tracks them.
+  let dprQuery: MediaQueryList | undefined
+  const onDprChange = (): void => {
+    for (const slot of slots.values()) slot.panel.resize()
+    watchDpr()
+  }
+  function watchDpr(): void {
+    dprQuery?.removeEventListener('change', onDprChange)
+    dprQuery = undefined
+    if (typeof globalThis.matchMedia !== 'function') return
+    dprQuery = globalThis.matchMedia(`(resolution: ${globalThis.devicePixelRatio || 1}dppx)`)
+    dprQuery.addEventListener('change', onDprChange)
+  }
+  watchDpr()
 
   function makePanel(info: ChannelInfo): Panel {
     const shell = createShell(grid, info.name)
@@ -58,36 +107,52 @@ export function mountDashboard(grid: HTMLElement): DashboardHandle {
       shell.fail(error instanceof Error ? error.message : String(error))
       return {
         root: shell.root,
+        wrap: shell.wrap,
         frame() {},
         setStatic() {},
         render() {},
-        setStatus: shell.setStatus,
+        setInfo(next) {
+          shell.setStatus(next.status, next.error)
+        },
+        resize() {},
+        reset() {},
+        dispose: shell.release,
       }
     }
   }
 
+  function removeSlot(slot: Slot): void {
+    observer?.unobserve(slot.panel.wrap)
+    panelsByWrap.delete(slot.panel.wrap)
+    slot.panel.dispose()
+    slot.panel.root.remove()
+  }
+
   function applyDirectory(message: DirectoryMessage): void {
-    const seen = new Set<number>()
-    for (const info of message.channels) {
-      seen.add(info.id)
-      const existing = slots.get(info.id)
-      if (existing && existing.info.name === info.name && existing.info.kind === info.kind) {
-        existing.panel.setStatus(info.status)
-        slots.set(info.id, { info, panel: existing.panel })
-        continue
+    const plan = planDirectory(
+      new Map([...slots].map(([id, slot]) => [id, slot.info] as const)),
+      message.channels,
+      grid.clientWidth,
+    )
+    for (const id of plan.remove) {
+      const slot = slots.get(id)
+      if (slot) removeSlot(slot)
+      slots.delete(id)
+    }
+    // the final layout must exist before new panels size their canvases
+    applyColumns(plan.columns)
+    plan.entries.forEach(({ info, create }, index) => {
+      let panel = slots.get(info.id)?.panel
+      if (create || !panel) {
+        panel = makePanel(info)
+        panelsByWrap.set(panel.wrap, panel)
+        observer?.observe(panel.wrap)
       }
-      existing?.panel.root.remove()
-      const panel = makePanel(info)
-      panel.setStatus(info.status)
       slots.set(info.id, { info, panel })
-    }
-    for (const [id, slot] of slots) {
-      if (!seen.has(id)) {
-        slot.panel.root.remove()
-        slots.delete(id)
-      }
-    }
-    grid.style.gridTemplateColumns = `repeat(${gridColumns(slots.size)}, minmax(0, 1fr))`
+      panel.setInfo(info)
+      const occupant = grid.children[index]
+      if (occupant !== panel.root) grid.insertBefore(panel.root, occupant ?? null)
+    })
   }
 
   let running = true
@@ -106,10 +171,18 @@ export function mountDashboard(grid: HTMLElement): DashboardHandle {
     setStatic(id, data) {
       slots.get(id)?.panel.setStatic(data)
     },
+    reset() {
+      for (const slot of slots.values()) slot.panel.reset()
+    },
     destroy() {
       running = false
-      for (const slot of slots.values()) slot.panel.root.remove()
+      observer?.disconnect()
+      dprQuery?.removeEventListener('change', onDprChange)
+      dprQuery = undefined
+      for (const slot of slots.values()) removeSlot(slot)
       slots.clear()
+      appliedColumns = 0
+      grid.style.gridTemplateColumns = ''
     },
   }
 }

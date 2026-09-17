@@ -194,10 +194,76 @@ export function decodeFrame(frame: Uint8Array): DecodedFrame {
   throw new VisualizerError('protocol', `unknown frame kind ${kind}`)
 }
 
+const CHANNEL_KINDS: ReadonlySet<string> = new Set(['bytes', 'series', 'matrix', 'static'])
+const CHANNEL_STATUSES: ReadonlySet<string> = new Set(['live', 'ended', 'error'])
+
+function protocolError(message: string): VisualizerError {
+  return new VisualizerError('protocol', message)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isU16(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 0xffff
+}
+
 /**
- * Parse a JSON text frame into a {@link TextMessage}. Throws
- * `VisualizerError('protocol', …)` on non-JSON input or an unknown `type` —
- * the client uses this as its single entry point for text messages.
+ * `true` when `value` is a finite `[lo, hi]` pair with `lo < hi` — the shape of
+ * a matrix channel's normalization `range`.
+ */
+export function isValidRange(value: unknown): value is readonly [number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1]) &&
+    (value[0] as number) < (value[1] as number)
+  )
+}
+
+function checkStringList(value: unknown, where: string): void {
+  if (value === undefined) return
+  if (!Array.isArray(value) || !value.every((label) => typeof label === 'string')) {
+    throw protocolError(`${where} must be an array of strings`)
+  }
+}
+
+function checkChannelInfo(entry: unknown, index: number): void {
+  const where = `directory.channels[${index}]`
+  if (!isRecord(entry)) throw protocolError(`${where} is not an object`)
+  if (!isU16(entry.id)) throw protocolError(`${where}.id must be a u16`)
+  if (typeof entry.name !== 'string') throw protocolError(`${where}.name must be a string`)
+  if (typeof entry.kind !== 'string' || !CHANNEL_KINDS.has(entry.kind)) {
+    throw protocolError(`${where}.kind is not a channel kind`)
+  }
+  if (typeof entry.status !== 'string' || !CHANNEL_STATUSES.has(entry.status)) {
+    throw protocolError(`${where}.status is not a channel status`)
+  }
+  checkStringList(entry.rowLabels, `${where}.rowLabels`)
+  checkStringList(entry.colLabels, `${where}.colLabels`)
+  if (entry.range !== undefined && !isValidRange(entry.range)) {
+    throw protocolError(`${where}.range must be a finite [lo, hi] with lo < hi`)
+  }
+  if (entry.error !== undefined && typeof entry.error !== 'string') {
+    throw protocolError(`${where}.error must be a string`)
+  }
+}
+
+/**
+ * Parse and structurally validate a JSON text frame into a
+ * {@link TextMessage} — the client's single entry point for text messages, so
+ * a malformed frame surfaces as `VisualizerError('protocol', …)` here instead
+ * of a `TypeError` deeper in the renderer. Checks:
+ *
+ * - `directory`: integer `version` and a `channels` array. When `version`
+ *   equals {@link PROTOCOL_VERSION}, every entry must carry a `u16` `id`, a
+ *   string `name`, a known `kind` and `status`, string-array labels, a valid
+ *   `range` and a string `error` when present. A directory announcing another
+ *   version is returned without entry checks, so the caller can report the
+ *   mismatch.
+ * - `static`: `u16` `id`, string `name`, and a `data` member.
  */
 export function parseTextMessage(text: string): TextMessage {
   let parsed: unknown
@@ -206,9 +272,24 @@ export function parseTextMessage(text: string): TextMessage {
   } catch (cause) {
     throw new VisualizerError('protocol', 'text frame is not valid JSON', { cause })
   }
-  if (typeof parsed === 'object' && parsed !== null) {
-    const type = (parsed as { type?: unknown }).type
-    if (type === 'directory' || type === 'static') return parsed as TextMessage
+  if (!isRecord(parsed)) {
+    throw protocolError('text frame is not a directory or static message')
   }
-  throw new VisualizerError('protocol', 'text frame is not a directory or static message')
+  if (parsed.type === 'directory') {
+    if (!Number.isInteger(parsed.version)) {
+      throw protocolError('directory.version must be an integer')
+    }
+    if (!Array.isArray(parsed.channels)) {
+      throw protocolError('directory.channels must be an array')
+    }
+    if (parsed.version === PROTOCOL_VERSION) parsed.channels.forEach(checkChannelInfo)
+    return parsed as unknown as TextMessage
+  }
+  if (parsed.type === 'static') {
+    if (!isU16(parsed.id)) throw protocolError('static.id must be a u16')
+    if (typeof parsed.name !== 'string') throw protocolError('static.name must be a string')
+    if (!Object.hasOwn(parsed, 'data')) throw protocolError('static message has no data')
+    return parsed as unknown as TextMessage
+  }
+  throw protocolError('text frame is not a directory or static message')
 }

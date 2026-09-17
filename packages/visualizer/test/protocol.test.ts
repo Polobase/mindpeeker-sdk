@@ -7,6 +7,7 @@ import {
   encodeSeriesFrame,
   FRAME_KIND,
   HEADER_BYTES,
+  isValidRange,
   PROTOCOL_VERSION,
   parseTextMessage,
   SERIES_POINT_BYTES,
@@ -193,5 +194,92 @@ describe('text messages', () => {
     expect(() => parseTextMessage('nope')).toThrow(VisualizerError)
     expect(() => parseTextMessage('{"type":"other"}')).toThrow(VisualizerError)
     expect(() => parseTextMessage('42')).toThrow(VisualizerError)
+    expect(() => parseTextMessage('[{"type":"directory"}]')).toThrow(VisualizerError)
+  })
+
+  const protocolMessage = (text: string): string => {
+    try {
+      parseTextMessage(text)
+    } catch (error) {
+      expect(error).toBeInstanceOf(VisualizerError)
+      expect((error as VisualizerError).code).toBe('protocol')
+      return (error as VisualizerError).message
+    }
+    throw new Error(`accepted ${text}`)
+  }
+  const directory = (channels: unknown, version: unknown = PROTOCOL_VERSION) =>
+    JSON.stringify({ type: 'directory', version, channels })
+  const entry = { id: 0, name: 'noise', kind: 'bytes', status: 'live' }
+
+  test('a directory needs an integer version and a channels array', () => {
+    expect(protocolMessage('{"type":"directory"}')).toContain('version')
+    expect(protocolMessage('{"type":"directory","version":1}')).toContain('channels')
+    expect(protocolMessage(directory([], 1.5))).toContain('version')
+    expect(protocolMessage(directory({}))).toContain('channels')
+  })
+
+  test('directory entries are validated field by field', () => {
+    const cases: [unknown, string][] = [
+      [42, 'not an object'],
+      [{ ...entry, id: -1 }, 'id'],
+      [{ ...entry, id: 70_000 }, 'id'],
+      [{ ...entry, id: '0' }, 'id'],
+      [{ ...entry, name: 3 }, 'name'],
+      [{ ...entry, kind: 'video' }, 'kind'],
+      [{ ...entry, status: 'paused' }, 'status'],
+      [{ ...entry, rowLabels: [1] }, 'rowLabels'],
+      [{ ...entry, colLabels: 'a,b' }, 'colLabels'],
+      [{ ...entry, range: [1, 1] }, 'range'],
+      [{ ...entry, range: [0] }, 'range'],
+      [{ ...entry, error: { message: 'x' } }, 'error'],
+    ]
+    for (const [bad, field] of cases) expect(protocolMessage(directory([bad]))).toContain(field)
+  })
+
+  test('a valid directory with every optional field parses', () => {
+    const full = {
+      ...entry,
+      kind: 'matrix',
+      status: 'error',
+      rowLabels: ['r'],
+      colLabels: ['a', 'b'],
+      range: [0, 160],
+      error: 'device unplugged',
+    }
+    expect(parseTextMessage(directory([entry, full])) as unknown).toEqual({
+      type: 'directory',
+      version: PROTOCOL_VERSION,
+      channels: [entry, full],
+    })
+  })
+
+  test('a foreign-version directory is returned unchecked so the client can report the mismatch', () => {
+    const message = parseTextMessage(directory([{ something: 'new' }], PROTOCOL_VERSION + 1))
+    expect(message.type === 'directory' && message.version).toBe(PROTOCOL_VERSION + 1)
+  })
+
+  test('a static message needs a u16 id, a string name and data', () => {
+    expect(protocolMessage('{"type":"static","name":"x","data":1}')).toContain('id')
+    expect(protocolMessage('{"type":"static","id":0,"data":1}')).toContain('name')
+    expect(protocolMessage('{"type":"static","id":0,"name":"x"}')).toContain('data')
+  })
+})
+
+describe('isValidRange', () => {
+  test('accepts finite [lo, hi] with lo < hi only', () => {
+    expect(isValidRange([0, 1])).toBe(true)
+    expect(isValidRange([-3.5, -3.25])).toBe(true)
+    for (const bad of [
+      [1, 1],
+      [2, 1],
+      [0, Number.POSITIVE_INFINITY],
+      [Number.NaN, 1],
+      [0],
+      [0, 1, 2],
+      '0,1',
+      null,
+    ]) {
+      expect(isValidRange(bad)).toBe(false)
+    }
   })
 })

@@ -178,8 +178,26 @@ describe('createDashboard', () => {
     expect(() => dashboard.attachStatic('', {})).toThrow(VisualizerError)
   })
 
-  test('rejects invalid ring capacities', () => {
-    expect(() => createDashboard({ port: 0, ringCapacity: 0 })).toThrow(VisualizerError)
+  test('rejects invalid options with VisualizerError(server) before binding', () => {
+    const invalid: Parameters<typeof createDashboard>[0][] = [
+      { ringCapacity: 0 },
+      { port: 70_000 },
+      { port: -1 },
+      { port: Number.NaN },
+      { port: 1.5 },
+      { host: '' },
+      { allowedOrigins: ['not an origin'] },
+      { onChannelError: 'log' as unknown as () => void },
+    ]
+    for (const opts of invalid) {
+      try {
+        createDashboard(opts)
+        throw new Error(`accepted ${JSON.stringify(opts)}`)
+      } catch (error) {
+        expect(error).toBeInstanceOf(VisualizerError)
+        expect((error as VisualizerError).code).toBe('server')
+      }
+    }
   })
 
   test('stop() closes sockets cleanly and refuses further attaches', async () => {
@@ -202,6 +220,7 @@ describe('createDashboard', () => {
     }
     await expect(fetch(dashboard.url)).rejects.toThrow()
     await dashboard.stop() // idempotent
+    expect(dashboard.stop()).toBe(dashboard.stop())
   })
 
   test('an aborted signal stops the dashboard', async () => {
@@ -220,24 +239,49 @@ describe('createDashboard', () => {
     expect(() => createDashboard({ port: 0, signal: controller.signal })).toThrow(VisualizerError)
   })
 
-  test('a throwing source marks its channel errored, not the server', async () => {
-    const dashboard = start()
+  test('a throwing source marks its channel errored with a reason and reports it once', async () => {
+    const reports: [string, unknown][] = []
+    const dashboard = start({ onChannelError: (channel, error) => reports.push([channel, error]) })
     const ws = await openSocket(`${dashboard.url.replace('http', 'ws')}ws`)
     const inbox = new WsInbox(ws)
     await nextText(inbox)
 
+    const root = new Error('ENOENT: /dev/cu.usbserial-110 not found')
     async function* failing(): AsyncGenerator<Uint8Array> {
       yield prngBytes(4)
-      throw new Error('source exploded')
+      throw new Error('source exploded', { cause: root })
     }
     dashboard.attachByteStream('flaky', failing())
     await nextText(inbox) // attach directory
     await nextBinary(inbox) // the one good frame
     const errored = (await nextText(inbox)) as DirectoryMessage
     expect(errored.channels[0]?.status).toBe('error')
+    expect(errored.channels[0]?.error).toBe(
+      'source exploded: ENOENT: /dev/cu.usbserial-110 not found',
+    )
+    expect(reports).toHaveLength(1)
+    expect(reports[0]?.[0]).toBe('flaky')
+    expect((reports[0]?.[1] as Error).cause).toBe(root)
 
-    // server still healthy
+    // late joiners see the reason too; the server stays healthy
+    const late = new WsInbox(await openSocket(`${dashboard.url.replace('http', 'ws')}ws`))
+    expect(((await nextText(late)) as DirectoryMessage).channels[0]?.error).toContain('ENOENT')
     expect((await fetch(dashboard.url)).status).toBe(200)
+    ws.close()
+  })
+
+  test('an encoder failure (bad matrix) is reported with its VisualizerError', async () => {
+    const reports: unknown[] = []
+    const dashboard = start({ onChannelError: (_channel, error) => reports.push(error) })
+    const ws = await openSocket(`${dashboard.url.replace('http', 'ws')}ws`)
+    const inbox = new WsInbox(ws)
+    await nextText(inbox)
+    dashboard.attachMatrix('bad', fromItems({ rows: 2, cols: 2, data: new Float32Array(3) }))
+    await nextText(inbox) // attach directory
+    const errored = (await nextText(inbox)) as DirectoryMessage
+    expect(errored.channels[0]).toMatchObject({ status: 'error' })
+    expect(errored.channels[0]?.error).toContain('does not match 2×2')
+    expect((reports[0] as VisualizerError).code).toBe('protocol')
     ws.close()
   })
 })

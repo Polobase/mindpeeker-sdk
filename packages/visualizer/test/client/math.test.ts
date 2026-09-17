@@ -2,9 +2,13 @@ import { describe, expect, test } from 'bun:test'
 import {
   autoRange,
   bandStrip,
+  fitColumns,
   gridColumns,
   linearScale,
+  MIN_PANEL_WIDTH,
+  matrixScale,
   niceTicks,
+  normalizeMatrix,
   seriesPath,
   tessellateDial,
   VIRIDIS_STOPS,
@@ -191,12 +195,98 @@ describe('tessellateDial', () => {
     expect(pointer.length).toBe(0)
   })
 
+  test('one ring: sector lines run from the centre to that ring (never zero-length)', () => {
+    const segments = 8
+    const { grid } = tessellateDial({ type: 'rate-card', sectors: 4, rings: [0.8] }, segments)
+    const radialStart = segments * 2 * 2
+    for (let k = 0; k < 4; k++) {
+      const o = radialStart + k * 4
+      expect(Math.hypot(grid[o] as number, grid[o + 1] as number)).toBeCloseTo(0, 12)
+      expect(Math.hypot(grid[o + 2] as number, grid[o + 3] as number)).toBeCloseTo(0.8, 6)
+    }
+  })
+
+  test('no rings: spokes span centre to radius 1; equal radii behave like one ring', () => {
+    const none = tessellateDial({ type: 'rate-card', sectors: 2, rings: [] }, 8).grid
+    expect(Math.hypot(none[0] as number, none[1] as number)).toBeCloseTo(0, 12)
+    expect(Math.hypot(none[2] as number, none[3] as number)).toBeCloseTo(1, 6)
+    const equal = tessellateDial({ type: 'rate-card', sectors: 2, rings: [0.5, 0.5] }, 8).grid
+    const o = 2 * 8 * 2 * 2
+    expect(Math.hypot(equal[o] as number, equal[o + 1] as number)).toBeCloseTo(0, 12)
+  })
+
+  test('pointerSector must be an integer in [0, sectors)', () => {
+    for (const pointerSector of [44, -3, Number.NaN, 1.5, Number.POSITIVE_INFINITY]) {
+      expect(() => tessellateDial({ ...card, pointerSector })).toThrow(RangeError)
+    }
+    expect(tessellateDial({ ...card, pointerSector: 0 }).pointer.length).toBe(4)
+    expect(tessellateDial({ ...card, pointerSector: 43 }).pointer.length).toBe(4)
+  })
+
   test('rejects invalid geometry', () => {
     expect(() => tessellateDial({ type: 'rate-card', sectors: 0, rings: [1] })).toThrow(RangeError)
     expect(() => tessellateDial({ type: 'rate-card', sectors: 4, rings: [1.5] })).toThrow(
       RangeError,
     )
     expect(() => tessellateDial(card, 2)).toThrow(RangeError)
+  })
+})
+
+describe('matrixScale / normalizeMatrix', () => {
+  test('bars keep a zero baseline: a flat histogram renders as near-equal bars', () => {
+    const data = new Float32Array([78, 80, 82, 80])
+    const scale = matrixScale(data, 1)
+    expect(scale).toEqual({ lo: 0, hi: 82, baseline: 0, bars: true, fixed: false })
+    const heights = normalizeMatrix(data, scale)
+    expect(Math.min(...heights)).toBeCloseTo(78 / 82, 6)
+    expect(heights[2]).toBe(1)
+  })
+
+  test('mixed-sign bars put the baseline at the normalized zero', () => {
+    const scale = matrixScale([-1, 3], 1)
+    expect(scale.lo).toBe(-1)
+    expect(scale.hi).toBe(3)
+    expect(scale.baseline).toBeCloseTo(0.25, 12)
+    const all = matrixScale([-4, -2], 1)
+    expect([all.lo, all.hi, all.baseline]).toEqual([-4, 0, 1])
+  })
+
+  test('heatmaps stay min-max normalized', () => {
+    const scale = matrixScale([2, 4, 6, 10], 2)
+    expect([scale.lo, scale.hi, scale.bars]).toEqual([2, 10, false])
+    expect([...normalizeMatrix([2, 4, 6, 10], scale)]).toEqual([0, 0.25, 0.5, 1])
+  })
+
+  test('a producer range is used as-is and values are clamped', () => {
+    const scale = matrixScale([-5, 50, 500], 1, [0, 100])
+    expect(scale).toMatchObject({ lo: 0, hi: 100, fixed: true })
+    expect([...normalizeMatrix([-5, 50, 500], scale)]).toEqual([0, 0.5, 1])
+    // an invalid range falls back to data-driven scaling
+    expect(matrixScale([1, 2], 1, [3, 3]).fixed).toBe(false)
+  })
+
+  test('degenerate and non-finite inputs stay usable', () => {
+    expect(matrixScale([0, 0], 1)).toMatchObject({ lo: 0, hi: 1 })
+    expect(matrixScale([7, 7], 3)).toMatchObject({ lo: 7, hi: 8 })
+    expect(matrixScale([Number.NaN], 1)).toMatchObject({ lo: 0, hi: 1 })
+    const bars = matrixScale([-1, 1], 1)
+    expect(normalizeMatrix([Number.NaN], bars)[0]).toBe(0.5)
+    expect(normalizeMatrix([Number.NaN], matrixScale([1, 2], 2))[0]).toBe(0)
+  })
+})
+
+describe('fitColumns', () => {
+  test('caps the preferred count by the container width', () => {
+    expect(fitColumns(5, 1400)).toBe(3)
+    expect(fitColumns(5, 700)).toBe(2)
+    expect(fitColumns(5, 390)).toBe(1)
+    expect(fitColumns(5, MIN_PANEL_WIDTH - 1)).toBe(1)
+    expect(fitColumns(16, 4000)).toBe(4)
+  })
+
+  test('an unknown width keeps the preferred count', () => {
+    expect(fitColumns(5, 0)).toBe(gridColumns(5))
+    expect(fitColumns(5, Number.NaN)).toBe(gridColumns(5))
   })
 })
 

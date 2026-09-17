@@ -23,6 +23,17 @@ export interface ChannelInfo {
   readonly rowLabels?: readonly string[]
   /** Latest matrix column labels, when the producer supplied any. */
   readonly colLabels?: readonly string[]
+  /**
+   * Producer-supplied normalization range of a matrix channel, $[\mathrm{lo},
+   * \mathrm{hi}]$ with `lo < hi`. When present the client maps values through
+   * this fixed range (clamped), so frames are comparable over time.
+   */
+  readonly range?: readonly [number, number]
+  /**
+   * Short reason the producer failed (the error message plus its `cause`
+   * chain), present only while `status` is `'error'`.
+   */
+  readonly error?: string
 }
 
 /** JSON text frame listing every channel. Always the first message a client receives. */
@@ -82,6 +93,13 @@ export interface MatrixFrameInput {
   readonly data: Float32Array
   readonly rowLabels?: readonly string[]
   readonly colLabels?: readonly string[]
+  /**
+   * Fixed normalization range `[lo, hi]` (finite, `lo < hi`), published in the
+   * directory like the labels. Without it the client normalizes each frame:
+   * heatmaps min–max, bars (one row) over $[\min(0, \min), \max(0, \max)]$ so
+   * bar height stays proportional to magnitude.
+   */
+  readonly range?: readonly [number, number]
 }
 
 /**
@@ -94,18 +112,28 @@ export interface RateCardGeometry {
   readonly type: 'rate-card'
   /** Number of radial divisions (44 for a classic Rae card). */
   readonly sectors: number
-  /** Ring radii as fractions of the dial radius, each in $(0, 1]$. */
+  /**
+   * Ring radii as fractions of the dial radius, each in $(0, 1]$. Sector lines
+   * run from the innermost to the outermost ring; with fewer than two distinct
+   * radii they start at the centre.
+   */
   readonly rings: readonly number[]
-  /** Sector index the pointer line marks, if any (0-based, top, clockwise). */
+  /**
+   * Sector index the pointer line marks, if any (0-based, top, clockwise); an
+   * integer in $[0, \mathrm{sectors})$ — the client rejects anything else.
+   */
   readonly pointerSector?: number
   readonly label?: string
 }
 
-/** Options for `createDashboard`. */
+/** Options for `createDashboard`. Invalid values throw `VisualizerError('server')`. */
 export interface DashboardOptions {
-  /** TCP port; `0` (default) asks the OS for a free one. */
+  /** TCP port, an integer in $[0, 65535]$; `0` (default) asks the OS for a free one. */
   readonly port?: number
-  /** Hostname to bind, default `localhost`. */
+  /**
+   * Hostname to bind (non-empty), default `localhost`. IPv6 literals may be
+   * given bare (`::1`) or bracketed; `Dashboard.url` always brackets them.
+   */
   readonly host?: string
   /** Aborting stops the dashboard exactly like calling `stop()`. */
   readonly signal?: AbortSignal
@@ -115,6 +143,25 @@ export interface DashboardOptions {
    * Default 256.
    */
   readonly ringCapacity?: number
+  /**
+   * Extra browser origins (e.g. `'https://lab.example'`) allowed to open the
+   * `/ws` socket. By default only same-host pages are accepted: a handshake
+   * whose `Origin` names another host is refused with HTTP 403 (cross-site
+   * WebSocket hijacking guard); handshakes without an `Origin` header
+   * (non-browser clients) are accepted. When bound to a loopback host, the
+   * request's `Host` must also be a loopback name or the host of one of these
+   * origins (DNS-rebinding guard). Each entry must be an absolute
+   * `scheme://host[:port]` origin.
+   */
+  readonly allowedOrigins?: readonly string[]
+  /**
+   * Called once when a channel's producer (its source or the frame encoder)
+   * fails; the channel's directory entry turns `status: 'error'` with a short
+   * `error` message either way. Default: `console.error`. Errors thrown by the
+   * callback itself are logged and otherwise ignored. Failures caused by
+   * `stop()` are not reported.
+   */
+  readonly onChannelError?: (channel: string, error: unknown) => void
 }
 
 /**
@@ -135,8 +182,20 @@ export interface Dashboard {
   attachSeries(name: string, src: AsyncIterable<SeriesSample>): void
   /** Stream dense matrices to a heatmap panel (bar mode for one row). */
   attachMatrix(name: string, src: AsyncIterable<MatrixFrameInput>): void
-  /** Publish one JSON document (e.g. {@link RateCardGeometry} for the dial panel). */
+  /**
+   * Publish one JSON document (e.g. {@link RateCardGeometry} for the dial
+   * panel). The document is serialized once, up front: an unserializable
+   * value (BigInt, cycles, `undefined`) throws
+   * `VisualizerError('invalid_channel')` and registers nothing.
+   */
   attachStatic(name: string, json: unknown): void
-  /** Close every socket, stop the server, halt all channel pumps. Idempotent. */
+  /**
+   * Stop the dashboard: every pump stops waiting on its source and the
+   * iterators the dashboard consumes are closed with `return()` immediately,
+   * every socket gets a 1000 close, and the server stops. Cleanup waits are
+   * bounded (a source blocked inside an `await` only finishes its `return()`
+   * once that await settles). Idempotent: every call — including the one
+   * triggered by the `signal` option — returns the same in-flight promise.
+   */
   stop(): Promise<void>
 }

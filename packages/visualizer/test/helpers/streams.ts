@@ -75,10 +75,22 @@ export class WsInbox {
   }
 }
 
-/** Open a WebSocket and resolve once connected (rejects on error/timeout). */
-export function openSocket(url: string, timeoutMs = 2000): Promise<WebSocket> {
+/**
+ * Open a WebSocket and resolve once connected (rejects on error/timeout).
+ * `headers` (Bun extension) lets tests forge `Origin`/`Host` like a browser page.
+ */
+export function openSocket(
+  url: string,
+  headers?: Record<string, string>,
+  timeoutMs = 2000,
+): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url)
+    // Bun's WebSocket accepts `{ headers }`; the DOM lib typing only knows protocols
+    const BunWebSocket = WebSocket as unknown as new (
+      url: string,
+      options?: { headers: Record<string, string> },
+    ) => WebSocket
+    const ws = headers ? new BunWebSocket(url, { headers }) : new WebSocket(url)
     ws.binaryType = 'arraybuffer'
     const timer = setTimeout(() => reject(new Error('websocket open timed out')), timeoutMs)
     ws.addEventListener('open', () => {
@@ -99,4 +111,21 @@ export async function until(predicate: () => boolean, timeoutMs = 2000): Promise
     if (Date.now() > deadline) throw new Error('condition not met in time')
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
+}
+
+/** Resolve once `ws` closes, with the close code. */
+export function closed(ws: WebSocket): Promise<number> {
+  if (ws.readyState === WebSocket.CLOSED) return Promise.resolve(1006)
+  return new Promise((resolve) => {
+    ws.addEventListener('close', (event) => resolve((event as CloseEvent).code))
+  })
+}
+
+/** Deferred promise with external resolve. */
+export function deferred<T = void>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve: (value: T) => void = () => {}
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
 }

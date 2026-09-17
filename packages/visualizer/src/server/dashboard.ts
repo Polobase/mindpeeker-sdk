@@ -1,16 +1,19 @@
 /**
  * Bun-native dashboard server. THIS MODULE IS BUN-ONLY: it calls `Bun.serve`
- * and `Bun.file` directly (websocket fan-out and static file serving are
- * runtime concerns, deliberately outside the browser-safe surface —
- * `protocol.ts`/`types.ts` stay pure and shared with the client).
+ * directly (websocket fan-out and static file serving are runtime concerns,
+ * deliberately outside the browser-safe surface — `protocol.ts`/`types.ts`
+ * stay pure and shared with the client).
  */
 import type { Server, ServerWebSocket } from 'bun'
 import { VisualizerError } from '../errors.js'
+import { describeError } from '../internal/describe-error.js'
+import { CANCELLED, cancellableNext, closeIterator, toAsyncIterator } from '../internal/iterate.js'
 import { RingBuffer } from '../internal/ring.js'
 import {
   encodeBytesFrame,
   encodeMatrixFrame,
   encodeSeriesFrame,
+  isValidRange,
   PROTOCOL_VERSION,
 } from '../protocol.js'
 import type {
@@ -22,10 +25,10 @@ import type {
   DirectoryMessage,
   MatrixFrameInput,
   SeriesSample,
-  StaticMessage,
 } from '../types.js'
+import { clientAssetResponse } from './assets.js'
+import { MAX_INBOUND_PAYLOAD_BYTES, resolveServerConfig, upgradeRefusal } from './security.js'
 
-const DEFAULT_RING_CAPACITY = 256
 /**
  * Per-socket buffered-bytes budget. When a client's kernel/user-space queue
  * exceeds this, new binary frames are dropped for that socket instead of
@@ -33,65 +36,96 @@ const DEFAULT_RING_CAPACITY = 256
  * guarantee (the ring buffer bounds replay history, this bounds live fan-out).
  */
 const MAX_BUFFERED_BYTES = 4 * 1024 * 1024
+/** Longest wait for one consumed iterator's `return()` during `stop()`. */
+const PUMP_CLOSE_GRACE_MS = 150
+/** Longest wait for `server.stop(true)` (see the Bun ≤ 1.3 note in `stop`). */
+const SERVER_STOP_GRACE_MS = 150
+/** Cap on the `error` text published in the directory. */
+const MAX_ERROR_TEXT = 300
 
 interface Channel {
   readonly id: number
   readonly name: string
   readonly kind: ChannelKind
   status: ChannelStatus
+  error?: string
   rowLabels?: readonly string[]
   colLabels?: readonly string[]
+  range?: readonly [number, number]
+  /** JSON of the last published labels + range, for change detection. */
+  metaKey: string
   readonly ring: RingBuffer<Uint8Array>
-  staticData?: unknown
+  /** Pre-serialized `static` text frame (static channels only). */
+  staticText?: string
 }
 
-/** Serve the bundled client, falling back to a stub page before `bun run build`. */
-async function clientAsset(name: 'index.html' | 'app.js'): Promise<Response | undefined> {
-  // Compiled layout: dist/server/dashboard.js → dist/client/*.
-  // Source layout (tests, `bun src/cli.ts`): src/server/dashboard.ts → dist/client/*.
-  const candidates = [`../client/${name}`, `../../dist/client/${name}`]
-  for (const rel of candidates) {
-    const file = Bun.file(new URL(rel, import.meta.url))
-    if (await file.exists()) {
-      const type = name.endsWith('.js') ? 'text/javascript' : 'text/html'
-      return new Response(file, { headers: { 'content-type': `${type}; charset=utf-8` } })
-    }
+interface Pump {
+  /** Pre-empts the pump's pending pull; set only while a pull is outstanding. */
+  cancel?: () => void
+  readonly done: Promise<void>
+}
+
+function defaultChannelErrorHandler(channel: string, error: unknown): void {
+  console.error(`[@mindpeeker/visualizer] channel '${channel}' failed:`, error)
+}
+
+async function bounded(task: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const grace = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms)
+  })
+  await Promise.race([task.then(noop, noop), grace])
+  clearTimeout(timer)
+}
+
+function noop(): void {}
+
+function labelList(value: unknown, field: string, channel: string): readonly string[] | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || !value.every((label) => typeof label === 'string')) {
+    throw new VisualizerError('protocol', `matrix ${field} must be an array of strings`, {
+      channel,
+    })
   }
-  if (name === 'index.html') {
-    const stub =
-      '<!doctype html><meta charset="utf-8"><title>mindpeeker visualizer</title>' +
-      '<body style="font: 14px monospace; background: #0d1117; color: #c9d1d9; padding: 2rem">' +
-      '<p>Client bundle not found — run <code>bun run build</code> in packages/visualizer.</p>'
-    return new Response(stub, { headers: { 'content-type': 'text/html; charset=utf-8' } })
-  }
-  return undefined
+  return Object.freeze([...value])
 }
 
 /**
  * Start a dashboard: `Bun.serve` HTTP + WebSocket on one port. HTTP serves
- * the bundled WebGL2 client; `/ws` upgrades to the fan-out socket. Every
- * client receives, in order: the channel directory (JSON), all static
- * documents (JSON), then each channel's retained ring of binary frames —
- * so a late joiner immediately shows recent history.
+ * the bundled WebGL2 client (`Cache-Control: no-cache`); `/ws` upgrades to the
+ * fan-out socket after the Origin/Host policy check (see
+ * `DashboardOptions.allowedOrigins`). Every client receives, in order: the
+ * channel directory (JSON), every static document (JSON), then each streaming
+ * channel's retained ring of binary frames, oldest first, in registration
+ * order — so a late joiner immediately shows recent history. The socket is
+ * send-only: any inbound message closes it (1003), and inbound messages over
+ * 1 KiB are refused by the runtime.
  *
  * Producers attached via `attach*` are pumped in detached background tasks;
  * their frames go into a per-channel drop-oldest {@link RingBuffer} and are
  * fanned out to every open socket whose buffered amount is under budget.
- * Nothing a client does (or fails to do) can slow a producer down.
+ * Nothing a client does (or fails to do) can slow a producer down. A failing
+ * producer marks its channel `error` (with a reason) and is reported through
+ * `onChannelError`.
+ *
+ * @throws {VisualizerError} `aborted` for a pre-aborted signal; `server` for
+ *   invalid options or when the runtime cannot bind.
  */
 export function createDashboard(opts: DashboardOptions = {}): Dashboard {
   if (opts.signal?.aborted) {
     throw new VisualizerError('aborted', 'dashboard aborted before start')
   }
-  const ringCapacity = opts.ringCapacity ?? DEFAULT_RING_CAPACITY
-  if (!Number.isInteger(ringCapacity) || ringCapacity < 1) {
-    throw new VisualizerError('server', `ringCapacity must be an integer ≥ 1, got ${ringCapacity}`)
+  const config = resolveServerConfig(opts)
+  const onChannelError = opts.onChannelError ?? defaultChannelErrorHandler
+  if (typeof onChannelError !== 'function') {
+    throw new VisualizerError('server', 'onChannelError must be a function')
   }
-  const host = opts.host ?? 'localhost'
   const channels = new Map<string, Channel>()
   const sockets = new Set<ServerWebSocket<undefined>>()
+  const pumps = new Set<Pump>()
   let nextChannelId = 0
   let stopped = false
+  let stopping: Promise<void> | undefined
 
   const directoryMessage = (): string => {
     const list: ChannelInfo[] = [...channels.values()].map((c) => ({
@@ -101,21 +135,13 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       status: c.status,
       ...(c.rowLabels ? { rowLabels: c.rowLabels } : {}),
       ...(c.colLabels ? { colLabels: c.colLabels } : {}),
+      ...(c.range ? { range: c.range } : {}),
+      ...(c.status === 'error' && c.error !== undefined ? { error: c.error } : {}),
     }))
     const message: DirectoryMessage = {
       type: 'directory',
       version: PROTOCOL_VERSION,
       channels: list,
-    }
-    return JSON.stringify(message)
-  }
-
-  const staticMessage = (channel: Channel): string => {
-    const message: StaticMessage = {
-      type: 'static',
-      id: channel.id,
-      name: channel.name,
-      data: channel.staticData,
     }
     return JSON.stringify(message)
   }
@@ -137,34 +163,46 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
   let server: Server<undefined>
   try {
     server = Bun.serve({
-      port: opts.port ?? 0,
-      hostname: host,
+      port: config.port,
+      hostname: config.host,
       async fetch(req, srv) {
         const url = new URL(req.url)
         if (url.pathname === '/ws') {
+          const refusal = upgradeRefusal(req, config)
+          if (refusal !== undefined) {
+            return new Response(`forbidden: ${refusal}`, { status: 403 })
+          }
           if (srv.upgrade(req)) return undefined
           return new Response('websocket upgrade required', { status: 400 })
         }
-        if (url.pathname === '/' || url.pathname === '/index.html') {
-          // clientAsset always yields a Response for index.html (stub fallback)
-          return (await clientAsset('index.html')) ?? new Response('missing', { status: 500 })
-        }
-        if (url.pathname === '/app.js') {
-          return (await clientAsset('app.js')) ?? new Response('not built', { status: 404 })
-        }
-        return new Response('not found', { status: 404 })
+        return (
+          (await clientAssetResponse(url.pathname)) ?? new Response('not found', { status: 404 })
+        )
       },
       websocket: {
+        maxPayloadLength: MAX_INBOUND_PAYLOAD_BYTES,
         open(ws) {
+          if (stopped) {
+            ws.close(1000, 'dashboard stopped')
+            return
+          }
           sockets.add(ws)
-          ws.send(directoryMessage())
-          for (const channel of channels.values()) {
-            if (channel.kind === 'static') ws.send(staticMessage(channel))
-            for (const frame of channel.ring.snapshot()) ws.send(frame)
+          try {
+            ws.send(directoryMessage())
+            for (const channel of channels.values()) {
+              if (channel.staticText !== undefined) ws.send(channel.staticText)
+            }
+            for (const channel of channels.values()) {
+              for (const frame of channel.ring.snapshot()) ws.send(frame)
+            }
+          } catch {
+            sockets.delete(ws)
+            ws.close(1011, 'replay failed')
           }
         },
-        message() {
-          // The protocol is currently one-directional; client frames are ignored.
+        message(ws) {
+          // The protocol is one-directional; a client that talks is misbehaving.
+          ws.close(1003, 'the dashboard socket is send-only')
         },
         close(ws) {
           sockets.delete(ws)
@@ -172,17 +210,24 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       },
     })
   } catch (cause) {
-    throw new VisualizerError('server', `failed to start dashboard on ${host}:${opts.port ?? 0}`, {
-      cause,
-    })
+    throw new VisualizerError(
+      'server',
+      `failed to start dashboard on ${config.urlHost}:${config.port}`,
+      {
+        cause,
+      },
+    )
   }
 
-  const register = (name: string, kind: ChannelKind): Channel => {
+  /** Validate a new channel name without registering anything. */
+  const checkName = (name: unknown): string => {
     if (stopped) {
-      throw new VisualizerError('server', 'dashboard already stopped', { channel: name })
+      throw new VisualizerError('server', 'dashboard already stopped', {
+        channel: typeof name === 'string' ? name : undefined,
+      })
     }
-    if (name.length === 0) {
-      throw new VisualizerError('invalid_channel', 'channel name must be non-empty')
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new VisualizerError('invalid_channel', 'channel name must be a non-empty string')
     }
     if (channels.has(name)) {
       throw new VisualizerError('invalid_channel', `channel '${name}' already exists`, {
@@ -194,55 +239,133 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
         channel: name,
       })
     }
+    return name
+  }
+
+  /** Own an iterator over the producer before registering (throws `invalid_channel`). */
+  const openSource = <T>(name: string, src: unknown): AsyncIterator<T> => {
+    try {
+      const iterator = toAsyncIterator<T>(src)
+      if (iterator) return iterator
+    } catch (cause) {
+      throw new VisualizerError('invalid_channel', `source of '${name}' could not be iterated`, {
+        channel: name,
+        cause,
+      })
+    }
+    throw new VisualizerError('invalid_channel', `source of '${name}' is not an AsyncIterable`, {
+      channel: name,
+    })
+  }
+
+  const register = (name: string, kind: ChannelKind): Channel => {
     const channel: Channel = {
       id: nextChannelId++,
       name,
       kind,
       status: 'live',
-      ring: new RingBuffer(ringCapacity),
+      metaKey: '',
+      ring: new RingBuffer(config.ringCapacity),
     }
     channels.set(name, channel)
     return channel
   }
 
-  const setStatus = (channel: Channel, status: ChannelStatus): void => {
-    if (channel.status === status) return
+  const setStatus = (channel: Channel, status: ChannelStatus, error?: string): void => {
+    if (channel.status === status && channel.error === error) return
     channel.status = status
+    channel.error = error
     if (!stopped) broadcastText(directoryMessage())
   }
 
+  const fail = (channel: Channel, error: unknown): void => {
+    setStatus(channel, 'error', describeError(error, MAX_ERROR_TEXT))
+    try {
+      onChannelError(channel.name, error)
+    } catch (hookError) {
+      console.error('[@mindpeeker/visualizer] onChannelError threw:', hookError)
+    }
+  }
+
   /** Pump one producer; detached so attach* returns immediately. */
-  const consume = <T>(channel: Channel, src: AsyncIterable<T>, encode: (item: T) => Uint8Array) => {
+  const consume = <T>(
+    channel: Channel,
+    iterator: AsyncIterator<T>,
+    encode: (item: T) => Uint8Array,
+  ): void => {
+    let finish: () => void = noop
+    const pump: Pump = { done: new Promise<void>((resolve) => (finish = resolve)) }
+    pumps.add(pump)
     void (async () => {
+      // `return()` is owed when we leave early (stop, encoder failure), not
+      // after the iterator itself finished or threw — `for await` semantics.
+      let owesReturn = true
       try {
-        for await (const item of src) {
-          if (stopped) break
-          const frame = encode(item)
+        while (!stopped) {
+          const pull = cancellableNext(iterator)
+          pump.cancel = pull.cancel
+          let step: Awaited<typeof pull.result>
+          try {
+            step = await pull.result
+          } catch (error) {
+            owesReturn = false
+            throw error
+          } finally {
+            pump.cancel = undefined
+          }
+          if (step === CANCELLED || stopped) break
+          if (step.done) {
+            owesReturn = false
+            break
+          }
+          const frame = encode(step.value)
           channel.ring.push(frame)
           broadcastFrame(frame)
         }
         setStatus(channel, 'ended')
-      } catch {
-        setStatus(channel, stopped ? 'ended' : 'error')
+      } catch (error) {
+        if (stopped) setStatus(channel, 'ended')
+        else fail(channel, error)
+      } finally {
+        if (owesReturn) await closeIterator(iterator, PUMP_CLOSE_GRACE_MS)
+        pumps.delete(pump)
+        finish()
       }
     })()
   }
 
+  const shutdown = async (): Promise<void> => {
+    stopped = true
+    opts.signal?.removeEventListener('abort', onAbort)
+    const drained = [...pumps].map((pump) => pump.done)
+    for (const pump of pumps) pump.cancel?.()
+    // Drain: clients get a clean 1000 close before the listener dies.
+    for (const ws of sockets) ws.close(1000, 'dashboard stopped')
+    // Bun ≤ 1.3 quirk: when websockets were server-closed first, the
+    // stop() promise may never settle even though the port is released
+    // immediately. Bound the wait so stop() always returns.
+    await Promise.all([Promise.all(drained), bounded(server.stop(true), SERVER_STOP_GRACE_MS)])
+  }
+
   const dashboard: Dashboard = {
-    url: `http://${host}:${server.port}/`,
+    url: `http://${config.urlHost}:${server.port}/`,
     port: server.port ?? 0,
 
     attachByteStream(name, src) {
-      const channel = register(name, 'bytes')
+      const channelName = checkName(name)
+      const iterator = openSource<Uint8Array>(channelName, src)
+      const channel = register(channelName, 'bytes')
       broadcastText(directoryMessage())
-      consume(channel, src, (bytes) => encodeBytesFrame(channel.id, bytes))
+      consume(channel, iterator, (bytes) => encodeBytesFrame(channel.id, bytes))
     },
 
     attachSeries(name, src) {
-      const channel = register(name, 'series')
+      const channelName = checkName(name)
+      const iterator = openSource<SeriesSample>(channelName, src)
+      const channel = register(channelName, 'series')
       broadcastText(directoryMessage())
       let autoT = 0
-      consume(channel, src, (sample: SeriesSample) => {
+      consume(channel, iterator, (sample) => {
         const point =
           typeof sample === 'number'
             ? { t: autoT, value: sample }
@@ -253,43 +376,74 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     },
 
     attachMatrix(name, src) {
-      const channel = register(name, 'matrix')
+      const channelName = checkName(name)
+      const iterator = openSource<MatrixFrameInput>(channelName, src)
+      const channel = register(channelName, 'matrix')
       broadcastText(directoryMessage())
-      consume(channel, src, (frame: MatrixFrameInput) => {
-        const labelsChanged =
-          JSON.stringify(frame.rowLabels) !== JSON.stringify(channel.rowLabels) ||
-          JSON.stringify(frame.colLabels) !== JSON.stringify(channel.colLabels)
-        if (labelsChanged) {
-          channel.rowLabels = frame.rowLabels
-          channel.colLabels = frame.colLabels
+      consume(channel, iterator, (frame) => {
+        const bytes = encodeMatrixFrame(channel.id, frame)
+        const rowLabels = labelList(frame.rowLabels, 'rowLabels', channel.name)
+        const colLabels = labelList(frame.colLabels, 'colLabels', channel.name)
+        if (frame.range !== undefined && !isValidRange(frame.range)) {
+          throw new VisualizerError(
+            'protocol',
+            'matrix range must be a finite [lo, hi] with lo < hi',
+            {
+              channel: channel.name,
+            },
+          )
+        }
+        const range = frame.range
+          ? Object.freeze([frame.range[0], frame.range[1]] as const)
+          : undefined
+        // Compare copies by value, so a producer mutating one reused label array is still seen.
+        const metaKey = JSON.stringify([rowLabels ?? null, colLabels ?? null, range ?? null])
+        if (metaKey !== channel.metaKey) {
+          channel.metaKey = metaKey
+          channel.rowLabels = rowLabels
+          channel.colLabels = colLabels
+          channel.range = range
           broadcastText(directoryMessage())
         }
-        return encodeMatrixFrame(channel.id, frame)
+        return bytes
       })
     },
 
     attachStatic(name, json) {
-      const channel = register(name, 'static')
-      channel.staticData = json
+      const channelName = checkName(name)
+      let dataText: string | undefined
+      try {
+        dataText = JSON.stringify(json)
+      } catch (cause) {
+        throw new VisualizerError(
+          'invalid_channel',
+          `static document for '${channelName}' is not JSON-serializable`,
+          { channel: channelName, cause },
+        )
+      }
+      if (dataText === undefined) {
+        throw new VisualizerError(
+          'invalid_channel',
+          `static document for '${channelName}' serializes to nothing (undefined, function or symbol)`,
+          { channel: channelName },
+        )
+      }
+      const channel = register(channelName, 'static')
+      // Same key order as JSON.stringify({ type, id, name, data }).
+      channel.staticText = `{"type":"static","id":${channel.id},"name":${JSON.stringify(channelName)},"data":${dataText}}`
       broadcastText(directoryMessage())
-      broadcastText(staticMessage(channel))
+      broadcastText(channel.staticText)
     },
 
-    async stop() {
-      if (stopped) return
-      stopped = true
-      // Drain: clients get a clean 1000 close before the listener dies.
-      for (const ws of sockets) ws.close(1000, 'dashboard stopped')
-      // Bun ≤ 1.3 quirk: when websockets were server-closed first, the
-      // stop() promise may never settle even though the port is released
-      // immediately. Bound the wait so stop() always returns.
-      await Promise.race([
-        server.stop(true),
-        new Promise<void>((resolve) => setTimeout(resolve, 150)),
-      ])
+    stop() {
+      stopping ??= shutdown()
+      return stopping
     },
   }
 
-  opts.signal?.addEventListener('abort', () => void dashboard.stop(), { once: true })
+  const onAbort = (): void => {
+    void dashboard.stop()
+  }
+  opts.signal?.addEventListener('abort', onAbort, { once: true })
   return Object.freeze(dashboard)
 }

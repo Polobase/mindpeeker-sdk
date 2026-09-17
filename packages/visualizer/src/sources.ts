@@ -14,6 +14,8 @@ import {
   ffmpegFrameSource,
   ffmpegSampleSource,
   hwRng,
+  type NodeSerialOptions,
+  type NodeSerialStream,
   nodeSerialSource,
 } from '@mindpeeker/entropy/node'
 import {
@@ -23,6 +25,7 @@ import {
   micEntropy,
   serialEntropy,
 } from '@mindpeeker/entropy/providers'
+import { VisualizerError } from './errors.js'
 
 /**
  * The minimal structural view of an entropy provider the dashboard consumes —
@@ -63,22 +66,64 @@ function conditioning(opts: SourceOptions): 'raw' | 'conditioned' {
   return opts.raw ? 'raw' : 'conditioned'
 }
 
+/** Opens a serial device session; `nodeSerialSource` in production, a fake in tests. */
+export type SerialOpener = (opts: NodeSerialOptions) => Promise<NodeSerialStream>
+
 /**
  * Wrap the async, device-opening `nodeSerialSource` so the port is opened only
  * on first pull (never at resolve time), and re-opened per session. One
  * `stream()` call ⇒ one device open — pair with a fan-out upstream so a single
- * physical port feeds every panel.
+ * physical port feeds every panel. The session owns the device: when the
+ * stream ends, fails, is aborted or is closed with `return()`, the
+ * `NodeSerialStream` is closed (releasing the tty descriptor).
+ *
+ * @param open - device opener; defaults to `nodeSerialSource` (a test seam).
  */
-function serialProvider(opts: SourceOptions, name: string): ByteProvider {
+export function serialProvider(
+  opts: SourceOptions,
+  name: string,
+  open: SerialOpener = nodeSerialSource,
+): ByteProvider {
   const path = opts.serialPath ?? (isDarwin ? '/dev/cu.usbserial-110' : '/dev/ttyUSB0')
   const baudRate = opts.baudRate ?? 921_600
   return {
     name,
     async *stream(streamOpts) {
-      const source = await nodeSerialSource({ path, baudRate })
-      const provider = serialEntropy({ source, name, conditioning: conditioning(opts) })
-      yield* provider.stream(streamOpts)
+      const source = await open({ path, baudRate })
+      try {
+        const provider = serialEntropy({ source, name, conditioning: conditioning(opts) })
+        yield* provider.stream(streamOpts)
+      } finally {
+        source.close()
+      }
     },
+  }
+}
+
+const STRING_OPTIONS = ['serialPath', 'cameraDevice', 'micDevice', 'hwrngPath'] as const
+
+/** Boundary check for {@link SourceOptions}; throws `VisualizerError('invalid_options')`. */
+function validateSourceOptions(opts: SourceOptions): void {
+  if (typeof opts !== 'object' || opts === null) {
+    throw new VisualizerError('invalid_options', 'source options must be an object')
+  }
+  if (opts.raw !== undefined && typeof opts.raw !== 'boolean') {
+    throw new VisualizerError('invalid_options', 'source option raw must be a boolean')
+  }
+  if (opts.baudRate !== undefined && !(Number.isSafeInteger(opts.baudRate) && opts.baudRate >= 1)) {
+    throw new VisualizerError(
+      'invalid_options',
+      `baud rate must be a positive integer, got ${String(opts.baudRate)}`,
+    )
+  }
+  for (const key of STRING_OPTIONS) {
+    const value = opts[key]
+    if (value !== undefined && (typeof value !== 'string' || value.length === 0)) {
+      throw new VisualizerError(
+        'invalid_options',
+        `source option ${key} must be a non-empty string`,
+      )
+    }
   }
 }
 
@@ -184,14 +229,21 @@ export function sourceDescriptions(): ReadonlyArray<{ name: string; describe: st
 /**
  * Resolve a source name (or alias) to a lazy provider plus a requirements note.
  *
- * @throws {RangeError} if the name is not a known source; the message lists the
- *   valid names.
+ * @throws {VisualizerError} `invalid_options` if the name is not a known source
+ *   (the message lists the valid names) or an option is malformed (a baud rate
+ *   that is not a positive integer, an empty device path, a non-boolean `raw`).
  */
 export function resolveSource(name: string, opts: SourceOptions = {}): ResolvedSource {
-  const canonical = ALIASES[name] ?? name
-  const entry = REGISTRY[canonical]
+  // own-property lookups only: 'toString' or '__proto__' must not resolve
+  const canonical =
+    typeof name === 'string' ? ((Object.hasOwn(ALIASES, name) ? ALIASES[name] : name) ?? name) : ''
+  const entry = Object.hasOwn(REGISTRY, canonical) ? REGISTRY[canonical] : undefined
   if (!entry) {
-    throw new RangeError(`unknown source "${name}" — choose one of: ${SOURCE_NAMES.join(', ')}`)
+    throw new VisualizerError(
+      'invalid_options',
+      `unknown source ${typeof name === 'string' ? JSON.stringify(name) : typeof name} — choose one of: ${SOURCE_NAMES.join(', ')}`,
+    )
   }
+  validateSourceOptions(opts)
   return entry.build(opts)
 }
