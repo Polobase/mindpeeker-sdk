@@ -48,6 +48,19 @@ describe('castRunes determinism fixtures (hand-computed)', () => {
     expect(new Set(cast.runes.map((r) => r.rune.id)).size).toBe(24)
   })
 
+  test('non-boolean merkstave throws invalid_input instead of silently meaning "off"', async () => {
+    for (const merkstave of [1, 'true', 'on', {}, null]) {
+      try {
+        await castRunes(new Uint8Array(8), 2, { merkstave: merkstave as never })
+        expect.unreachable()
+      } catch (err) {
+        expect((err as OracleError).code).toBe('invalid_input')
+      }
+    }
+    const off = await castRunes(new Uint8Array([0, 0]), 2, { merkstave: false })
+    expect(off.bitsUsed).toBe(16)
+  })
+
   test('rejects invalid counts', async () => {
     for (const count of [0, 25, 1.5, -3]) {
       try {

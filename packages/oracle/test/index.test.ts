@@ -5,14 +5,18 @@ import {
   castRunes,
   castShield,
   castSpread,
+  DEFAULT_CAST_CHUNK_BYTES,
   ELDER_FUTHARK,
+  expectedBytes,
   GEOMANTIC_FIGURES,
   HEXAGRAMS,
   type OracleError,
+  recordingReader,
   SPREADS,
   TAROT_DECK,
+  weightedIndexRational,
 } from '../src/index.js'
-import { countingSource, prngBytes } from './helpers/byte-sources.js'
+import { countingSource, liveSource, prngBytes } from './helpers/byte-sources.js'
 
 describe('public surface', () => {
   test('data tables are exported with the documented sizes', () => {
@@ -94,5 +98,29 @@ describe('public surface', () => {
     const controller = new AbortController()
     await castShield(source, { signal: controller.signal })
     expect(received).toBe(controller.signal)
+  })
+
+  test('0.2 additions are exported', () => {
+    expect(typeof recordingReader).toBe('function')
+    expect(typeof expectedBytes).toBe('function')
+    expect(typeof weightedIndexRational).toBe('function')
+    expect(DEFAULT_CAST_CHUNK_BYTES).toBe(32)
+  })
+
+  test('README usage: one-off casts release the source; a shared reader is closed by await using', async () => {
+    const src = liveSource('crypto-sim', 1024)
+    await castHexagram(src, { method: 'yarrow' })
+    await castSpread(src, 'celticCross', { reversals: true })
+    expect(src.opened).toBe(2)
+    expect(src.finalized).toBe(2)
+    {
+      await using reader = byteReader(src)
+      const runes = await castRunes(reader, 3, { merkstave: true })
+      const shield = await castShield(reader)
+      expect(runes.runes.length + shield.mothers.length).toBe(7)
+      expect(src.finalized).toBe(2)
+    }
+    expect(src.opened).toBe(3)
+    expect(src.finalized).toBe(3)
   })
 })

@@ -1,0 +1,122 @@
+{
+  "generator": "python 3.14.4 fractions",
+  "cases": [
+    {
+      "name": "single",
+      "n": 78,
+      "count": 1,
+      "reversals": false,
+      "numerator": "128",
+      "denominator": "117",
+      "value": 1.0940170940170941
+    },
+    {
+      "name": "threeCard",
+      "n": 78,
+      "count": 3,
+      "reversals": false,
+      "numerator": "569152",
+      "denominator": "171171",
+      "value": 3.3250492197860617
+    },
+    {
+      "name": "threeCard+reversals",
+      "n": 78,
+      "count": 3,
+      "reversals": true,
+      "numerator": "740323",
+      "denominator": "171171",
+      "value": 4.325049219786062
+    },
+    {
+      "name": "celticCross",
+      "n": 78,
+      "count": 10,
+      "reversals": false,
+      "numerator": "94058939199328",
+      "denominator": "8089174053675",
+      "value": 11.627755636757007
+    },
+    {
+      "name": "celticCross+reversals",
+      "n": 78,
+      "count": 10,
+      "reversals": true,
+      "numerator": "110237287306678",
+      "denominator": "8089174053675",
+      "value": 13.627755636757007
+    },
+    {
+      "name": "fullDeck+reversals",
+      "n": 78,
+      "count": 78,
+      "reversals": true,
+      "numerator": "297111958096095399871150959273868136",
+      "denominator": "3175387723718952045342814931029875",
+      "value": 93.56714327412077
+    },
+    {
+      "name": "runes-24-of-24",
+      "n": 24,
+      "count": 24,
+      "reversals": false,
+      "numerator": "308136219284",
+      "denominator": "13146544125",
+      "value": 23.43857186757056
+    },
+    {
+      "name": "uniform-257",
+      "n": 257,
+      "count": 1,
+      "reversals": false,
+      "numerator": "131072",
+      "denominator": "65535",
+      "value": 2.0000305180437934
+    },
+    {
+      "name": "uniform-65537",
+      "n": 65537,
+      "count": 1,
+      "reversals": false,
+      "numerator": "16777216",
+      "denominator": "5570645",
+      "value": 3.0117187507012204
+    },
+    {
+      "name": "uniform-10",
+      "n": 10,
+      "count": 1,
+      "reversals": false,
+      "numerator": "128",
+      "denominator": "125",
+      "value": 1.024
+    },
+    {
+      "name": "deal-3-of-2^32",
+      "n": 4294967296,
+      "count": 3,
+      "reversals": false,
+      "numerator": "110680464390717702148",
+      "denominator": "9223372030412324865",
+      "value": 12.000000002793968
+    },
+    {
+      "name": "deal-5-of-100000",
+      "n": 100000,
+      "count": 5,
+      "reversals": true,
+      "numerator": "11646546785057571000489913",
+      "denominator": "724753908786856119965625",
+      "value": 16.06965708477844
+    },
+    {
+      "name": "empty",
+      "n": 78,
+      "count": 0,
+      "reversals": true,
+      "numerator": "0",
+      "denominator": "1",
+      "value": 0.0
+    }
+  ]
+}

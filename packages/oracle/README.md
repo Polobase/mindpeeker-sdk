@@ -18,6 +18,11 @@ interface ByteSource {
 }
 ```
 
+The source side of that contract: honour `signal` (throwing *or* returning
+on abort — both are reported as `aborted`), treat `chunkBytes` as a hint,
+and release sockets/devices when the iterator's `return()` is called —
+oracle calls it exactly once when it is done with a stream.
+
 ## Honest framing
 
 Divination systems are cultural artifacts. This package makes **no** claim
@@ -30,8 +35,9 @@ the tradition and the reader. What it does guarantee is mathematical:
    threshold, no shuffle bias anywhere.
 2. **Determinism** — the same input bytes always produce the exact same
    reading. Record the bytes and any reading is reproducible forever.
-3. **Accounting** — every cast reports `{ bytesConsumed, bitsUsed }`, so
-   you can audit precisely how much entropy a reading spent.
+3. **Accounting** — every cast reports `{ bytesConsumed, bytesFetched,
+   bitsUsed }`, so you can audit precisely how much entropy a reading spent
+   and how much the source delivered.
 
 Whether "quantum-sourced" readings are more meaningful than `Math.random()`
 ones is a question this package deliberately does not answer.
@@ -39,11 +45,13 @@ ones is a question this package deliberately does not answer.
 ## Quick start
 
 ```ts
-import { castHexagram, castSpread, castRunes, castShield } from '@mindpeeker/oracle'
-import { cryptoProvider } from '@mindpeeker/entropy' // or any ByteSource / Uint8Array
+import { byteReader, castHexagram, castRunes, castShield, castSpread } from '@mindpeeker/oracle'
+import { cryptoProvider } from '@mindpeeker/entropy/providers' // or any ByteSource / Uint8Array
 
 const src = cryptoProvider()
 
+// One-off casts: each opens the source's stream, reads what it needs, and
+// closes the stream again before it resolves (or throws, or is aborted).
 const hex = await castHexagram(src, { method: 'yarrow' })
 console.log(hex.primary.character, hex.primary.name.pinyin, '→', hex.relating?.name.pinyin)
 
@@ -51,15 +59,21 @@ const spread = await castSpread(src, 'celticCross', { reversals: true })
 for (const { card, reversed, position } of spread.cards)
   console.log(position.name, card.name, reversed ? '(reversed)' : '')
 
-const runes = await castRunes(src, 3, { merkstave: true })
-const shield = await castShield(src)
-console.log(shield.judge.name, `(${shield.bitsUsed} bits)`)
+// Several casts on ONE stream: share a reader (sequentially) and close it —
+// `await using` does that at scope exit; or call `await reader.close()`.
+{
+  await using reader = byteReader(src)
+  const runes = await castRunes(reader, 3, { merkstave: true })
+  const shield = await castShield(reader)
+  console.log(runes.runes.length, shield.judge.name, `(${shield.bitsUsed} bits)`)
+}
 ```
 
-Batch inputs work identically — `Uint8Array`, `ArrayLike<number>`, or any
-`AsyncIterable<Uint8Array>`. A finite input that runs out mid-cast throws
-`OracleError('insufficient_entropy')`; every cast accepts
-`{ signal }` for aborts.
+Batch inputs work identically — `Uint8Array` (from any realm),
+`ArrayLike<number>`, or any `AsyncIterable<Uint8Array>`. A finite input
+that runs out mid-cast throws `OracleError('insufficient_entropy')`; every
+cast accepts `{ signal }` for aborts — also on a shared reader — and
+`{ chunkBytes }` (see [Lifecycle](#lifecycle-closing-sharing-aborting)).
 
 ## Probability models (exact fractions)
 
@@ -137,11 +151,22 @@ and comparing against integer cumulative sums — the flat case of the
 Knuth–Yao generating tree (Knuth & Yao 1976), optimal for dyadic targets.
 No floats, no rejection, exact by construction.
 
+**Exact non-dyadic draws** (`weightedIndexRational(reader, weights)`). For
+any non-negative integer weights with total $W \le 2^{48}$ (astragalus faces
+$[1,4,4,1]/10$, 38-token models, …): draw $v$ = `uniformInt(reader, W)` and
+return the smallest $i$ with $v < \sum_{j \le i} w_j$, so
+$\Pr[i] = w_i/W$ exactly. It costs one `uniformInt(W)`: expected
+$k/\alpha$ bytes with $k = \lceil \log_{256} W \rceil$ (see `expectedBytes`).
+
 **Unbiased deals** (`drawWithoutReplacement(reader, n, count)`).
 Fisher–Yates (Knuth, TAOCP vol. 2, Algorithm 3.4.2P) with every swap index
 from `uniformInt` — the classic proof gives each ordered prefix probability
 $\frac{(n-\texttt{count})!}{n!}$ exactly. (Tested exhaustively for $n = 3$:
 all $65\,280$ two-byte streams, all 6 permutations exactly equiprobable.)
+The shuffle is sparse — a map of displaced slots stands in for the identity
+array — so memory is $O(\texttt{count})$ for any $n \le 2^{32}$, with the
+identical swap sequence and byte consumption of the textbook in-place
+version (tested against it over 600 seeded runs).
 
 **Bit order** is MSB-first SDK-wide.
 
@@ -149,41 +174,150 @@ all $65\,280$ two-byte streams, all 6 permutations exactly equiprobable.)
 
 Every cast result includes:
 
-- `bytesConsumed` — raw bytes pulled from the input, *including* bytes
-  discarded by rejection and buffered bits never handed out;
+- `bytesConsumed` — bytes the cast read from its reader, *including* bytes
+  discarded by rejection and buffered bits never handed out. This is
+  exactly what a replay needs.
+- `bytesFetched` — bytes the reader pulled out of the underlying input
+  during the cast, including the unread rest of the last chunk: for a live
+  source, what it actually delivered (and what a metered QRNG bills).
+  Equal to `bytesConsumed` for batches; on a shared reader it can be
+  smaller (bytes already buffered by an earlier cast). Absent only for
+  custom readers that do not track it.
 - `bitsUsed` — bits that actually entered decisions ($8k$ per byte-level
   draw, exact counts for bit-level draws).
 
 Invariant: `bitsUsed ≤ 8 × bytesConsumed`. Fixed costs: hexagram 18/24
 bits, shield 16 bits; deals cost ~$8\lceil\log_{256} n\rceil$ bits per card
-plus rejection overhead.
+plus rejection overhead — `expectedBytes(spread, { reversals })` gives the
+exact expectation:
+
+$$E[\text{bytes}] = \sum_{i=0}^{c-1} \frac{k_{n-i}}{\alpha_{n-i}}
+  + [\text{reversals}] \left\lceil \tfrac{c}{8} \right\rceil,\quad
+  k_m = \lceil \log_{256} m \rceil,\;
+  \alpha_m = \frac{\lfloor 256^{k_m}/m \rfloor\, m}{256^{k_m}}$$
+
+(the $m = 1$ term is 0). A Celtic Cross with reversals expects ≈ 13.63
+bytes; `expectedBytes({ n, count, reversals })` covers any deal and
+`{ n: W, count: 1 }` one `uniformInt(W)`.
+
+**`chunkBytes`.** A cast that opens a `ByteSource` asks for
+`stream({ signal, chunkBytes: 32 })` by default (override per cast with
+`{ chunkBytes }`), so a 3-byte hexagram does not pull a provider's
+1024-byte default chunk. It is a hint: providers may round or ignore it —
+`bytesFetched` shows what actually arrived. `byteReader(src)` without
+`chunkBytes` leaves the provider's default in place.
+
+## Lifecycle: closing, sharing, aborting
+
+- **Casts close what they open.** Given a `ByteSource`, an
+  `AsyncIterable`, or a batch, a cast creates a reader and closes it before
+  its promise settles — on success, error, or abort. For a stream that
+  means the iterator's `return()` is called exactly once, so a provider's
+  `finally` (WebSocket, serial port, camera track) runs. An `AsyncIterable`
+  is consumed like `for await`: after the cast it is finished.
+- **A reader you pass in stays open.** `byteReader(input)` gives you a
+  `ByteReader` you own: close it with `await reader.close()` or declare it
+  with `await using`. `close()` is idempotent, never rejects, waits at most
+  250 ms for the source's `return()` (errors ignored; if a pull is still in
+  flight it does not wait at all), and makes a pending `next()` reject with
+  `closed`. Reading after `close()` throws `OracleError('closed')`.
+- **Shared readers are sequential.** Casts on one reader must run one after
+  the other (that is what makes per-cast deltas and replays meaningful). A
+  second cast started on a reader another cast is still using — or a
+  `next()` while another `next()` is pending — throws
+  `OracleError('invalid_input', 'reader is already in use …')`.
+- **Aborts work on shared readers too.** `castX(reader, { signal })` (or
+  `byteReader(reader, { signal })`) reads through an abortable view:
+  aborting rejects the cast with `aborted` immediately — also when the
+  signal was already aborted — while the shared reader stays open. A chunk
+  that was still being fetched is kept and handed to the next read, so no
+  bytes are lost. Closing a view never closes the reader beneath it.
+- **Replay.** `recordingReader(input)` returns `{ reader, bytes() }`; every
+  byte consumed through `reader` is captured, so
+  `castSpread(rec.bytes(), …)` reproduces a live reading exactly. Its
+  `reader` is yours to close (it closes the stream it opened, never a
+  shared reader it wraps).
+
+Code that creates readers itself (e.g. a package composing oracle) can
+follow one rule: close the reader iff `reader !== input`.
 
 ## API
 
 Core (composable, exported for building your own systems):
 
-- `byteReader(input, { signal? })` → `ByteReader` — adapt
+- `byteReader(input, { signal?, chunkBytes? })` → `ByteReader` — adapt
   `Uint8Array | ArrayLike<number> | AsyncIterable<Uint8Array> | ByteSource`;
-  idempotent on an existing reader, so casts can share one stream and
-  report per-cast deltas
+  an existing reader is returned unchanged (or wrapped in an abortable view
+  when `signal` is given), so casts can share one stream and report
+  per-cast deltas. `ByteReader` = `{ bytesConsumed, bytesFetched?, next(),
+  close(), [Symbol.asyncDispose]() }`
+- `recordingReader(input, { signal?, chunkBytes? })` → `{ reader, bytes() }`
 - `bitReader(reader)` → `BitReader` — MSB-first `nextBit()` / `nextBits(k ≤ 48)`
 - `uniformInt(reader, n)` — rejection-sampled uniform on $[0, n)$, $n \le 2^{48}$
 - `weightedIndex(bits, weights)` — exact dyadic categorical draw
-- `drawWithoutReplacement(reader, n, count)` — unbiased permutation prefix
+- `weightedIndexRational(reader, weights)` — exact categorical draw for any
+  integer weights
+- `drawWithoutReplacement(reader, n, count)` — unbiased permutation prefix,
+  $O(\texttt{count})$ memory
+- `expectedBytes(spread | spreadName | { n, count, reversals? }, { reversals? })`
+  — expected consumption of a deal
+- `DEFAULT_CAST_CHUNK_BYTES` (32), type `CastReaderOptions` (`signal`,
+  `chunkBytes`) shared by every cast's options
 
 Systems:
 
-- `castHexagram(input, { method?, signal? })`, data: `HEXAGRAMS` (64),
-  `TRIGRAMS` (8), `hexagramFromBinary(bits)`
-- `castSpread(input, spreadOrName?, { reversals?, signal? })`, data:
-  `TAROT_DECK` (78), `SPREADS`
-- `castRunes(input, count, { merkstave?, signal? })`, data: `ELDER_FUTHARK` (24)
-- `castShield(input, { signal? })`, `houses(shield)`, data:
+- `castHexagram(input, { method?, signal?, chunkBytes? })`, data:
+  `HEXAGRAMS` (64), `TRIGRAMS` (8), `hexagramFromBinary(bits)`
+- `castSpread(input, spreadOrName?, { reversals?, signal?, chunkBytes? })`,
+  data: `TAROT_DECK` (78), `SPREADS`
+- `castRunes(input, count, { merkstave?, signal?, chunkBytes? })`, data:
+  `ELDER_FUTHARK` (24)
+- `castShield(input, { signal?, chunkBytes? })`, `houses(shield)`, data:
   `GEOMANTIC_FIGURES` (16), `figureFromBinary(bits)`
 
-All data tables are deeply `Object.freeze`d. Errors are always
-`OracleError` with `code ∈ { insufficient_entropy, invalid_spread,
-invalid_input, aborted }`.
+All data tables are deeply `Object.freeze`d, and so is every cast result —
+a custom spread object is stored as a frozen copy. The types use
+`Symbol.asyncDispose` (TypeScript ≥ 5.2; the declarations reference the
+`esnext.disposable` lib). At runtime the method is keyed by
+`Symbol.asyncDispose`, or `Symbol.for('Symbol.asyncDispose')` where the
+runtime predates it.
+
+## Errors
+
+Every error this package throws is an `OracleError` with a stable `code`
+(`message` is free to change):
+
+| code | when |
+|---|---|
+| `insufficient_entropy` | a finite input ran out before the cast completed |
+| `invalid_spread` | unknown spread name (inherited keys like `'constructor'` included), or a malformed / empty / >78-position spread object |
+| `invalid_input` | caller error: bad `n`/`count`/weights/options (unknown `method`, non-boolean `reversals`/`merkstave`, bad `chunkBytes`/`signal`, `null` options), non-byte values, unrecognized input shape, a reader already in use |
+| `aborted` | an AbortSignal governing the read fired (also when the source then throws its own abort error or simply ends) |
+| `source_error` | the input itself failed — a provider's network error, a throwing generator, a failing custom reader; the original error is `cause`, the provider name `source`. An `OracleError` thrown by a source passes through unchanged |
+| `closed` | a read on a reader after `close()`, or a pending read cut short by `close()` |
+
+## Behaviour changes in 0.2.0
+
+- `ByteReader` gained `close()` and `[Symbol.asyncDispose]()` (and the
+  optional `bytesFetched`): custom implementations of the interface must add
+  them. Objects with just `next()` + `bytesConsumed` are still accepted as
+  inputs.
+- Casts close the reader they create. An `AsyncIterable` (e.g. a generator
+  object) passed directly to a cast is finished afterwards; to continue one
+  stream across casts, share `byteReader(iterable)` instead.
+- Source failures are wrapped as `source_error` instead of propagating raw.
+- A per-cast `signal` now aborts casts on a shared reader (it was ignored).
+- Concurrent casts on one reader, and concurrent `next()` calls on a stream
+  reader, throw `invalid_input` instead of silently interleaving bytes.
+- Casts request `chunkBytes: 32` from a `ByteSource` they open.
+- Stricter validation: inherited method/spread names, `null`/malformed
+  spreads, non-boolean `reversals`/`merkstave`, `method: null`, `null`
+  options, invalid `signal`/`chunkBytes` now throw typed errors.
+- `cast.spread` for a custom spread is a frozen copy, not the caller's object.
+- A rejected invalid byte in a batch no longer counts toward `bytesConsumed`.
+- A `ByteSource` that is also async-iterable is read through `stream()`.
+- `drawWithoutReplacement` no longer allocates $O(n)$ (same outputs);
+  $n = 2^{32}$ works instead of throwing a raw `RangeError`.
 
 ## Frontend compatibility notes
 
@@ -213,5 +347,6 @@ Shapes were aligned with the mindpeeker frontend
   disagree; treat them as data, not doctrine.
 - `uniformInt` consumption is unbounded in the worst case (geometric tail).
   With finite inputs, size generously: a Celtic Cross with reversals needs
-  ~12–14 bytes on average but can need more.
+  `expectedBytes('celticCross', { reversals: true })` ≈ 13.63 bytes on
+  average but can need more.
 - No cryptographic claims: this package maps entropy, it does not make it.

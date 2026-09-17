@@ -73,7 +73,7 @@ describe('castShield structure', () => {
   })
 
   test('insufficient bytes throw insufficient_entropy', async () => {
-    expect(castShield(new Uint8Array([0xff]))).rejects.toMatchObject({
+    await expect(castShield(new Uint8Array([0xff]))).rejects.toMatchObject({
       code: 'insufficient_entropy',
     })
   })

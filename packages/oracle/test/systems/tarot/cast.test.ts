@@ -2,8 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { byteReader } from '../../../src/core/reader.js'
-import type { OracleError } from '../../../src/errors.js'
+import { OracleError } from '../../../src/errors.js'
 import { castSpread } from '../../../src/systems/tarot/cast.js'
+import { SPREADS } from '../../../src/systems/tarot/data.js'
 import { bump, chiSquare, prngBytes } from '../../helpers/byte-sources.js'
 
 describe('castSpread determinism fixtures (hand-computed)', () => {
@@ -60,23 +61,87 @@ describe('castSpread determinism fixtures (hand-computed)', () => {
       ],
     }
     const cast = await castSpread(prngBytes(8), custom)
-    expect(cast.spread).toBe(custom)
+    expect(cast.spread).toEqual(custom)
     expect(cast.cards.length).toBe(2)
   })
 
-  test('unknown spread name / empty spread throw invalid_spread', async () => {
-    for (const bad of ['horseshoe' as never, { id: 'x', name: 'x', positions: [] }]) {
+  test('a custom spread is stored as a frozen defensive copy', async () => {
+    const custom = {
+      id: 'pair',
+      name: 'Pair',
+      extra: 'kept',
+      positions: [
+        { name: 'A', meaning: 'first' },
+        { name: 'B', meaning: 'second' },
+      ],
+    }
+    const cast = await castSpread(prngBytes(8), custom)
+    expect(cast.spread).not.toBe(custom)
+    expect(Object.isFrozen(cast.spread)).toBe(true)
+    expect(Object.isFrozen(cast.spread.positions)).toBe(true)
+    expect(Object.isFrozen(cast.spread.positions[0])).toBe(true)
+    expect((cast.spread as typeof custom).extra).toBe('kept')
+    custom.positions[0] = { name: 'mutated', meaning: 'later' }
+    custom.name = 'mutated'
+    expect(cast.spread.name).toBe('Pair')
+    expect(cast.spread.positions[0]?.name).toBe('A')
+    expect(cast.cards[0]?.position.name).toBe('A')
+  })
+
+  test('built-in spreads are passed through by identity', async () => {
+    const cast = await castSpread(prngBytes(16), SPREADS.threeCard)
+    expect(cast.spread).toBe(SPREADS.threeCard)
+    expect((await castSpread(prngBytes(16), 'celticCross')).spread).toBe(SPREADS.celticCross)
+  })
+
+  test('unknown, inherited, malformed, empty, or oversized spreads throw invalid_spread', async () => {
+    const position = { name: 'p', meaning: 'm' }
+    const bad: unknown[] = [
+      'horseshoe',
+      'constructor',
+      '__proto__',
+      'toString',
+      null,
+      42,
+      { id: 'x', name: 'x', positions: [] },
+      { id: 'x', name: 'x', positions: 'abc' },
+      { id: 'x', name: 'x' },
+      { id: 'x', name: 'x', positions: [null] },
+      { id: 'x', name: 'x', positions: [{ name: 'p' }] },
+      { id: 'x', name: 'x', positions: new Array(2) },
+      { id: 1, name: 'x', positions: [position] },
+      { id: 'x', name: 'x', positions: new Array(79).fill(position) },
+    ]
+    for (const spread of bad) {
       try {
-        await castSpread(new Uint8Array(8), bad)
+        await castSpread(new Uint8Array(128), spread as never)
         expect.unreachable()
       } catch (err) {
+        expect(err).toBeInstanceOf(OracleError)
         expect((err as OracleError).code).toBe('invalid_spread')
+      }
+    }
+    const full = await castSpread(prngBytes(512, 0x78), {
+      id: 'deck',
+      name: 'Deck',
+      positions: new Array(78).fill(position),
+    })
+    expect(new Set(full.cards.map((c) => c.card.id)).size).toBe(78)
+  })
+
+  test('non-boolean reversals throw invalid_input instead of silently meaning "off"', async () => {
+    for (const reversals of [1, 'true', 'on', {}, null]) {
+      try {
+        await castSpread(new Uint8Array([0, 0xff]), 'single', { reversals: reversals as never })
+        expect.unreachable()
+      } catch (err) {
+        expect((err as OracleError).code).toBe('invalid_input')
       }
     }
   })
 
   test('finite input ending mid-spread throws insufficient_entropy', async () => {
-    expect(castSpread(new Uint8Array([0]), 'threeCard')).rejects.toMatchObject({
+    await expect(castSpread(new Uint8Array([0]), 'threeCard')).rejects.toMatchObject({
       code: 'insufficient_entropy',
     })
   })

@@ -1,5 +1,11 @@
 import { bitReader } from '../../core/bits.js'
-import { type ByteReader, byteReader } from '../../core/reader.js'
+import {
+  accountingFrom,
+  type CastReaderOptions,
+  checkCastOptions,
+  withCastReader,
+} from '../../core/cast-reader.js'
+import type { ByteReader } from '../../core/reader.js'
 import { weightedIndex } from '../../core/weighted.js'
 import { OracleError } from '../../errors.js'
 import type { EntropyAccounting, OracleInput } from '../../types.js'
@@ -55,11 +61,14 @@ export interface HexagramCast extends EntropyAccounting {
   readonly changing: readonly number[]
 }
 
-export interface CastHexagramOptions {
+/**
+ * `signal` aborts the cast with an OracleError `'aborted'` (also on a shared
+ * reader); `chunkBytes` (default 32) is requested from a `ByteSource` the
+ * cast opens. See {@link CastReaderOptions}.
+ */
+export interface CastHexagramOptions extends CastReaderOptions {
   /** Probability model for each line. Default `'coins'`. */
   method?: CastMethod
-  /** Aborts the cast with an OracleError `'aborted'`. */
-  signal?: AbortSignal
 }
 
 /**
@@ -71,18 +80,35 @@ export interface CastHexagramOptions {
  *
  * Consumption is exact and deterministic: 18 bits (3 bytes) for `coins`,
  * 24 bits (3 bytes) for `yarrow`.
+ *
+ * Lifecycle: a reader the cast opens (e.g. a `ByteSource` stream) is closed
+ * before the promise settles; a `ByteReader` you pass in stays open.
+ *
+ * @throws OracleError `'invalid_input'` for an unknown `method` (inherited
+ *   keys such as `'constructor'` included), a non-object `opts`, or a reader
+ *   already used by another cast; plus every {@link ByteReader} read error
  */
 export async function castHexagram(
   input: OracleInput | ByteReader,
   opts: CastHexagramOptions = {},
 ): Promise<HexagramCast> {
-  const method = opts.method ?? 'coins'
-  const weights = LINE_WEIGHTS[method]
-  if (weights === undefined) {
+  checkCastOptions(opts, 'castHexagram')
+  const method: unknown = opts.method === undefined ? 'coins' : opts.method
+  if (typeof method !== 'string' || !Object.hasOwn(LINE_WEIGHTS, method)) {
     throw new OracleError('invalid_input', `unknown cast method '${String(opts.method)}'`)
   }
-  const reader = byteReader(input, { signal: opts.signal })
-  const startBytes = reader.bytesConsumed
+  const weights = LINE_WEIGHTS[method as CastMethod]
+  return withCastReader(input, opts, (reader) =>
+    hexagramFrom(reader, method as CastMethod, weights),
+  )
+}
+
+async function hexagramFrom(
+  reader: ByteReader,
+  method: CastMethod,
+  weights: readonly number[],
+): Promise<HexagramCast> {
+  const accounting = accountingFrom(reader)
   const bits = bitReader(reader)
 
   const lines: CastLine[] = []
@@ -113,7 +139,7 @@ export async function castHexagram(
     primary,
     ...(relating !== undefined ? { relating } : {}),
     changing: Object.freeze(changing),
-    bytesConsumed: reader.bytesConsumed - startBytes,
+    ...accounting(),
     bitsUsed: bits.bitsUsed,
   })
 }

@@ -1,5 +1,11 @@
 import { bitReader } from '../../core/bits.js'
-import { type ByteReader, byteReader } from '../../core/reader.js'
+import {
+  accountingFrom,
+  type CastReaderOptions,
+  checkCastOptions,
+  withCastReader,
+} from '../../core/cast-reader.js'
+import type { ByteReader } from '../../core/reader.js'
 import type { EntropyAccounting, OracleInput } from '../../types.js'
 import { type FigureRow, figureFromBinary, type GeomanticFigure } from './data.js'
 
@@ -26,10 +32,12 @@ export interface ShieldCast extends EntropyAccounting {
   readonly judge: GeomanticFigure
 }
 
-export interface CastShieldOptions {
-  /** Aborts the cast with an OracleError `'aborted'`. */
-  signal?: AbortSignal
-}
+/**
+ * `signal` aborts the cast with an OracleError `'aborted'` (also on a shared
+ * reader); `chunkBytes` (default 32) is requested from a `ByteSource` the
+ * cast opens. See {@link CastReaderOptions}.
+ */
+export interface CastShieldOptions extends CastReaderOptions {}
 
 /**
  * Geomantic addition: rows combine independently, and a row is active in
@@ -57,13 +65,23 @@ const toFigure = (rows: Rows): GeomanticFigure => figureFromBinary(rows.join('')
  * check: only the 8 even figures can judge).
  *
  * Entropy accounting is exact: `bytesConsumed: 2, bitsUsed: 16`, always.
+ *
+ * Lifecycle: a reader the cast opens (e.g. a `ByteSource` stream) is closed
+ * before the promise settles; a `ByteReader` you pass in stays open.
+ *
+ * @throws OracleError `'invalid_input'` for a non-object `opts` or a reader
+ *   already used by another cast; plus every {@link ByteReader} read error
  */
 export async function castShield(
   input: OracleInput | ByteReader,
   opts: CastShieldOptions = {},
 ): Promise<ShieldCast> {
-  const reader = byteReader(input, { signal: opts.signal })
-  const startBytes = reader.bytesConsumed
+  checkCastOptions(opts, 'castShield')
+  return withCastReader(input, opts, (reader) => shieldFrom(reader))
+}
+
+async function shieldFrom(reader: ByteReader): Promise<ShieldCast> {
+  const accounting = accountingFrom(reader)
   const bits = bitReader(reader)
 
   const motherRows: Rows[] = []
@@ -96,7 +114,7 @@ export async function castShield(
       toFigure(left),
     ]) as unknown as ShieldCast['witnesses'],
     judge: toFigure(add(right, left)),
-    bytesConsumed: reader.bytesConsumed - startBytes,
+    ...accounting(),
     bitsUsed: bits.bitsUsed,
   })
 }

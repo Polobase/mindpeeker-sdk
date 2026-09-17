@@ -58,6 +58,73 @@ export function countingSource(
   }
 }
 
+/** Instrumented endless source: records stream() calls, options, and generator cleanup. */
+export interface LiveSource extends ByteSource {
+  /** Number of `stream()` calls. */
+  readonly opened: number
+  /** Number of generator `finally` blocks that ran. */
+  readonly finalized: number
+  /** Bytes yielded in chunks so far. */
+  readonly yielded: number
+  /** Options of the most recent `stream()` call. */
+  readonly lastOpts: ByteStreamOptions | undefined
+}
+
+export function liveSource(name = 'live', chunkBytes = 64, seed = 0x11fe): LiveSource {
+  let opened = 0
+  let finalized = 0
+  let yielded = 0
+  let lastOpts: ByteStreamOptions | undefined
+  let round = seed
+  return {
+    name,
+    get opened() {
+      return opened
+    },
+    get finalized() {
+      return finalized
+    },
+    get yielded() {
+      return yielded
+    },
+    get lastOpts() {
+      return lastOpts
+    },
+    stream(opts?: ByteStreamOptions) {
+      opened++
+      lastOpts = opts
+      const size = opts?.chunkBytes ?? chunkBytes
+      return (async function* () {
+        try {
+          while (true) {
+            yielded += size
+            yield prngBytes(size, round++)
+          }
+        } finally {
+          finalized++
+        }
+      })()
+    },
+  }
+}
+
+/** An AsyncIterable whose `next()` never settles. */
+export function stalledIterable(): AsyncIterable<Uint8Array> & { readonly returns: number } {
+  let returns = 0
+  return {
+    get returns() {
+      return returns
+    },
+    [Symbol.asyncIterator]: () => ({
+      next: () => new Promise<IteratorResult<Uint8Array>>(() => {}),
+      return: async () => {
+        returns++
+        return { done: true, value: undefined }
+      },
+    }),
+  }
+}
+
 /** Increment a counting array (sidesteps noUncheckedIndexedAccess noise). */
 export function bump(counts: number[], index: number): void {
   counts[index] = (counts[index] ?? 0) + 1

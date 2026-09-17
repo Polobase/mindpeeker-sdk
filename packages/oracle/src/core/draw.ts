@@ -15,6 +15,9 @@ import { uniformInt } from './uniform.js'
  * integer in $[0, n-i)$; the final draw over a single remaining slot
  * consumes zero bytes.
  *
+ * Memory is $O(\texttt{count})$ regardless of `n` (a sparse swap map stands in
+ * for the identity array), so e.g. 3 of $2^{32}$ ids is cheap.
+ *
  * @throws OracleError `'invalid_input'` unless `n`, `count` are integers
  *   with $0 \le \texttt{count} \le n \le 2^{32}$
  */
@@ -35,12 +38,18 @@ export async function drawWithoutReplacement(
       `drawWithoutReplacement count must be an integer in [0, n=${n}], got ${count}`,
     )
   }
-  const indices = Array.from({ length: n }, (_, i) => i)
+  // Sparse Fisher–Yates: `displaced` holds only slots whose value differs
+  // from their index (the virtual identity array elsewhere), so memory is
+  // O(count) for any n — and the swap sequence, output, and byte
+  // consumption are identical to the dense in-place shuffle.
+  const displaced = new Map<number, number>()
+  const out: number[] = []
   for (let i = 0; i < count; i++) {
     const j = i + (await uniformInt(reader, n - i))
-    const tmp = indices[i] as number
-    indices[i] = indices[j] as number
-    indices[j] = tmp
+    out.push(displaced.get(j) ?? j)
+    displaced.set(j, displaced.get(i) ?? i)
+    // Slot i is final from here on (every later j > i): drop it.
+    displaced.delete(i)
   }
-  return indices.slice(0, count)
+  return out
 }

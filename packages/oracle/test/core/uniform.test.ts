@@ -61,7 +61,7 @@ describe('uniformInt', () => {
     expect(counts).toEqual([42, 42, 42, 42, 42, 42])
     for (let b = 252; b < 256; b++) {
       // a lone rejected byte leaves the reader starved
-      expect(uniformInt(byteReader(new Uint8Array([b])), 6)).rejects.toMatchObject({
+      await expect(uniformInt(byteReader(new Uint8Array([b])), 6)).rejects.toMatchObject({
         code: 'insufficient_entropy',
       })
     }

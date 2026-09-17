@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { byteReader } from '../../../src/core/reader.js'
-import type { OracleError } from '../../../src/errors.js'
+import { OracleError } from '../../../src/errors.js'
 import { castHexagram } from '../../../src/systems/iching/cast.js'
 import { bump, chiSquare, prngBytes } from '../../helpers/byte-sources.js'
 
@@ -81,9 +81,27 @@ describe('castHexagram determinism fixtures (hand-computed)', () => {
   })
 
   test('insufficient bytes throw insufficient_entropy', async () => {
-    expect(castHexagram(new Uint8Array([0, 0]))).rejects.toMatchObject({
+    await expect(castHexagram(new Uint8Array([0, 0]))).rejects.toMatchObject({
       code: 'insufficient_entropy',
     })
+  })
+
+  test('inherited method names and non-string methods throw invalid_input, not TypeError', async () => {
+    for (const method of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 42, null]) {
+      try {
+        await castHexagram(new Uint8Array(8), { method: method as never })
+        expect.unreachable()
+      } catch (err) {
+        expect(err).toBeInstanceOf(OracleError)
+        expect((err as OracleError).code).toBe('invalid_input')
+      }
+    }
+  })
+
+  test('accounting reports bytesFetched alongside bytesConsumed', async () => {
+    const cast = await castHexagram(new Uint8Array([0, 0, 0, 0]))
+    expect(cast.bytesConsumed).toBe(3)
+    expect(cast.bytesFetched).toBe(3)
   })
 })
 

@@ -5,7 +5,8 @@ import type { ByteReader } from './reader.js'
  * MSB-first bit consumer on top of a {@link ByteReader} — the SDK-wide bit
  * order. Bytes are pulled lazily one at a time; a partially consumed byte
  * stays buffered, so $k$ power-of-two draws of $b$ bits cost exactly
- * $\lceil kb/8 \rceil$ bytes.
+ * $\lceil kb/8 \rceil$ bytes. Like its {@link ByteReader}, a bit reader is
+ * for sequential use only.
  */
 export interface BitReader {
   /** The underlying byte reader (shared `bytesConsumed` accounting). */
@@ -53,8 +54,21 @@ class MsbBitReader implements BitReader {
         `nextBits count must be an integer in [0, 48], got ${count}`,
       )
     }
+    // Take whole runs of buffered bits at once; one await per fresh byte,
+    // not per bit. Same MSB-first order as `count` calls to nextBit().
     let value = 0
-    for (let i = 0; i < count; i++) value = value * 2 + (await this.nextBit())
+    let needed = count
+    while (needed > 0) {
+      if (this.#remaining === 0) {
+        this.#buffer = await this.reader.next()
+        this.#remaining = 8
+      }
+      const take = needed < this.#remaining ? needed : this.#remaining
+      this.#remaining -= take
+      value = value * 2 ** take + ((this.#buffer >>> this.#remaining) & ((1 << take) - 1))
+      this.#bitsUsed += take
+      needed -= take
+    }
     return value
   }
 }

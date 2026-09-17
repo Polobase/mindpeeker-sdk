@@ -11,10 +11,13 @@
  */
 
 export { type BitReader, bitReader } from './core/bits.js'
+export { type CastReaderOptions, DEFAULT_CAST_CHUNK_BYTES } from './core/cast-reader.js'
 export { drawWithoutReplacement } from './core/draw.js'
+export { type DealSpec, type ExpectedBytesOptions, expectedBytes } from './core/expected.js'
 export { type ByteReader, type ByteReaderOptions, byteReader } from './core/reader.js'
+export { type RecordingReader, recordingReader } from './core/recording.js'
 export { MAX_UNIFORM, uniformInt } from './core/uniform.js'
-export { weightedIndex } from './core/weighted.js'
+export { weightedIndex, weightedIndexRational } from './core/weighted.js'
 export { OracleError, type OracleErrorCode, type OracleErrorOptions } from './errors.js'
 export {
   type CastShieldOptions,
