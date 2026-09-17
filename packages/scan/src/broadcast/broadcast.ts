@@ -1,14 +1,19 @@
-import { byteReader, uniformInt } from '@mindpeeker/oracle'
-import {
-  formatRate,
-  parseRate,
-  phaseModulate,
-  type Rate,
-  rateMask,
-  TAU,
-  xorImprint,
-} from '@mindpeeker/rate'
+import { byteReader, MAX_UNIFORM, uniformInt } from '@mindpeeker/oracle'
+import { formatRate, parseRate, type Rate } from '@mindpeeker/rate'
 import { ScanError } from '../errors.js'
+import { frozenRate, isRateLike } from '../internal/rate.js'
+import { openReader } from '../internal/reader.js'
+import { toScanError } from '../internal/rethrow.js'
+import { Sha256, toHex } from '../internal/sha256.js'
+import {
+  abortSignal,
+  byteSource,
+  finiteAtLeast,
+  integerIn,
+  invalid,
+  oneOf,
+  optionsObject,
+} from '../internal/validate.js'
 import type {
   BroadcastMode,
   BroadcastOptions,
@@ -16,84 +21,124 @@ import type {
   BroadcastTick,
   ByteSource,
   Witness,
+  WitnessKind,
 } from '../types.js'
+import { roundModulator } from './modulator.js'
+import { WITNESS_KINDS } from './receipt.js'
 import { sha256Hex, signatureToRate } from './signature.js'
 
 /** What `broadcast` accepts as a target. */
 export type BroadcastTarget = Rate | Witness | string
 
-function isRate(x: unknown): x is Rate {
-  return (
-    typeof x === 'object' &&
-    x !== null &&
-    Array.isArray((x as Rate).digits) &&
-    typeof (x as Rate).base === 'number'
-  )
+interface ResolvedTarget {
+  readonly rate: Rate
+  readonly witnessHash?: string
+  readonly witnessKind?: WitnessKind
 }
 
-/** Resolve any {@link BroadcastTarget} to a rate plus an optional witness hash. */
-async function resolveTarget(
-  target: BroadcastTarget,
-): Promise<{ rate: Rate; witnessHash?: string }> {
-  if (isRate(target)) return { rate: target }
+const MODES: readonly BroadcastMode[] = ['xor', 'phase', 'mask']
+
+function nonEmptyString(value: unknown, what: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new ScanError('invalid_target', `${what} must be a non-empty string`)
+  }
+  return value
+}
+
+/**
+ * Resolve any {@link BroadcastTarget} to a validated rate plus, for a witness
+ * or signature, its hash and kind. A string is parsed as a rate first
+ * (`'12-33-7'`, and also `'3.14'` → rate 3-14) and hashed as a signature only
+ * when it is not one. Signatures are NFC-normalized before hashing.
+ */
+async function resolveTarget(target: unknown): Promise<ResolvedTarget> {
+  if (isRateLike(target)) return { rate: frozenRate(target, 'invalid_target', 'broadcast target') }
   if (typeof target === 'string') {
+    const text = nonEmptyString(target, 'broadcast target').normalize('NFC')
+    let rate: Rate | undefined
     try {
-      return { rate: parseRate(target), witnessHash: await sha256Hex(target) }
+      rate = parseRate(text)
     } catch {
-      return { rate: await signatureToRate(target), witnessHash: await sha256Hex(target) }
+      rate = undefined
+    }
+    if (rate !== undefined) return { rate: frozenRate(rate, 'invalid_target', 'broadcast target') }
+    return {
+      rate: await signatureToRate(text),
+      witnessHash: await sha256Hex(text),
+      witnessKind: 'signature',
     }
   }
   if (typeof target === 'object' && target !== null) {
     const w = target as Witness
-    const hash = w.signature
-      ? await sha256Hex(w.signature)
-      : w.name
-        ? await sha256Hex(w.name)
-        : undefined
-    if (w.rate) return hash !== undefined ? { rate: w.rate, witnessHash: hash } : { rate: w.rate }
-    if (w.signature)
-      return { rate: await signatureToRate(w.signature), witnessHash: hash as string }
+    if (w.kind !== undefined && !WITNESS_KINDS.includes(w.kind)) {
+      throw new ScanError(
+        'invalid_target',
+        `witness kind must be one of ${WITNESS_KINDS.join(', ')}`,
+      )
+    }
+    const signature =
+      w.signature === undefined
+        ? undefined
+        : nonEmptyString(w.signature, 'witness signature').normalize('NFC')
+    const name = w.name === undefined ? undefined : nonEmptyString(w.name, 'witness name')
+    const hashed = signature ?? name?.normalize('NFC')
+    const witness =
+      hashed === undefined
+        ? {}
+        : {
+            witnessHash: await sha256Hex(hashed),
+            witnessKind: w.kind ?? (signature !== undefined ? 'signature' : 'name'),
+          }
+    if (w.rate !== undefined) {
+      return { rate: frozenRate(w.rate, 'invalid_target', 'witness rate'), ...witness }
+    }
+    if (signature !== undefined) return { rate: await signatureToRate(signature), ...witness }
   }
   throw new ScanError(
     'invalid_target',
-    'broadcast target must be a Rate, a rate string, or a witness',
+    'broadcast target must be a Rate, a rate string, a signature, or a witness with a rate or signature',
   )
 }
 
-/** Modulate one raw chunk by the rate under the chosen {@link BroadcastMode}. */
-async function modulateChunk(
-  mode: BroadcastMode,
-  rate: Rate,
-  raw: Uint8Array,
-): Promise<Uint8Array> {
-  if (mode === 'mask') return rateMask(rate, raw.length)
-  if (mode === 'phase') {
-    let phases: Float64Array = new Float64Array(0)
-    for await (const p of phaseModulate(raw, rate)) phases = p
-    const out = new Uint8Array(phases.length)
-    for (let k = 0; k < phases.length; k++) {
-      out[k] = Math.round(((phases[k] as number) / TAU) * 256) % 256
-    }
-    return out
-  }
-  let out: Uint8Array = new Uint8Array(0)
-  for await (const m of xorImprint(raw, rate)) out = m
-  return out
+/** Bytes one `uniformInt(·, odds)` attempt reads. */
+function drawBytes(odds: number): number {
+  let k = 0
+  for (let range = 1; range < odds; range *= 256) k++
+  return k
+}
+
+function codeOf(error: unknown): unknown {
+  return (error as { code?: unknown } | null)?.code
 }
 
 /**
- * Broadcast a target rate by modulating a live entropy stream, faithful to the
+ * Broadcast a target rate by modulating a live entropy stream, after the
  * AetherOne broadcast loop but with **honest DSP semantics and a receipt**.
  *
- * Each round pulls `roundBytes` bytes and rewrites them by the target rate
- * (`mode`: `'xor'` = reversible `xorImprint` (default), `'phase'` =
- * `phaseModulate`, `'mask'` = the pure `rateMask` keystream). A rare
- * **resonance** is tallied when `uniformInt(reader, resonanceOdds)` over the
- * round's own bytes hits `resonanceValue` — $\Pr \approx 1/\texttt{resonanceOdds}$,
- * default $1/6765$ (AetherOne's Fibonacci trigger). The generator yields one
- * {@link BroadcastTick} per round and **returns** a {@link BroadcastReceipt}
- * on natural completion (`rounds` reached, `durationMs` elapsed, or the source
- * ending).
+ * Each round pulls `roundBytes` bytes and rewrites them by the target rate as
+ * **one continuous stream** (`mode`: `'xor'` = `xorImprint` (default,
+ * reversible), `'phase'` = quantized `phaseModulate`, `'mask'` = the pure
+ * `rateMask` keystream): the concatenated ticks equal the rate package's
+ * transform of the concatenated raw rounds. A rare **resonance** is tallied
+ * when `uniformInt(round, resonanceOdds)` over the round's own bytes hits
+ * `resonanceValue` — probability $1/\texttt{resonanceOdds}$ per round for a
+ * fair source, unless the draw's rejection loop exhausts the round (then no
+ * resonance; for the default 6765 and 16-byte rounds that is below $10^{-9}$).
+ * The generator yields one {@link BroadcastTick} per round and **returns** a
+ * v2 {@link BroadcastReceipt} on natural completion (`rounds` reached,
+ * `durationMs` elapsed, or the source ending cleanly); its `outputHash` is the
+ * SHA-256 of all yielded modulated bytes, so a replay from recorded raw bytes
+ * can be verified rather than trusted. A partial final round from a source
+ * that ran dry is discarded (its bytes still count in `bytesConsumed`).
+ *
+ * **Error contract.** Only a source that *ends* (`insufficient_entropy`) ends
+ * a broadcast cleanly. An abort rejects with `ScanError('aborted')`; a source
+ * that *fails* — a health-test alarm from a stuck ESP32, an I/O error, a
+ * non-byte chunk — rejects with `ScanError('source_error')` (provider error as
+ * `cause`), never a clean-looking receipt. Options and the target are
+ * validated before the source is opened; failures reject the first `next()`.
+ * The source stream is closed when the broadcast completes, fails, is
+ * aborted, or the consumer stops early (`return()` / `break`).
  *
  * This is deterministic signal processing over an entropy stream and a
  * reproducibility receipt — nothing more. **No transmission, no
@@ -101,139 +146,92 @@ async function modulateChunk(
  * occurs.** The "resonance" is a labelled random event with a stated rate, not
  * a detected wave.
  *
- * @throws {ScanError} `invalid_target` for an unresolvable target; `aborted`
- *   when `signal` fires.
+ * @throws {ScanError} `invalid_target`, `invalid_options`, `source_error`,
+ *   `aborted`
  */
 export async function* broadcast(
   target: BroadcastTarget,
   source: ByteSource,
   opts: BroadcastOptions = {},
 ): AsyncGenerator<BroadcastTick, BroadcastReceipt, void> {
-  const { rate, witnessHash } = await resolveTarget(target)
-  const mode = opts.mode ?? 'xor'
-  const roundBytes = opts.roundBytes ?? 16
-  const resonanceOdds = opts.resonanceOdds ?? 6765
-  const resonanceValue = opts.resonanceValue ?? resonanceOdds - 1
-  const now = opts.now ?? (() => Date.now())
-  const hasRounds = opts.rounds !== undefined
-  const hasDuration = opts.durationMs !== undefined
-  const roundsLimit = hasRounds
-    ? (opts.rounds as number)
-    : hasDuration
-      ? Number.POSITIVE_INFINITY
-      : 100
-  const deadline = hasDuration ? now() + (opts.durationMs as number) : Number.POSITIVE_INFINITY
-
-  const reader = byteReader(source, opts.signal ? { signal: opts.signal } : {})
-  const start = reader.bytesConsumed
-  let resonances = 0
-  let round = 0
-
-  while (round < roundsLimit && now() < deadline) {
-    if (opts.signal?.aborted) {
-      throw new ScanError('aborted', 'broadcast aborted by caller signal', { source: source.name })
-    }
-    // pull one round of raw bytes; a source that ends stops the broadcast cleanly
-    const raw = new Uint8Array(roundBytes)
-    let ended = false
-    for (let k = 0; k < roundBytes; k++) {
-      try {
-        raw[k] = await reader.next()
-      } catch (error) {
-        const code = (error as { code?: string } | null)?.code
-        if (code === 'aborted') {
-          throw new ScanError('aborted', 'broadcast aborted by caller signal', {
-            source: source.name,
-            cause: error,
-          })
-        }
-        ended = true
-        break
-      }
-    }
-    if (ended) break
-
-    const modulated = await modulateChunk(mode, rate, raw)
-    let resonance = false
-    try {
-      resonance = (await uniformInt(byteReader(raw), resonanceOdds)) === resonanceValue
-    } catch {
-      resonance = false // a starved rejection loop over one chunk simply does not resonate
-    }
-    if (resonance) resonances++
-    yield { round, resonance, modulated }
-    round++
-  }
-
-  return Object.freeze({
-    v: 1,
-    t: now(),
-    target: formatRate(rate),
-    ...(witnessHash !== undefined && { witnessHash }),
-    bytesConsumed: reader.bytesConsumed - start,
-    resonances,
-    rounds: round,
-  })
-}
-
-/**
- * Serialize a {@link BroadcastReceipt} to its canonical JSONL line (fixed key
- * order, no trailing newline). `witnessHash` is emitted only when present, so
- * `serializeReceipt(parseReceipt(line)) === line` for canonical lines.
- */
-export function serializeReceipt(r: BroadcastReceipt): string {
-  return JSON.stringify({
-    v: r.v,
-    t: r.t,
-    target: r.target,
-    ...(r.witnessHash !== undefined && { witnessHash: r.witnessHash }),
-    bytesConsumed: r.bytesConsumed,
-    resonances: r.resonances,
-    rounds: r.rounds,
-  })
-}
-
-/**
- * Parse and validate one JSONL broadcast-receipt line into a frozen
- * {@link BroadcastReceipt}. Any malformed line raises `ScanError('invalid_target')`
- * naming the fault.
- */
-export function parseReceipt(raw: string): BroadcastReceipt {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch (cause) {
-    throw new ScanError('invalid_target', 'receipt is not valid JSON', { cause })
-  }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new ScanError('invalid_target', 'receipt is not a JSON object')
-  }
-  const rec = parsed as Record<string, unknown>
-  if (rec.v !== 1)
-    throw new ScanError('invalid_target', `receipt has unsupported version ${String(rec.v)}`)
-  const num = (key: string): number => {
-    const value = rec[key]
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      throw new ScanError('invalid_target', `receipt has invalid ${key} ${String(value)}`)
-    }
-    return value
-  }
-  if (typeof rec.target !== 'string' || rec.target.length === 0) {
-    throw new ScanError('invalid_target', `receipt has invalid target ${String(rec.target)}`)
-  }
-  if (rec.witnessHash !== undefined && typeof rec.witnessHash !== 'string') {
-    throw new ScanError(
-      'invalid_target',
-      `receipt has invalid witnessHash ${String(rec.witnessHash)}`,
+  const o = optionsObject(opts, 'broadcast options')
+  const src = byteSource(source)
+  const mode = oneOf(o.mode ?? 'xor', 'mode', MODES)
+  const roundBytes = integerIn(o.roundBytes ?? 16, 'roundBytes', 1, 1 << 24)
+  const resonanceOdds = integerIn(o.resonanceOdds ?? 6765, 'resonanceOdds', 1, MAX_UNIFORM)
+  const resonanceValue = integerIn(
+    o.resonanceValue ?? resonanceOdds - 1,
+    'resonanceValue',
+    0,
+    resonanceOdds - 1,
+  )
+  if (roundBytes < drawBytes(resonanceOdds)) {
+    invalid(
+      `roundBytes ${roundBytes} cannot hold one resonance draw of odds ${resonanceOdds} (${drawBytes(resonanceOdds)} bytes)`,
     )
   }
-  return Object.freeze({
-    v: 1,
-    t: num('t'),
-    target: rec.target,
-    ...(rec.witnessHash !== undefined && { witnessHash: rec.witnessHash as string }),
-    bytesConsumed: num('bytesConsumed'),
-    resonances: num('resonances'),
-    rounds: num('rounds'),
-  })
+  if (o.now !== undefined && typeof o.now !== 'function') invalid('now must be a function')
+  const now = o.now ?? (() => Date.now())
+  const signal = abortSignal(o.signal)
+  const rounds = o.rounds === undefined ? undefined : integerIn(o.rounds, 'rounds', 0)
+  const durationMs =
+    o.durationMs === undefined ? undefined : finiteAtLeast(o.durationMs, 'durationMs', 0)
+  const { rate, witnessHash, witnessKind } = await resolveTarget(target)
+  const roundsLimit = rounds ?? (durationMs !== undefined ? Number.POSITIVE_INFINITY : 100)
+  const deadline = durationMs !== undefined ? now() + durationMs : Number.POSITIVE_INFINITY
+
+  const reader = openReader(src, signal)
+  const modulator = roundModulator(mode, rate)
+  const output = new Sha256()
+  let resonances = 0
+  let round = 0
+  try {
+    while (round < roundsLimit && now() < deadline) {
+      if (signal?.aborted) {
+        throw new ScanError('aborted', 'broadcast aborted', { source: src.name })
+      }
+      const raw = new Uint8Array(roundBytes)
+      let ended = false
+      for (let k = 0; k < roundBytes && !ended; k++) {
+        try {
+          raw[k] = await reader.next()
+        } catch (error) {
+          if (codeOf(error) !== 'insufficient_entropy') throw error
+          ended = true
+        }
+      }
+      if (ended) break
+
+      const modulated = await modulator.modulate(raw)
+      let resonance = false
+      try {
+        resonance = (await uniformInt(byteReader(raw), resonanceOdds)) === resonanceValue
+      } catch (error) {
+        // the rejection loop may exhaust the round's own bytes: no resonance
+        if (codeOf(error) !== 'insufficient_entropy') throw error
+      }
+      output.update(modulated)
+      if (resonance) resonances++
+      yield { round, resonance, modulated }
+      round++
+    }
+
+    return Object.freeze({
+      v: 2,
+      t: now(),
+      mode,
+      target: formatRate(rate),
+      ...(witnessKind !== undefined && { witnessKind }),
+      ...(witnessHash !== undefined && { witnessHash }),
+      bytesConsumed: reader.bytesConsumed,
+      resonances,
+      rounds: round,
+      outputHash: toHex(output.digest()),
+    })
+  } catch (error) {
+    throw toScanError(error, src.name, 'broadcast')
+  } finally {
+    await modulator.close()
+    await reader.close()
+  }
 }

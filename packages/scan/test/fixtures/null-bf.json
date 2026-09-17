@@ -1,0 +1,7 @@
+{
+  "generator": "python 3.11.15, scipy 1.17.1, numpy 2.4.6, statsmodels 0.15.0",
+  "n": 256,
+  "median": 0.09488223562003849,
+  "pBelowOne": 0.979430548958346,
+  "mean": 1.0000000000000764
+}

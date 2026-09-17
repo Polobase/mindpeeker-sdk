@@ -1,58 +1,111 @@
 import type { Rate } from '@mindpeeker/rate'
+import { ScanError } from '../errors.js'
+import { Sha256, toHex } from '../internal/sha256.js'
+import { integerIn, optionsObject } from '../internal/validate.js'
 import type { SignatureOptions } from '../types.js'
 
-/** UTF-8 encode a string into an `ArrayBuffer`-backed view (browser + Node global). */
-function utf8(s: string): Uint8Array<ArrayBuffer> {
-  const enc = new TextEncoder().encode(s)
-  const buf = new Uint8Array(enc.length)
-  buf.set(enc)
-  return buf
+/** UTF-8 encode a string. */
+function utf8(s: string): Uint8Array {
+  return new TextEncoder().encode(s)
 }
 
-/** Lowercase hex of a byte buffer. */
-function toHex(bytes: Uint8Array): string {
-  let out = ''
-  for (const b of bytes) out += b.toString(16).padStart(2, '0')
-  return out
+function requireString(input: unknown, what: string): string {
+  if (typeof input !== 'string') {
+    throw new ScanError('invalid_target', `${what} must be a string`)
+  }
+  return input
 }
 
-/** SHA-256 of a string via the Web Crypto API (`crypto.subtle`, browser-safe). */
+/** SHA-256 hex of a string's UTF-8 bytes (exactly as given — not normalized). */
 export async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', utf8(input))
-  return toHex(new Uint8Array(digest))
+  return toHex(new Sha256().update(utf8(requireString(input, 'sha256Hex input'))).digest())
+}
+
+/** MSB-first bits of `digest ‖ SHA-256(digest ‖ 1) ‖ SHA-256(digest ‖ 2) ‖ …` (counter: 4-byte big-endian). */
+class DigestBits {
+  readonly #digest: Uint8Array
+  #block: Uint8Array
+  #counter = 0
+  #bit = 0
+
+  constructor(digest: Uint8Array) {
+    this.#digest = digest
+    this.#block = digest
+  }
+
+  #nextBit(): number {
+    if (this.#bit === 256) {
+      this.#counter++
+      const c = this.#counter
+      const suffix = new Uint8Array([c >>> 24, (c >>> 16) & 0xff, (c >>> 8) & 0xff, c & 0xff])
+      this.#block = new Sha256().update(this.#digest).update(suffix).digest()
+      this.#bit = 0
+    }
+    const byte = this.#block[this.#bit >>> 3] as number
+    const bit = (byte >>> (7 - (this.#bit & 7))) & 1
+    this.#bit++
+    return bit
+  }
+
+  /** `width` bits as a big-endian unsigned integer (`width` ≤ 32). */
+  next(width: number): number {
+    let v = 0
+    for (let i = 0; i < width; i++) v = v * 2 + this.#nextBit()
+    return v
+  }
 }
 
 /**
  * Deterministically map a signature string to a radionic {@link Rate} by
- * hashing it with SHA-256 and partitioning each digest byte into a base-`base`
- * digit:
+ * hashing it and reading each digit from the hash **by rejection**:
  *
- * $$d_i = \left\lfloor \frac{\mathrm{digest}_i}{256}\,\cdot\,\mathrm{base}
- *   \right\rfloor \in [0,\ \mathrm{base}),$$
+ * 1. Normalize the signature to Unicode NFC (so a precomposed "é" and
+ *    "e" + combining acute — the same text a person typed — give the same
+ *    rate) and take $D = \mathrm{SHA\text{-}256}(\mathrm{UTF\text{-}8})$.
+ * 2. Read the bit stream $D \,\|\, H_1 \,\|\, H_2 \,\|\, \dots$ MSB-first, with
+ *    $H_i = \mathrm{SHA\text{-}256}(D \,\|\, i)$ ($i$ as 4-byte big-endian) —
+ *    extended only as far as needed.
+ * 3. For each digit take $w = \lceil \log_2 \mathrm{base} \rceil$ bits as an
+ *    integer $v$; accept $d = v$ if $v < \mathrm{base}$, else discard the $w$
+ *    bits and read the next $w$.
  *
- * taking the first `length` bytes. The partition map keeps every digit in
- * range without a biased `% base` reduction — and because it is a fixed
- * function of a cryptographic hash (not a draw from an entropy source), the
- * rate is stable: the same signature always yields the same rate. This is the
- * SDK-honest analogue of AetherOne's "Broadcast of Hashed Signatures".
+ * Modeling SHA-256 as a random function, every digit is **exactly** uniform
+ * on $[0, \mathrm{base})$ and independent — for base 44 ($w = 6$, acceptance
+ * $44/64$) as for Combe's base 336 ($w = 9$), whose every digit is reachable.
+ * (0.1 used $\lfloor \mathrm{byte} \cdot \mathrm{base}/256 \rfloor$, which is as
+ * non-uniform as `% base` for 44, reached only 256 of 336 digits, and repeated
+ * the digest past 32 digits.)
+ *
+ * Because the rate is a fixed function of a hash — not a draw from an entropy
+ * source — the same signature always yields the same rate. This is the
+ * SDK-honest analogue of AetherOne's "Broadcast of Hashed Signatures"; using a
+ * signature as a witness goes back to Abrams' handwriting claims (Hudgings
+ * 1923). Nothing is transmitted.
  *
  * @example
  * await signatureToRate('John Doe')            // 6-digit base-44 rate
- * await signatureToRate('John Doe', { length: 5, base: 44 })
+ * await signatureToRate('John Doe', { length: 5, base: 336 })
+ *
+ * @throws {ScanError} `invalid_target` for a non-string signature;
+ *   `invalid_options` for `length` outside $[1, 4096]$ or `base` outside
+ *   $[2, 2^{32}]$
  */
 export async function signatureToRate(
   signature: string,
   opts: SignatureOptions = {},
 ): Promise<Rate> {
-  const length = opts.length ?? 6
-  const base = opts.base ?? 44
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(signature)))
+  const text = requireString(signature, 'signature').normalize('NFC')
+  const o = optionsObject(opts, 'signatureToRate options')
+  const length = integerIn(o.length ?? 6, 'length', 1, 4096)
+  const base = integerIn(o.base ?? 44, 'base', 2, 2 ** 32)
+  const width = 32 - Math.clz32(base - 1)
+  const bits = new DigestBits(new Sha256().update(utf8(text)).digest())
   const digits: number[] = []
-  for (let i = 0; i < length; i++) {
-    const byte = digest[i % digest.length] as number
-    digits.push(Math.floor((byte / 256) * base))
+  while (digits.length < length) {
+    const v = bits.next(width)
+    if (v < base) digits.push(v)
   }
-  return { digits, base }
+  return Object.freeze({ digits: Object.freeze(digits), base })
 }
 
 /**
@@ -67,9 +120,12 @@ export async function signatureToRate(
  *
  * @example
  * rateFromCharCodes('abc') // sqrt(97+98+99)=17.146… → 17.15
+ *
+ * @throws {ScanError} `invalid_target` for a non-string input
  */
 export function rateFromCharCodes(s: string): number {
+  const text = requireString(s, 'rateFromCharCodes input')
   let sum = 0
-  for (let i = 0; i < s.length; i++) sum += s.charCodeAt(i)
+  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i)
   return Math.round(Math.sqrt(sum) * 100) / 100
 }

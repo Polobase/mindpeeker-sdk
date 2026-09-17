@@ -18,6 +18,60 @@ describe('defineCatalog', () => {
     expect(() => defineCatalog('c', 'C', [])).toThrow(ScanError)
     // biome-ignore lint/suspicious/noExplicitAny: deliberately malformed item
     expect(() => defineCatalog('c', 'C', [{ name: '' } as any])).toThrow(ScanError)
+    // biome-ignore lint/suspicious/noExplicitAny: deliberately malformed item
+    expect(() => defineCatalog('c', 'C', [null as any])).toThrow(ScanError)
+    expect(() => defineCatalog('', 'C', [{ name: 'a' }])).toThrow(ScanError)
+    expect(() => defineCatalog('c', 'C', [{ name: 'a', id: '' }])).toThrow(ScanError)
+  })
+
+  test('rejects duplicate ids (explicit or defaulted from the name)', () => {
+    const dupIds = () =>
+      defineCatalog('c', 'C', [
+        { name: 'A', id: 'x' },
+        { name: 'B', id: 'x' },
+      ])
+    expect(dupIds).toThrow(expect.objectContaining({ code: 'invalid_catalog' }))
+    expect(() => defineCatalog('c', 'C', [{ name: 'Sulphur' }, { name: 'Sulphur' }])).toThrow(
+      ScanError,
+    )
+  })
+
+  test('rejects duplicate names within a category, allows them across categories', () => {
+    expect(() =>
+      defineCatalog('c', 'C', [
+        { name: 'Sulphur', id: 's1', category: 'Homeo' },
+        { name: 'Sulphur', id: 's2', category: 'Homeo' },
+      ]),
+    ).toThrow(ScanError)
+    const ok = defineCatalog('c', 'C', [
+      { name: 'Sulphur', id: 's1', category: 'Homeo' },
+      { name: 'Sulphur', id: 's2', category: 'Organ' },
+    ])
+    expect(ok.items.map((i) => i.id)).toEqual(['s1', 's2'])
+  })
+
+  test("copies rates defensively: the caller's object is neither frozen nor shared", () => {
+    const digits = [3, 7]
+    const rate = { digits, base: 44 }
+    const cat = defineCatalog('c', 'C', [{ name: 'A', rate }])
+    expect(Object.isFrozen(rate)).toBe(false)
+    expect(Object.isFrozen(cat.items[0]?.rate)).toBe(true)
+    expect(Object.isFrozen(cat.items[0]?.rate?.digits)).toBe(true)
+    digits[0] = 43
+    expect(cat.items[0]?.rate?.digits).toEqual([3, 7])
+  })
+
+  test("rejects invalid rates with rate's own checks", () => {
+    for (const rate of [
+      { digits: [], base: 44 },
+      { digits: [44], base: 44 },
+      { digits: [1.5], base: 44 },
+      { digits: [0], base: 1 },
+    ]) {
+      expect(() => defineCatalog('c', 'C', [{ name: 'A', rate }])).toThrow(
+        expect.objectContaining({ code: 'invalid_catalog' }),
+      )
+    }
   })
 })
 
@@ -84,5 +138,21 @@ describe('catalogFromRateEntries', () => {
 
   test('rejects an empty entry list', () => {
     expect(() => catalogFromRateEntries([])).toThrow(ScanError)
+  })
+
+  test('entries sharing a term need distinct slugs (ids)', () => {
+    const twins: RateEntryLike[] = [
+      { term: 'Sulphur', categories: ['Homeo'] },
+      { term: 'Sulphur', categories: ['Organ'] },
+    ]
+    expect(() => catalogFromRateEntries(twins)).toThrow(ScanError)
+    const slugged = catalogFromRateEntries([
+      { ...twins[0], slug: 'sulphur-homeo' } as RateEntryLike,
+      { ...twins[1], slug: 'sulphur-organ' } as RateEntryLike,
+    ])
+    expect(slugged.items.map((i) => [i.id, i.category])).toEqual([
+      ['sulphur-homeo', 'Homeo'],
+      ['sulphur-organ', 'Organ'],
+    ])
   })
 })

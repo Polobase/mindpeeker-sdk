@@ -91,42 +91,88 @@ export function chiSquare(observed: readonly number[], expected: readonly number
 }
 
 /**
- * Bytes for a deviation scan: `rounds × itemCount` bytes, item `j` at round `r`
- * living at global position `r*itemCount + j`. A fair PRNG baseline; if
- * `biasedItem` is set, that item's bytes are forced odd (bit 1 → always scores).
+ * Bytes for a deviation scan: coin `r*itemCount + j` (round r, item j) is that
+ * bit of the stream, MSB-first, eight coins per byte — `ceil(rounds × itemCount / 8)`
+ * bytes. A fair PRNG baseline; if `biasedItem` is set, that item's coins are
+ * forced to 1 (it scores every round).
  */
 export function deviationBytes(
   rounds: number,
   itemCount: number,
   opts: { biasedItem?: number; seed?: number } = {},
 ): Uint8Array {
-  const out = prngBytes(rounds * itemCount, opts.seed ?? 0xabcdef01)
+  const out = prngBytes(Math.ceil((rounds * itemCount) / 8), opts.seed ?? 0xabcdef01)
   if (opts.biasedItem !== undefined) {
-    for (let r = 0; r < rounds; r++) out[r * itemCount + opts.biasedItem] = 1
+    for (let r = 0; r < rounds; r++) {
+      const c = r * itemCount + opts.biasedItem
+      out[c >>> 3] = (out[c >>> 3] as number) | (0x80 >>> (c & 7))
+    }
   }
   return out
 }
 
+/** Open/close bookkeeping of a {@link trackedSource}. */
+export interface StreamLog {
+  opened: number
+  closed: number
+  chunks: number
+}
+
 /**
- * Bytes for a tripolar scan with an injected differential: `bitsPerTrial = 8`,
- * one byte per trial. Interleaved schedule sequence `s` has intention `s % 3`
- * (0 high, 1 low, 2 baseline). High trials get `0xff` (8 one-bits), low `0x00`
- * (0 one-bits), baseline `0x0f` (4). The rest of the buffer is neutral `0x0f`.
+ * A source whose stream counts sessions and records when its `finally` runs —
+ * what a serial port's `close()` or a camera track's `stop()` would do. Cycles
+ * `bytes` forever unless `finite`; `delayMs` makes each chunk wait (a slow,
+ * non-cooperative device that ignores the abort signal).
  */
-export function tripolarBiasBytes(
-  trialsPerRun: number,
-  runsPerIntention: number,
-  totalLength: number,
-): Uint8Array {
-  const out = new Uint8Array(totalLength).fill(0x0f)
-  const schedule = runsPerIntention * 3
-  for (let s = 0; s < schedule; s++) {
-    const intention = s % 3
-    const byte = intention === 0 ? 0xff : intention === 1 ? 0x00 : 0x0f
-    for (let t = 0; t < trialsPerRun; t++) {
-      const pos = s * trialsPerRun + t
-      if (pos < totalLength) out[pos] = byte
-    }
+export function trackedSource(
+  name: string,
+  bytes: Uint8Array,
+  opts: { chunkBytes?: number; finite?: boolean; delayMs?: number } = {},
+): { source: ByteSource; log: StreamLog } {
+  const log: StreamLog = { opened: 0, closed: 0, chunks: 0 }
+  const chunkBytes = opts.chunkBytes ?? 64
+  const source: ByteSource = {
+    name,
+    stream() {
+      log.opened++
+      return (async function* () {
+        try {
+          let i = 0
+          while (true) {
+            if (opts.delayMs !== undefined) await Bun.sleep(opts.delayMs)
+            if (i >= bytes.length) {
+              if (opts.finite) return
+              i = 0
+            }
+            const end = Math.min(i + chunkBytes, bytes.length)
+            log.chunks++
+            yield bytes.subarray(i, end)
+            i = end
+          }
+        } finally {
+          log.closed++
+        }
+      })()
+    },
   }
-  return out
+  return { source, log }
+}
+
+/** A source that yields `good` chunks, then throws `error`. */
+export function failingSource(name: string, error: unknown, good = 2, chunkBytes = 16): ByteSource {
+  return {
+    name,
+    async *stream() {
+      for (let i = 0; i < good; i++) yield prngBytes(chunkBytes, 0x1234 + i)
+      throw error
+    },
+  }
+}
+
+/** A coded error shaped like a sibling package's (e.g. `EntropyError('health_test')`). */
+export function codedError(name: string, code: string, message: string): Error {
+  const error = new Error(message) as Error & { code: string }
+  error.name = name
+  error.code = code
+  return error
 }

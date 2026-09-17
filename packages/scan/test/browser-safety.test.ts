@@ -44,9 +44,18 @@ describe('browser safety', () => {
   })
 
   test('the scan-core files carry no modulo selection path', () => {
-    for (const name of ['scan/race.ts', 'scan/deviation.ts', 'scan/vitality.ts', 'scan/scan.ts']) {
+    for (const name of [
+      'scan/race.ts',
+      'scan/deviation.ts',
+      'scan/vitality.ts',
+      'scan/scan.ts',
+      'scan/sweep.ts',
+    ]) {
       const content = readFileSync(join(srcDir, name), 'utf8')
-      expect(content.includes('uniformInt'), `${name} must draw via uniformInt`).toBe(true)
+      expect(
+        content.includes('uniformInt') || content.includes('nextBit'),
+        `${name} must draw via uniformInt or the bit reader`,
+      ).toBe(true)
       // A biased `x % n` selection is exactly what the SDK port removes; these
       // files must contain no `%` at all (all randomness goes through oracle).
       expect(content.includes('%'), `${name} must not use modulo`).toBe(false)

@@ -1,63 +1,76 @@
 # @mindpeeker/scan
 
 An honest, application-level **radionic scanning and broadcasting** layer that
-ports [AetherOnePi](https://github.com/isuretpolos/AetherOnePi)'s analysis and
-broadcast model onto the published mindpeeker-sdk primitives — and adds the one
-thing AetherOne never had: **a real statistical null model.**
+re-expresses [AetherOnePi](https://github.com/isuretpolos/AetherOnePi)'s (and
+[AetherOnePy](https://github.com/isuretpolos/AetherOnePy)'s) analysis and
+broadcast model on the mindpeeker-sdk primitives — and adds the one thing
+AetherOne never had: **a real statistical null model.**
 
 It composes, without re-implementing, four siblings:
 
 - [`@mindpeeker/oracle`](../oracle) — the **unbiased** `uniformInt`
-  (rejection sampling) and `drawWithoutReplacement` that every random choice
-  here bottoms out in. This is the whole reason the SDK version exists: the
-  frontend `scanCatalog` selects with a biased `x mod n` reduction; this
-  package never does.
-- [`@mindpeeker/rate`](../rate) — `parseRate`, `dialToBase44`, and the
-  `xorImprint` / `phaseModulate` / `rateMask` stream modulation a broadcast
-  applies.
-- [`@mindpeeker/psi`](../psi) — `binomialBayesFactor` for the deviation model
-  and `runTripolar` / `analyzeTripolar` for the rigorous PEAR MMI scan.
-- [`@mindpeeker/negentropy`](../negentropy) — `normSf` (scipy-validated) for
-  the deviation z → p tail.
+  (rejection sampling), `drawWithoutReplacement` (Fisher–Yates prefix), the
+  MSB-first `bitReader`, and `byteReader`'s stream lifecycle. Every random
+  choice here bottoms out in them; nothing uses a biased `x mod n` reduction.
+- [`@mindpeeker/rate`](../rate) — `parseRate`, `dialToBase44`, the rate
+  validity checks, and the `xorImprint` / `phaseModulate` / `rateMask` stream
+  modulation a broadcast applies.
+- [`@mindpeeker/psi`](../psi) — `binomialLogBayesFactor`, `holm`,
+  `benjaminiHochberg`, and `runTripolar` / `analyzeTripolar` /
+  `controlContrast` / `registerTripolar` for the rigorous PEAR MMI scan.
+- [`@mindpeeker/negentropy`](../negentropy) — exact binomial tails
+  (`binomialCdf` / `binomialSf`) and `chi2Sf` from its `./numerics` subpath.
 
-Browser-safe (only `crypto.subtle`, async), ESM, TypeScript strict. Every
-`@mindpeeker/entropy` provider — the webcam TRNG, the ESP32 serial TRNG that
-*is* the AetherOnePi board, ANU QRNG, a crypto fallback — drops in as a source
-**structurally**, no adapter:
+Browser-safe (no `node:` imports), ESM, TypeScript strict, zero third-party
+dependencies. Every `@mindpeeker/entropy` provider — the webcam TRNG, an
+ESP32 serial TRNG (AetherOnePi reads one at 921 600 baud since April 2026), ANU
+QRNG, a crypto fallback — drops in as a source **structurally**, no adapter:
 
-```ts
+```ts no-check
 interface ByteSource {
   readonly name: string
   stream(opts?: { signal?: AbortSignal; chunkBytes?: number }): AsyncIterable<Uint8Array>
 }
 ```
 
+Every entry point opens **one** stream per call and closes it (so a serial
+port's `close()` or a camera track's `stop()` runs) when the call completes,
+fails, is aborted, or — for `broadcast` — when you stop iterating.
+
 ## Quick start
 
 ```ts
-import { defineCatalog, scan, broadcast, scanTripolar } from '@mindpeeker/scan'
+import {
+  broadcast, defineCatalog, generalVitalitySf, scan, scanDeviation, scanTripolar,
+} from '@mindpeeker/scan'
+import { registerTripolar } from '@mindpeeker/psi'
 
 const remedies = defineCatalog('kit', 'Travel kit', [
-  { name: 'Arnica' }, { name: 'Nux vomica' }, { name: 'Rescue' }, /* … */
+  { id: 'arn', name: 'Arnica' }, { id: 'nux', name: 'Nux vomica' }, { id: 'res', name: 'Rescue' },
 ])
 
 // 1. scan a catalog: AetherOne EV race + General Vitality + honest deviation
-const report = await scan(remedies, source)              // source = any ByteSource
+const report = await scan(remedies, source) // source = any ByteSource
 for (const r of report.results.slice(0, 5)) {
-  console.log(r.rank, r.name, r.energy, r.vitality, r.deviation?.bayesFactor)
+  console.log(r.rank, r.id, r.energy, r.vitality, r.vitalityP, r.deviation?.pHolm)
 }
+console.log(report.multiplicity?.omnibus.p) // "is the source off at all?"
 
-// 2. broadcast a rate/witness/signature; get a reproducible receipt
-const run = broadcast('subject signature', source, { rounds: 100 })
+// 2. the null model alone, with multiplicity bookkeeping
+const deviation = await scanDeviation(remedies, source, { rounds: 256 })
+console.log(deviation.multiplicity.expectedFalsePositives, generalVitalitySf(1400))
+
+// 3. broadcast a rate/witness/signature; get a verifiable receipt
+const run = broadcast({ signature: 'subject signature', kind: 'signature' }, source, { rounds: 100 })
 let step = await run.next()
-while (!step.done) step = await run.next()   // step.value: BroadcastTick per round
-const receipt = step.value                    // BroadcastReceipt (JSONL v1)
+while (!step.done) step = await run.next() // step.value: BroadcastTick per round
+const receipt = step.value // BroadcastReceipt v2: outputHash, witnessKind, …
 
-// 3. the rigorous MMI version: a pre-registered tripolar protocol
-const tri = await scanTripolar(remedies, source, {
-  trialsPerRun: 100, bitsPerTrial: 200, runsPerIntention: 10,
-})
-console.log(tri.deltaZ, tri.analysis.deltaP)  // high-minus-low, ~N(0,1) under H0
+// 4. the rigorous MMI version: a pre-registered tripolar protocol
+const plan = { runsPerIntention: 10, order: 'instructed', seed: 'c0ffee' } as const
+const registration = await registerTripolar(plan) // publish registration.hash first
+const tri = await scanTripolar(remedies, source, plan, { registration, control: csprng })
+console.log(tri.deltaZ, tri.analysis.deltaP, tri.control?.contrast.z)
 ```
 
 ## Reflection, not measurement
@@ -88,98 +101,186 @@ Any reading has two interpretations, and we never pick one for you:
 
 ### The scan (`scan`, `race`, `generalVitality`)
 
-`race` is a faithful port of AetherOne's `AnalysisService.analyseRateList`: draw
-a random subset of the catalog, then run the **EV race** — each pass adds a
-`uniformInt(0..10)` to every item's Energetic Value; the first to cross
-`maxValue` wins. `generalVitality` is AetherOne's best-of-three `uniformInt(0..1000)`
-with the open-ended `>950` explosion.
+`race` draws a random subset of the catalog — AetherOnePi's rule,
+$s = \min(M, \operatorname{clamp}(\lfloor M/10 \rfloor, 120, 5000))$, via
+`subsetFraction` / `subsetMin` / `subsetMax` — as a Fisher–Yates prefix, then
+runs the **EV race**: each pass adds a `uniformInt(0..10)` to every raced
+item's Energetic Value in draw order; the first to reach `maxValue` (default
+100) wins. Within a pass an earlier position reaches the threshold first
+(position 0 of 12 wins 0.118 of races, position 11 only 0.059), so the winner
+is uniform over the catalog **only because** the draw order is a uniformly
+random permutation prefix.
 
-**`energy`, `vitality`, and AetherOne's "hit" thresholds have no chance
-baseline.** AetherOne calls `GV > 1400` a hit and fires a broadcast "resonance"
-at a 1-in-6765 rate — but *a fair TRNG produces exactly those events at exactly
-those rates.* Without a null model, a "hit" is not evidence of anything. These
-fields are reported for parity and context only.
+`generalVitality` is the best-of-three `uniformInt(0..1000)` with the
+open-ended `>950` explosion. Its law under a fair source is known exactly —
+`generalVitalitySf(t)` $= P(\mathrm{GV} > t)$, and every scan result carries
+`vitalityP` $= P(\mathrm{GV} \ge \text{its value})$. `energy` has no chance
+baseline at all; neither field says anything about an item. AetherOnePi's
+**HIT** label marks the entry with the highest GV on the page, and its
+**Auto-Mode** broadcasts a rate whose GV exceeds 1400 (or the target's GV by
+700): under a fair source $P(\mathrm{GV} > 1400) \approx 0.00225$, about one
+rate in 444. `GV_AUTO_MODE_THRESHOLD` exports the number.
 
 ### The deviation null model (`scanDeviation`, `deviation` field) — the value-add
 
-This is what AetherOne lacks. Each catalog item is treated as an **independent
-Bernoulli process with a known, exact chance rate**: a fair per-item coin, one
-unbiased bit per round, so
+Each catalog item is an **independent Bernoulli process with a known, exact
+chance rate**: one fair coin per item per round, eight coins per source byte
+(oracle's `bitReader`), so
 
 $$p_0 = \tfrac12 \quad\text{(exact, not estimated).}$$
 
 Over $N$ rounds it counts successes $k_i$ and reports, per item,
 
-$$z_i = \frac{k_i - N p_0}{\sqrt{N p_0 (1-p_0)}} = \frac{k_i - N/2}{\sqrt{N/4}},
-\qquad p_i = 2\,\Phi(-|z_i|), \qquad
-BF_{10} = \frac{B(k_i+a,\ N-k_i+b)}{B(a,b)}\,2^{N},$$
+$$z_i = \frac{k_i - N/2}{\sqrt{N/4}}, \qquad
+p_i = P\big(|K - \tfrac N2| \ge |k_i - \tfrac N2|\big),\ K \sim \mathrm{Binomial}(N, \tfrac12), \qquad
+BF_{10} = \frac{B(k_i+a,\ N-k_i+b)}{B(a,b)}\,2^{N}.$$
 
-where $z_i$ is standard normal under $H_0$, $p_i$ is its two-sided normal tail
-(negentropy's scipy-validated `normSf`), and $BF_{10}$ is `binomialBayesFactor`,
-whose null is exactly this $p_0 = \tfrac12$.
-
-- **Under a fair source every item is null:** $BF_{10} \approx 1$, $z \approx 0$,
-  and the $p$-values are $\sim \mathrm{Uniform}(0,1)$. The test suite asserts
-  this.
-- **A source biased toward one item raises *that* item's** $BF_{10}$ and $|z|$
-  and lowers its $p$. The test suite asserts this too.
+- `p` is the **exact** two-sided binomial p (equal to scipy's `binomtest`); `z`
+  is descriptive only. The normal tail it replaces rejected a fair coin with
+  probability 0.077 at nominal 0.05 for $N = 16$; the exact test never exceeds
+  its level.
+- `lnBayesFactor` is psi's overflow-free $\ln BF_{10}$; items rank on it (ties
+  broken by an id hash, never by catalog order), so a stuck-high source with
+  $BF_{10} = \infty$ for every item still ranks deterministically.
+- **Under a fair source** $z \approx 0$, $P(p \le \alpha) \le \alpha$ at every
+  level, and $BF_{10}$ is typically **below 1** — median 0.095 at $N = 256$,
+  below 1 for 98% of items — which is evidence *for* chance; only its mean is
+  exactly 1. A source biased toward one item raises *that* item's
+  $BF_{10}$ and $|z|$. The test suite asserts all of this.
+- **Multiplicity is part of the report.** Each item carries `pBonferroni`,
+  `pHolm` (family-wise error) and `qBH` (false discovery rate); the report's
+  `multiplicity` states $M\alpha$ — how many unadjusted $p \le \alpha$ a fair
+  source produces anyway — the counts at $\alpha$, and an omnibus
+  $\sum_i z_i^2 \approx \chi^2(M)$ test that flags a *source* departing from a
+  fair coin (slightly conservative: each $z_i^2$ has variance $2 - 2/N$).
 
 A high deviation score is a **chance-deviation flag, not evidence of
 mind–matter interaction.** RF pickup, a warm oscillator, a biased ADC, or a bug
-all produce "significant" deviations. And because $M$ items are each tested,
-some will look significant by luck — expect on the order of $M/20$ to cross
-$p < 0.05$ under the null. **Correct for multiplicity** (Bonferroni $\alpha/M$,
-or lean on the Bayes factors, which can come out *for* the null) and register
+all produce "significant" deviations. Read the adjusted values and register
 your hypothesis before looking.
 
 ### Broadcasting (`broadcast`, `signatureToRate`)
 
-`broadcast` modulates a live entropy stream by a target rate — reversibly via
-`xorImprint` (the default; applying it twice is the identity), or via
-`phaseModulate` / `rateMask`. It tallies a rare "resonance" at the AetherOne
-1-in-6765 rate and returns a JSONL v1 `BroadcastReceipt`
-(`{v,t,target,witnessHash?,bytesConsumed,resonances,rounds}`).
+`broadcast` modulates a live entropy stream by a target rate as **one
+continuous stream** — reversibly via `xorImprint` (the default: the
+concatenated ticks equal `xorImprint(rawStream, rate)`, and one inverse pass
+recovers the raw bytes), or via `phaseModulate` / `rateMask`. It tallies a
+rare "resonance" at $1/6765$ per round over the round's own bytes and returns a
+JSONL v2 `BroadcastReceipt`
+(`{v,t,mode,target,witnessKind?,witnessHash?,bytesConsumed,resonances,rounds,outputHash}`)
+whose `outputHash` — SHA-256 of every modulated byte — lets a replay from
+recorded raw bytes be verified rather than trusted.
+
+Only a source that **ends** finishes a broadcast cleanly. A source that
+**fails** — a health-test alarm from a stuck ESP32, an I/O error — rejects with
+`ScanError('source_error')` (provider error as `cause`), never a clean-looking
+receipt.
 
 This is **deterministic digital signal processing over an entropy stream, plus
 a reproducibility receipt — nothing more. No transmission, no
 action-at-a-distance, and no physical effect on any subject is claimed or
-occurs.** The "resonance" is a labelled random event with a stated rate, not a
-detected wave. `signatureToRate` is a deterministic SHA-256 → base-44 mapping
-(the SDK-honest analogue of AetherOne's "Broadcast of Hashed Signatures"); no
-signature is transmitted anywhere.
+occurs.** Even practitioner literature calls "broadcasting" a misnomer with no
+radio technology involved [90979:3]. `signatureToRate` is a deterministic
+SHA-256 → rate mapping (NFC-normalized, rejection-sampled digits, so base 44 is
+exactly uniform and every base-336 digit is reachable); using a signature as a
+witness goes back to Abrams' 1923 handwriting claims [7964:10].
 
 ### The rigorous MMI scan (`scanTripolar`)
 
 If you actually want to *test* Reading B, this is the honest way: a
 **pre-registered** PEAR tripolar protocol via `@mindpeeker/psi`. Intentions
-(high / low / baseline), schedule, bit budget, and $p_0$ are all fixed before
-the data. The primary statistic is `deltaZ` (high minus low), standard normal
-under $H_0$; common-mode device drift cancels in the difference. A non-zero
-`deltaZ` is a fact about your bytes, **not** proof of a mechanism.
+(high / low / baseline), the schedule (`order`: fixed, interleaved,
+counterbalanced, seeded instructed, or volitional with `declare`), bit budget,
+and $p_0$ are fixed before the data; `registration` makes divergence
+detectable; `control` runs a yoked control arm and reports psi's
+`controlContrast`. The primary statistic is `deltaZ` (high minus low), standard
+normal under $H_0$. One source stream serves both phases — the protocol, then
+the per-intention catalog scoring in **the same intention sequence** — so a
+replayable source never reuses bytes and `accounting` covers everything. A
+non-zero `deltaZ` is a fact about your bytes, **not** proof of a mechanism; one
+the control arm reproduces indicts the pipeline.
+
+## Lineage: from stick pad to EV race (`sweepScan`)
+
+The classical radionic scan has no random numbers in it. The operator puts the
+witness in the well, sets every dial to its lowest setting, turns dial 1 (the
+one nearest the well) slowly while stroking a rubber pad, stops at a "stick",
+and moves to the next dial; an overshoot means starting over, and the dials
+should not be watched [3047:38]; De La Warr's instructions describe the same
+brushing strokes "until a stick is obtained" [51906:96]. The settings are the
+rate. **The RNG race is AetherOne's invention**; the literature never states
+how often a stick at a given position happens by chance.
+
+`sweepScan(target, source, { model })` keeps the classical procedure and
+replaces the stick with a draw of stated law, so the reading comes with its
+exact null (`nullPmf`) and replays byte-for-byte:
+
+- `'first-passage'` (default): at position $k$ of $P$ a stick occurs with
+  probability $(k+1)/P$ — $P(k) = \frac{k+1}{P}\prod_{j<k}\big(1 - \frac{j+1}{P}\big)$,
+  far from flat (mode near $\sqrt P$).
+- `'uniform'`: every position has probability $1/P$.
+
+The target is `{ dials, positions }` (stops form a `Rate`) or a catalog read
+top to bottom.
+
+## Fidelity and provenance vs AetherOne
+
+Read from the AetherOnePi Java sources (`AnalysisService`, `HotbitsClient`,
+`BroadcastElement`, `AnalyseScreen`, `GuiElements`) and AetherOnePy's
+`analyzeService.py` / `hotbitsService.py`.
+
+| Aspect | AetherOnePi (Java) | AetherOnePy | `@mindpeeker/scan` |
+| --- | --- | --- | --- |
+| Random numbers | `java.util.Random` seeded per call with time + a hotbit seed | `random.seed(hotbit)`, then `randint` | any `ByteSource`, rejection-sampled `uniformInt` / bit reader — replayable |
+| Raced subset | shuffle, then size/10 clamped to [120, 5000] | 24 items (`getInt(0, len) − 1` gives the last item double weight); optional "enhanced" pre-race | Pi's rule by default; Py's 24 via `subsetMin: 24, subsetMax: 24`; exactly uniform prefix |
+| EV increment | `nextInt(10)` = 0..9 | `randint(0, 10)` = 0..10 | 0..10 (Py) |
+| Winning EV | 100 (1000 "very high") | 1000 | `maxValue`, default 100 |
+| Race order within a pass | `HashMap` key order (follows name hashes) | shuffled list | draw order (uniform permutation prefix) |
+| `numberOfTrials` | total EV increments | not reported | passes; the sum of `trials` is Pi's count |
+| General Vitality | max of 3 × `nextInt(1000)`, explosion `nextInt(100)` | `randint(0, 1000)`, `randint(0, 100)` | Py's ranges, plus the exact tail `generalVitalitySf` |
+| HIT / Auto-Mode | HIT = highest GV shown; broadcast if GV > 1400 or > target GV + 700 | not examined | `GV_AUTO_MODE_THRESHOLD`, $P(\mathrm{GV} > 1400) \approx 0.00225$ |
+| Potency / level analyses | chance races over tables | potency in the domain model (not examined) | not ported |
+| Resonance | `SecureRandom.nextInt(6765 + multiplier)` top value (multiplier default 1) per painted layer | not examined | `uniformInt(round, 6765)` top value per round, from the broadcast's own bytes |
+| Hashed-signature broadcast | yes | signature broadcasts (hashing not examined) | `signatureToRate` (SHA-256, rejection) |
+| Char-code LED rate | √Σ char codes, 2 dp | not examined | `rateFromCharCodes` (parity) |
+| Null model, multiplicity | none | none | exact binomial p, $\ln BF_{10}$, Holm/BH, omnibus |
+| Records | case / protocol files | SQLite database | JSONL receipt v2 with `outputHash` |
+| Hardware | Raspberry Pi / webcam; ESP32 `esp_fill_random` at 921 600 baud with optional SHA-512 whitening (2026-04) | webcam / Pi | any `@mindpeeker/entropy` provider |
 
 ## Is there science behind any of this? Honestly:
 
 - **Radionics as medicine is pseudoscience.** No plausible physical or
   biological mechanism; no controlled trial has shown diagnostic or therapeutic
-  validity; regulators have acted against radionic devices (Wikipedia;
-  Quackwatch; Skepdic). **This package makes no medical, diagnostic, or
-  efficacy claim of any kind.** Do not use it as one.
+  validity; regulators have acted against radionic devices. **This package
+  makes no medical, diagnostic, or efficacy claim of any kind.** Do not use it
+  as one. The historical tests (ark-db library references in brackets):
+  - **Horder committee, 1924** — a British committee chaired by Sir Thomas
+    Horder concluded that "the fundamental proposition originally announced by
+    Dr. Albert Abrams must be regarded as established to a very high degree of
+    probability" [52451:139]. What it examined were reaction tests with
+    W. E. Boyd's emanometer [846:562] — reproducibility of a reaction, not
+    diagnosis or treatment of disease.
+  - **Drown, 1950** — a test of Ruth Drown's instrument under the auspices of
+    the American Medical Association "was completely negative" [16745:326].
 - **The underlying premise (intention biasing an RNG = micro-PK / MMI)** has a
   real but *contested and most-likely-null* record:
   - **PEAR** (Jahn & Dunne, 1979–2007) reported effects, but extraordinarily
-    tiny (~$10^{-4}$ bits/trial).
-  - **Radin & Nelson**'s meta-analysis reported odds "$10^{50}$" against
-    chance — heavily criticised for selection and quality effects.
+    tiny (~$10^{-4}$ per bit).
+  - **Radin & Nelson 1989** (*Foundations of Physics* 19:1499–1514) pooled the
+    RNG studies into a highly significant combined deviation — criticised for
+    selection and study-quality effects.
   - **Bösch, Steinkamp & Boller 2006** (*Psychological Bulletin*): the overall
     effect is tiny and heterogeneous, and *vanishes / reverses* once PEAR's
     huge "Mega-REG" study is included — attributed to **publication bias**.
   - A **three-lab consortium failed to replicate** PEAR's mean shift (Jahn et
     al. 2000).
-  - A **2018 Bayesian reanalysis** found **evidence _against_ micro-PK**.
+  - **Maier, Dechamps & Pflitsch 2018** (*Frontiers in Psychology* 9:379) ran
+    a **new** online experiment with a sequential Bayesian design (n = 12 571)
+    and found **evidence _against_ micro-PK**, $BF_{01} = 10.07$.
 
 The mindpeeker value-add over AetherOne is precisely this honesty: AetherOne's
-`GV > 1400` "hit" and 1-in-6765 "resonance" have no chance baseline; our
-`deviation` model supplies one, and this document says plainly that a deviation
+GV thresholds and 1-in-6765 "resonance" have no stated chance baseline; this
+package states one for every number it can, and says plainly that a deviation
 is not evidence of the claimed mechanism.
 
 ## The anti-manipulation ethic (ported from AetherOnePi)
@@ -194,30 +295,103 @@ the ethic guards against. Keep it.
 ## Catalogs
 
 ```ts
-import { defineCatalog, catalogFromRateEntries } from '@mindpeeker/scan'
+import { catalogFromRateEntries, defineCatalog } from '@mindpeeker/scan'
 
-defineCatalog('kit', 'Kit', [{ name: 'Arnica', rate }, { name: 'Silica' }])
+defineCatalog('kit', 'Kit', [{ id: 'arn', name: 'Arnica', rate }, { name: 'Silica' }])
 
 // bridge the frontend RateEntry.systems shape → base-44 rates, tolerant of
-// missing systems (combe.base10 → dialToBase44; krt two-dial → base-100 → 44; …)
+// missing systems (combe.base10 → dialToBase44; krt dials → base-100 → 44; …)
 const catalog = catalogFromRateEntries(rateIndexEntries)
 ```
 
+Ids (`id ?? name`) must be unique and names unique within a category — every
+result row carries its item's `id`. `defineCatalog` stores deeply frozen
+copies and validates rates with `@mindpeeker/rate`'s own checks. The KRT and
+Delawarr projections are modeled and lossy (KRT fractions and the distinct
+`100.00` setting are rounded away); rates are instrument-specific in the
+literature [3047:36].
+
 ## Errors
 
-Every failure is a `ScanError` with a stable `code`: `invalid_catalog` |
-`insufficient_entropy` | `invalid_target` | `aborted`. Aborts and source
-starvation from the composed primitives are re-mapped onto these codes; all
-other errors propagate unchanged.
+Every failure of an entry point is a `ScanError` with a stable `code`:
+`invalid_catalog` | `invalid_options` | `insufficient_entropy` |
+`invalid_target` | `source_error` | `aborted`. Options and targets are
+validated before any byte is read. Failures of the composed primitives map by
+one rule: aborts → `aborted`; a source that ends → `insufficient_entropy`; a
+source that fails (oracle `source_error`, negentropy `source_failed`, a
+non-byte chunk) → `source_error` with the provider's own error as `cause`; a
+rejected tripolar plan or registration → `invalid_options`. Errors thrown by
+your own callbacks (`broadcast`'s `now`, `scanTripolar`'s `declare`) propagate
+unchanged.
+
+## Behaviour changes in 0.2.0
+
+- **Streams are released.** `scan`, `scanDeviation`, `generalVitality`,
+  `broadcast` (including an early `return()`/`break`), and `scanTripolar` close
+  the source stream they open; 0.1 left serial ports and camera tracks open.
+- **`broadcast` error contract (breaking).** Only a source that ends finishes
+  cleanly; source failures reject with `source_error` instead of returning a
+  shortened receipt. Invalid `resonanceOdds`/`resonanceValue` are rejected
+  instead of silently never resonating; `roundBytes` must hold one resonance
+  draw.
+- **Validation.** New codes `invalid_options` and `source_error`. `maxValue`
+  (finite ≥ 1), `subsetFraction` ((0, 1]), `rounds`/`deviationRounds`
+  (integers ≥ 1; broadcast `rounds` ≥ 0), `prior` (finite shapes > 0),
+  `alpha`, `roundBytes`, `durationMs`, `mode`, `signal`, and the source shape
+  are checked up front — NaN/∞ no longer hang the race, and `RangeError`,
+  `PsiError`, `OracleError`, `RateError` no longer leak. Rate-object broadcast
+  targets are validated with rate's checks (`invalid_target`) before any byte
+  is read. `scanDeviation` rejects an empty catalog.
+- **Exact p-values (breaking).** `DeviationResult.p` is the exact two-sided
+  binomial p (was the normal tail); `z` is unchanged and descriptive.
+- **Ranking.** Deviation ranks use `lnBayesFactor` (new field) and compare
+  without subtraction (`Infinity − Infinity` gave catalog order); ties break on
+  a hash of the item **id** (was the name).
+- **Multiplicity.** Results gain `pBonferroni`, `pHolm`, `qBH`; `ScanReport`,
+  `DeviationReport` and `TripolarScanReport` gain `multiplicity`
+  (expected false positives, counts, omnibus χ²).
+- **Deviation coins (breaking for replays).** Eight coins per byte via the bit
+  reader (was one byte per coin): 8× less entropy, different results for the
+  same bytes; `bitsUsed` now counts bits that entered a decision.
+- **Race subset rule (breaking).** Default subset is AetherOnePi's
+  $\min(M, \operatorname{clamp}(\lfloor M/10 \rfloor, 120, 5000))$ (was
+  $\max(12, \operatorname{round}(M/10))$); new `subsetMin`/`subsetMax`;
+  `race`, `raceSubsetSize`, and their types are exported.
+- **Results carry `id`** and, with vitality, `vitalityP`;
+  `generalVitalitySf`, `GV_AUTO_MODE_THRESHOLD`, `generalVitalityReader`,
+  `deviationStat`, `byBayesFactor`, `tieBreakKey`, `binomialTwoSidedP` are
+  exported.
+- **Catalogs.** `defineCatalog` rejects duplicate ids, duplicate names within a
+  category, and invalid rates; it stores frozen copies instead of freezing the
+  caller's rate object (whose `digits` stayed mutable).
+- **Broadcast modulation is one stream (breaking).** The ring index no longer
+  restarts each round, so outputs differ whenever `roundBytes` is not a multiple
+  of the digit count. Receipts are **v2** (`mode`, `witnessKind`,
+  `outputHash`); `parseReceipt` still reads v1 and is strict (unknown keys, bad
+  counts or hashes are rejected). A rate-string target no longer gets a
+  `witnessHash`.
+- **`signatureToRate` (breaking).** NFC normalization and rejection-sampled
+  digits from an extended digest: different rates for the same signature; base
+  44 exactly uniform, base 336 fully reachable, no repetition past 32 digits;
+  `length`/`base` validated; the returned rate is frozen.
+- **`scanTripolar` (breaking).** One stream for both phases (was two, so a
+  replayable source reused phase-1 bytes); catalog scoring follows the
+  protocol's intention sequence (was fixed high → low → baseline blocks);
+  `accounting` covers both phases (new `phaseAccounting`); new options `prior`,
+  `alpha`, `control`, `registration`, `declare`; report gains `order`,
+  `schedule`, `registration`, `control`.
+- **New:** `sweepScan` / `sweepNullPmf` (classical dial sweep with an exact
+  null), `WITNESS_KINDS` and `Witness.kind`.
 
 ## Development
 
 ```sh
 bun test                              # fixtures are checked in — no Python needed
-uv run scripts/fixtures/generate.py   # regenerate the scipy deviation fixture
+uv run scripts/fixtures/generate.py   # regenerate the scipy/statsmodels/exact-rational fixtures
 bun run typecheck && bun run build
 ```
 
 Attribution: the scanning and broadcasting model is inspired by
-**AetherOnePi** by isuretpolos. This package is an independent, honestly-framed
-re-expression on the mindpeeker-sdk, not a fork of its code.
+**AetherOnePi** and **AetherOnePy** by isuretpolos. This package is an
+independent, honestly-framed re-expression on the mindpeeker-sdk, not a fork of
+their code.
