@@ -1,0 +1,54 @@
+{
+  "name": "@mindpeeker/coincidence",
+  "version": "0.2.0",
+  "description": "Exact probabilities of coincidences — the honest denominator for synchronicity logs, gematria value matches, oracle draw repeats and field hits: birthday-problem generalisations (exact, non-uniform, k-fold via Levin, near matches, several attributes), Diaconis–Mosteller approximations, the law of truly large numbers, Fisher's 1924 graded-match scores and an exact clustering test for event series.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/coincidence"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/coincidence#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "coincidence",
+    "birthday-problem",
+    "diaconis-mosteller",
+    "collision-probability",
+    "multinomial",
+    "levin",
+    "law-of-truly-large-numbers",
+    "synchronicity",
+    "seriality",
+    "kammerer",
+    "fisher-scoring",
+    "scan-statistic",
+    "exact-probability"
+  ]
+}
