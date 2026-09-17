@@ -1,0 +1,26 @@
+{
+  "name": "@mindpeeker/examples",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable cross-package recipes behind docs/cookbook.md, smoke-tested offline.",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mindpeeker/coincidence": "workspace:*",
+    "@mindpeeker/entropy": "workspace:*",
+    "@mindpeeker/ephemeris": "workspace:*",
+    "@mindpeeker/field": "workspace:*",
+    "@mindpeeker/flow": "workspace:*",
+    "@mindpeeker/gematria": "workspace:*",
+    "@mindpeeker/judging": "workspace:*",
+    "@mindpeeker/ledger": "workspace:*",
+    "@mindpeeker/negentropy": "workspace:*",
+    "@mindpeeker/oracle": "workspace:*",
+    "@mindpeeker/psi": "workspace:*",
+    "@mindpeeker/scan": "workspace:*",
+    "@mindpeeker/vdf": "workspace:*"
+  }
+}

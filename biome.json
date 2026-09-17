@@ -5,6 +5,7 @@
       "site/**",
       "playground/**/*.ts",
       "scripts/**",
+      "examples/**",
       "!**/dist",
       "!**/.claude-flow",
       "!**/.claude",
@@ -37,7 +38,7 @@
   },
   "overrides": [
     {
-      "includes": ["packages/*/test/**"],
+      "includes": ["packages/*/test/**", "examples/test/**"],
       "linter": {
         "rules": {
           "nursery": {
