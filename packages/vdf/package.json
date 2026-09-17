@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/vdf",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Verifiable delay functions over an RSA group of unknown order — sequential-squaring time-locks in the signed quadratic residues, Pietrzak O(log T) and Wesolowski constant-size proofs, and beacon freshness seals.",
   "type": "module",
   "sideEffects": false,

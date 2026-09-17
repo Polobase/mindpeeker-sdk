@@ -1,0 +1,23 @@
+# @mindpeeker/psi
+
+## 0.2.0
+
+### Minor Changes
+
+- Seeded permutation nulls, tripolar schedules with a control arm and registration binding, Bayes factors and e-processes, hash-chained recordings, and the presentiment protocol. See "Behaviour changes in 0.2.0" in the package README for the full list.
+
+  - BREAKING: rolling monitors rename `windowTrials`/`hopTrials` to `windowSize`/`hopSize`. `bitsPerTrial` (integer ≥ 8) and `stepTimeoutMs` (finite in (0, 2³¹ − 1] or `Infinity`) are validated when the monitor is created (`invalid_plan`), and configuration errors found by negentropy's session become `PsiError('invalid_plan')` with the `NegentropyError` as `cause`. `rollingNetvar` reports the exact discrete floor instead of z = −8.21 when the window statistic is at its minimum and takes the lower tail from the χ² CDF. `RollingPoint` gains `sourceCount`, and a source that ends its stream after an abort yields `aborted`.
+  - BREAKING: `timeOffsetSurrogates` gives each `Surrogate` per-source `offsets`, deprecates `count` in favour of `surrogates`, and rejects options that do not apply to the chosen mode. The default one-source rotation is unchanged, but it keeps most pair alignments of three or more sources in the null and so has little power against a network-wide effect; `rotate: 'all-but-one'` and `rotate: 'all'` are new.
+  - BREAKING: `analyzeEvent` validates series (source name, `bitsPerTrial`, sums in [0, k]) and throws `invalid_plan` instead of returning NaN or leaking negentropy errors; the window parameter type is `AnalysisWindow`; the result gains `calibrations`.
+  - BREAKING: tripolar. `analyzeTripolar` throws `invalid_plan` for unknown intention labels, malformed series or mixed arms (0.1.0 threw `TypeError`/`RangeError`) and the new `plan_mismatch` for runs with differing schedule digests or a divergence from a registration. `IntentionSummary` gains `variance`. `runTripolar` yields `aborted` (not `insufficient_data`) when a source ends after an abort and awaits stream cleanup. `seed` is required for `order: 'instructed'` and rejected for other orders. `trialsPerRun` and `bitsPerTrial` are optional (PEAR defaults 50 and 200).
+  - BREAKING: `PsiErrorCode` gains `plan_mismatch`.
+  - BREAKING: recording. `parseRecordLine` returns the union `SessionLine` (v1 trial, v2 header, v2 trial); narrow with `'kind' in line` before reading `sum`. `serializeRecordLine` throws `bad_record` for lines that would not round-trip (0.1.0 wrote `null` for NaN). `readSession` treats a plain string as one chunk (0.1.0 iterated it per character), carries partial lines across chunks and reports physical line numbers. `recordSession` races the abort signal, so a source that ends after an abort yields `aborted`, and it validates source names.
+  - `binomialBayesFactor` accepts `p0` and `alternative` (defaults unchanged: p0 = ½, two-sided) and is computed through a Stirling expansion around the posterior mean (agreeing with 0.1.0 to about 1e-14).
+  - BREAKING: `engines.node` is `>=20.19` (was `>=20.3`).
+  - New in this release: the presentiment protocol (`presentimentEpochs`, `analyzePresentiment`) and `labelShuffleSurrogates`, which draws seeded Fisher–Yates permutations or enumerates every distinct relabeling exactly; rotations need `method: 'rotation'`. An unreleased development version used a rotation-only null that rejected about 50% of null datasets at α = 0.05 for alternating target/control designs; it never reached npm. Overlapping epochs throw `invalid_plan` unless `allowOverlap: true`, and events whose `labelDrawnAt` is at or before the pre-window's last trial stamp are dropped (`droppedProvenance`).
+  - New: `registerTripolar`, `verifyTripolarRegistration`, `tripolarSchedule`, `tripolarScheduleDigest`, `resolveTripolarPlan`, tripolar orders `counterbalanced`, `instructed` and `volitional`, `xorSafeguard`, a yoked `control` source with `controlContrast` and `tostEquivalence`, `analyzeFieldReg`, `placeboWindows`, `globalRankEnvelope`, `maxTAdjust`, `holm`, `benjaminiHochberg`, `describeLabelShuffle`, `DEFAULT_SURROGATES`, `PEAR_RUN_TRIALS`, `PEAR_BITS_PER_TRIAL`; `binomialLogBayesFactor` (alias `lnBayesFactor`), `zBayesFactor`, `tripolarBayesFactor`, `CoinEProcess`, `coinEProcess`, `sequentialPlan`, `sequentialPlanDigest`, `runSequential`, `SEQUENTIAL_SCHEMA`; recording schema v2 with `chain` and `tags`, `verifyChain`, `ZERO_HASH`; GCP basket files via `parseBasketCsv` and `GCP_BASKET_FILTER`; `analyzeEvent` step windows, `alignment: 'round'`, `calibration` and `blockSeconds`.
+
+### Patch Changes
+
+- Updated dependencies
+  - @mindpeeker/negentropy@0.2.0

@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/entropy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Provider-pluggable quantum (QRNG) and true (TRNG) randomness for web and Node — ANU, RANDOM.ORG, drand, NIST beacon and more, with composable fallback/xor/race strategies and streaming.",
   "type": "module",
   "sideEffects": false,

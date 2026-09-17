@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/negentropy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Measure order in noise and manufacture order from noise — GCP-style network statistics, negentropy estimators, and SP 800-90B extraction over any byte stream.",
   "type": "module",
   "sideEffects": false,

@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/flow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Transfer entropy and information dynamics for discrete symbol streams — Schreiber, conditional and collective TE, active information storage, chi-square and surrogate significance, lag scans, and streaming windows over any byte source.",
   "type": "module",
   "sideEffects": false,

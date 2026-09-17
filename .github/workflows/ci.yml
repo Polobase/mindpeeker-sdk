@@ -39,11 +39,17 @@ jobs:
         run: bun run build
 
       # biome check + typecheck (test and browser build configs) + README import checker
+      # + README table check (`bun scripts/readme-table.ts --check`: the generated package
+      # table, dependency graph and counts in README.md match packages/*)
       - name: Check
         run: bun run check
 
       - name: Test
         run: bun test
+
+      # The docs/cookbook.md recipes in examples/, run offline against the workspace packages.
+      - name: Examples (cookbook smoke test)
+        run: bun run examples
 
       # Publish-shape lint on the packed tarball of every package. Both tools need
       # the npm registry once to download themselves (versions pinned); they then run

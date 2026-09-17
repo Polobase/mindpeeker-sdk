@@ -1,7 +1,7 @@
 {
   "name": "@mindpeeker/gematria",
-  "version": "0.1.0",
-  "description": "Pure, deterministic, multi-tradition gematria & isopsephy — Hebrew, Greek and English/Latin ciphers with exact integer values, honest equal-value commonness, and an optional entropy-bridge oracle draw.",
+  "version": "0.2.0",
+  "description": "Pure, deterministic, multi-tradition gematria & isopsephy — 43 exact-integer ciphers across Hebrew, Greek, Arabic, Latin/English, Cyrillic, Armenian, Georgian, Coptic, Syriac and Gothic, temurah and tziruph tables, a public-domain lexicon, honest collision statistics, and an optional entropy-bridge oracle draw.",
   "type": "module",
   "sideEffects": [
     "./dist/lexicon.js",

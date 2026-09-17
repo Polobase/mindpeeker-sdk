@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/rate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Malcolm Rae base-44 radionic angular encoding — rate parsing, digit→angle geometry, directional statistics, Magneto-Geometric card data/SVG, and deterministic stream modulation over any byte stream.",
   "type": "module",
   "sideEffects": false,

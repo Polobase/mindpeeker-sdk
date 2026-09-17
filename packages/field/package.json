@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/field",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Spatial negentropy — turn an entropy stream into a point field and test it for order against a complete-spatial-randomness null: attractors and voids with calibrated whole-field Monte-Carlo p-values, edge-corrected Ripley's K with global envelope tests, Clark–Evans, quadrat counts, KDE attractors and Kulldorff's scan statistic. The sampling and null-model core of a Randonautica-style engine, plus exact spherical samplers and geohash.",
   "type": "module",
   "sideEffects": false,

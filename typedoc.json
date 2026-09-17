@@ -1,0 +1,46 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "mindpeeker-sdk",
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/*"],
+  "packageOptions": {
+    "entryPoints": [
+      "src/@(index|numerics|geo|lexicon|oracle).ts",
+      "src/@(providers|node)/index.ts"
+    ],
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "validation": {
+      "notExported": true,
+      "invalidLink": true,
+      "notDocumented": false
+    }
+  },
+  "out": "docs/api",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludeInternal": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "treatWarningsAsErrors": false,
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "js",
+    "json",
+    "jsonc",
+    "mermaid",
+    "sh",
+    "shell",
+    "text",
+    "ts",
+    "tsx",
+    "typescript"
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "@mindpeeker/psi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mind-matter-interaction experiment protocols and live anomaly monitoring — PEAR-style tripolar runs, GCP formal event analysis, JSONL recording/replay, surrogate nulls, and Bayes factors, composing @mindpeeker/negentropy.",
   "type": "module",
   "sideEffects": false,

@@ -3,19 +3,29 @@
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.1",
-  "workspaces": ["packages/*", "site"],
+  "workspaces": [
+    "packages/*",
+    "site",
+    "examples"
+  ],
   "scripts": {
     "build": "bun scripts/build.ts",
     "typecheck": "bun run --filter '*' typecheck && tsc -p scripts/tsconfig.json",
     "test": "bun test",
-    "check": "biome check . && bun run typecheck && bun run check:readme",
+    "examples": "bun test ./examples/test/smoke.test.ts",
+    "check": "biome check . && bun run typecheck && bun run check:readme && bun scripts/readme-table.ts --check",
     "check:readme": "bun scripts/check-readme-imports.ts",
-    "format": "biome format --write ."
+    "readme:table": "bun scripts/readme-table.ts",
+    "docs:api": "typedoc --options typedoc.json",
+    "format": "biome format --write .",
+    "release:sync-lock": "bun scripts/sync-lock-versions.ts ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "@changesets/cli": "^3.0.3",
     "@types/bun": "^1.2.0",
     "@types/node": "^24.0.0",
+    "typedoc": "^0.28.20",
     "typescript": "^5.5.0"
   }
 }
