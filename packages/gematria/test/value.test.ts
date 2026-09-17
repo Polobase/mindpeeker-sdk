@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { GematriaError } from '../src/errors.js'
+import { CIPHERS_BY_SCRIPT } from '../src/registry.js'
 import type { CipherId } from '../src/types.js'
 import { analyze, letterValues, profile, reduce, value } from '../src/value.js'
 import vectors from './fixtures/reference-vectors.json' with { type: 'json' }
@@ -64,9 +65,10 @@ describe('reduce (digital root)', () => {
     expect(reduce(n)).toBe(expected)
   })
 
-  test('rejects negatives and non-integers', () => {
+  test('rejects negatives, non-integers and non-finite input', () => {
     expect(() => reduce(-1)).toThrow(GematriaError)
     expect(() => reduce(1.5)).toThrow(GematriaError)
+    expect(() => reduce(Number.POSITIVE_INFINITY)).toThrow(GematriaError)
   })
 })
 
@@ -87,6 +89,15 @@ describe('analyze', () => {
     const r = analyze('a b!c', 'en-ordinal')
     expect(r.byLetter.map((b) => b.char)).toEqual(['a', 'b', 'c'])
     expect(r.byLetter.reduce((s, b) => s + b.value, 0)).toBe(r.value)
+  })
+
+  test('mistyped options are invalid_input', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => analyze('abc', 'en-ordinal', { numberProperties: 'yes' as any })).toThrow(
+      GematriaError,
+    )
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => analyze('abc', 'en-ordinal', true as any)).toThrow(GematriaError)
   })
 })
 
@@ -149,6 +160,44 @@ describe('profile — frontend superset', () => {
   test('a forced script overrides detection', () => {
     const p = profile('gematria', { script: 'latin' })
     expect(p.script).toBe('latin')
+  })
+
+  test('includeExtended adds the SDK-added methods after the frontend rows', () => {
+    const greek = profile('αγαπη', { includeExtended: true })
+    expect(greek.values.map((v) => v.cipher)).toEqual(['gr-isopsephy', 'gr-ordinal'])
+    const latin = profile('gematria', { includeExtended: true, includeModern: false })
+    expect(latin.values.map((v) => v.cipher)).toEqual([
+      'en-ordinal',
+      'en-reduction',
+      'la-agrippa',
+      'la-jewish',
+      'en-naeq',
+      'en-tq',
+      'la-elizabethan-simple',
+      'la-elizabethan-kaye',
+      'la-roman',
+    ] as CipherId[])
+  })
+
+  test('script lookup is own-property only: prototype names are unsupported_script', () => {
+    for (const script of ['constructor', '__proto__', 'hasOwnProperty', 'klingon']) {
+      try {
+        // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+        profile('abc', { script: script as any })
+        throw new Error('expected a throw')
+      } catch (e) {
+        expect(e).toBeInstanceOf(GematriaError)
+        expect((e as GematriaError).code).toBe('unsupported_script')
+      }
+    }
+    expect(Object.keys(CIPHERS_BY_SCRIPT).length).toBe(10)
+  })
+
+  test('mistyped profile options are invalid_input', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => profile('abc', { includeModern: 'no' as any })).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => profile('abc', 5 as any)).toThrow(GematriaError)
   })
 
   test('byLetter gives per-cipher values for each contributing letter', () => {

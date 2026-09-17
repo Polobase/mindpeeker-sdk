@@ -12,15 +12,58 @@
     "katan-mispari": "integral reduced: digital root of the whole word's Hechrachi total",
     "naeq": "Crowley, Liber Trigrammaton XXVII: the ALW / NAEQ English Qabalah",
     "abjad": "Arabic Hisab al-Jummal (Mashriqi order); alif=1 .. ghayn=1000",
-    "prime-cross": "Peter Plichta, God's Secret Formula (1997): numbers on the Prime Number Cross's 6n±1 rays — the plain Cross is the whole lattice A=1..Z=77 (composites kept), the Prime Cross keeps only the primes-with-1 A=1..Z=103"
+    "prime-cross": "Peter Plichta, God's Secret Formula (1997): numbers on the Prime Number Cross's 6n±1 rays — the plain Cross is the whole lattice A=1..Z=77 (composites kept), the Prime Cross keeps only the primes-with-1 A=1..Z=103",
+    "agrippa": "Agrippa, De Occulta Philosophia II.xx (Latin key; identical to la-jewish); Hubbard, Number Games: Tisha B'Av = 911",
+    "greek-ordinal": "Agrippa, De Occulta Philosophia II.xviii, first manner (alpha=1 .. omega=24)",
+    "abjad-hamza": "Hisab al-Jummal: hamza on its seat, alef maqsura as ya",
+    "cyrillic": "Wikipedia, Cyrillic numerals (worked example ЦЧѲ = 999)",
+    "armenian": "Wikipedia, Armenian numerals (worked example ՌՋՀԵ = 1975)",
+    "georgian": "Wikipedia, Georgian numerals (Motsameta inscription ჩყმვ = 1846)",
+    "coptic": "Coptic letter values = Greek values; ⲒⲎⲤⲞⲨⲤ parallels Ιησους = 888",
+    "syriac": "Syriac letter values = Hebrew values",
+    "gothic": "Wikipedia, Gothic alphabet (•𐌹𐌱• = 12)",
+    "tq": "Trigrammaton Qabalah (R. Leo Gillis): ILCHPAXJWTOGFERSQKYZBMVDNU& = 0..26",
+    "aq": "Alphanumeric Qabbala: base-36 digit values",
+    "elizabethan": "Manly P. Hall / Baconian literature: 24-letter Simple (BACON = 33) and Kaye counts",
+    "roman": "Vicarius Filii Dei polemic (Helwig 1612, Uriah Smith 1866): VICARIVS FILII DEI = 666"
   },
   "vectors": [
-    { "text": "אחד", "cipher": "he-hechrachi", "value": 13, "gloss": "echad — One / Unity" },
-    { "text": "אהבה", "cipher": "he-hechrachi", "value": 13, "gloss": "ahavah — love" },
-    { "text": "חי", "cipher": "he-hechrachi", "value": 18, "gloss": "chai — life" },
-    { "text": "יהוה", "cipher": "he-hechrachi", "value": 26, "gloss": "YHVH — the Tetragrammaton" },
-    { "text": "θελημα", "cipher": "gr-isopsephy", "value": 93, "gloss": "Thelema — Will" },
-    { "text": "αγαπη", "cipher": "gr-isopsephy", "value": 93, "gloss": "Agape — Love" },
+    {
+      "text": "אחד",
+      "cipher": "he-hechrachi",
+      "value": 13,
+      "gloss": "echad — One / Unity"
+    },
+    {
+      "text": "אהבה",
+      "cipher": "he-hechrachi",
+      "value": 13,
+      "gloss": "ahavah — love"
+    },
+    {
+      "text": "חי",
+      "cipher": "he-hechrachi",
+      "value": 18,
+      "gloss": "chai — life"
+    },
+    {
+      "text": "יהוה",
+      "cipher": "he-hechrachi",
+      "value": 26,
+      "gloss": "YHVH — the Tetragrammaton"
+    },
+    {
+      "text": "θελημα",
+      "cipher": "gr-isopsephy",
+      "value": 93,
+      "gloss": "Thelema — Will"
+    },
+    {
+      "text": "αγαπη",
+      "cipher": "gr-isopsephy",
+      "value": 93,
+      "gloss": "Agape — Love"
+    },
     {
       "text": "χξϛ",
       "cipher": "gr-isopsephy",
@@ -45,8 +88,18 @@
       "value": 523,
       "gloss": "av — Milui: alef(111) + bit(412)"
     },
-    { "text": "אב", "cipher": "he-kidmi", "value": 4, "gloss": "av — Kidmi triangular: 1 + 3" },
-    { "text": "אב", "cipher": "he-perati", "value": 5, "gloss": "av — Perati squares: 1 + 4" },
+    {
+      "text": "אב",
+      "cipher": "he-kidmi",
+      "value": 4,
+      "gloss": "av — Kidmi triangular: 1 + 3"
+    },
+    {
+      "text": "אב",
+      "cipher": "he-perati",
+      "value": 5,
+      "gloss": "av — Perati squares: 1 + 4"
+    },
     {
       "text": "א",
       "cipher": "he-neelam",
@@ -59,9 +112,24 @@
       "value": 8,
       "gloss": "YHVH — Katan Mispari: digital root of 26"
     },
-    { "text": "ALW", "cipher": "en-naeq", "value": 6, "gloss": "the ALW cipher name, A1 L2 W3" },
-    { "text": "ابجد", "cipher": "ar-abjad", "value": 10, "gloss": "abjad — 1 + 2 + 3 + 4" },
-    { "text": "الله", "cipher": "ar-abjad", "value": 66, "gloss": "Allah — Abjad 1 + 30 + 30 + 5" },
+    {
+      "text": "ALW",
+      "cipher": "en-naeq",
+      "value": 6,
+      "gloss": "the ALW cipher name, A1 L2 W3"
+    },
+    {
+      "text": "ابجد",
+      "cipher": "ar-abjad",
+      "value": 10,
+      "gloss": "abjad — 1 + 2 + 3 + 4"
+    },
+    {
+      "text": "الله",
+      "cipher": "ar-abjad",
+      "value": 66,
+      "gloss": "Allah — Abjad 1 + 30 + 30 + 5"
+    },
     {
       "text": "gematria",
       "cipher": "en-cross",
@@ -73,6 +141,102 @@
       "cipher": "en-prime-cross",
       "value": 246,
       "gloss": "the word itself, Prime Cross (primes only, with the central 1)"
+    },
+    {
+      "text": "Tisha B'Av",
+      "cipher": "la-agrippa",
+      "value": 911,
+      "gloss": "Agrippa's key equals Jewish Gematria (U200 V700 W900)"
+    },
+    {
+      "text": "ΣΠΦ",
+      "cipher": "gr-ordinal",
+      "value": 55,
+      "gloss": "Greek ordinal: sigma 18 + pi 16 + phi 21"
+    },
+    {
+      "text": "موسى",
+      "cipher": "ar-abjad",
+      "value": 116,
+      "gloss": "Musa — alef maqsura counts as ya (10)"
+    },
+    {
+      "text": "سؤال",
+      "cipher": "ar-abjad",
+      "value": 97,
+      "gloss": "su'al — hamza on waw counts as waw (6)"
+    },
+    {
+      "text": "שלום",
+      "cipher": "he-atbash",
+      "value": 112,
+      "gloss": "shalom under Atbash = its Hechrachi mirror (reverse)"
+    },
+    {
+      "text": "ЦЧѲ",
+      "cipher": "cu-cyrillic",
+      "value": 999,
+      "gloss": "Cyrillic numerals 900 + 90 + 9"
+    },
+    {
+      "text": "ՌՋՀԵ",
+      "cipher": "hy-numerals",
+      "value": 1975,
+      "gloss": "Armenian numerals 1000 + 900 + 70 + 5"
+    },
+    {
+      "text": "ჩყმვ",
+      "cipher": "ka-numerals",
+      "value": 1846,
+      "gloss": "Georgian numerals 1000 + 800 + 40 + 6"
+    },
+    {
+      "text": "ⲒⲎⲤⲞⲨⲤ",
+      "cipher": "cop-numerals",
+      "value": 888,
+      "gloss": "Iesous in Coptic letters"
+    },
+    {
+      "text": "ܫܠܡܐ",
+      "cipher": "syr-numerals",
+      "value": 371,
+      "gloss": "shlama — 300 + 30 + 40 + 1"
+    },
+    {
+      "text": "𐌹𐌱",
+      "cipher": "got-numerals",
+      "value": 12,
+      "gloss": "Gothic numeral twelve"
+    },
+    {
+      "text": "Thelema",
+      "cipher": "en-tq",
+      "value": 65,
+      "gloss": "Trigrammaton Qabalah T9 H3 E13 L1 E13 M21 A5"
+    },
+    {
+      "text": "AQ",
+      "cipher": "en-aq",
+      "value": 36,
+      "gloss": "Alphanumeric Qabbala A10 + Q26"
+    },
+    {
+      "text": "Bacon",
+      "cipher": "la-elizabethan-simple",
+      "value": 33,
+      "gloss": "the Baconian 33"
+    },
+    {
+      "text": "Bacon",
+      "cipher": "la-elizabethan-kaye",
+      "value": 111,
+      "gloss": "Kaye B28 A27 C29 O14 N13"
+    },
+    {
+      "text": "VICARIVS FILII DEI",
+      "cipher": "la-roman",
+      "value": 666,
+      "gloss": "the Roman-numeral polemic (never an official papal title)"
     }
   ]
 }

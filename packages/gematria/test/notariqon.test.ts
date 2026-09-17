@@ -55,3 +55,38 @@ describe('acronym (contraction)', () => {
     expect(() => acronym(5 as any)).toThrow(GematriaError)
   })
 })
+
+describe('letters only, normalized per script', () => {
+  test('pointed Hebrew: sofei teivot pick the final letter, not a vowel point', () => {
+    expect(notariqon('לְךָ', { mode: 'last' })).toBe('ך')
+    expect(value(notariqon('לְךָ', { mode: 'last' }), 'he-hechrachi')).toBe(20)
+    expect(notariqon('אַתָּה גִּבּוֹר לְעוֹלָם אֲדֹנָי')).toBe('אגלא')
+    expect(acronym('אַתָּה גִּבּוֹר לְעוֹלָם אֲדֹנָי', { from: 'last' })).toBe('הרםי')
+  })
+
+  test('attached punctuation, dashes and numbers are never letters', () => {
+    expect(notariqon('Atah, Gibor', { mode: 'last' })).toBe('hr')
+    expect(notariqon('(Atah) — Gibor 42')).toBe('AG')
+    expect(acronym('ab-cd', { from: 'medial' })).toBe('c')
+  })
+
+  test('Latin keeps case and accents (NFC); format controls are ignored', () => {
+    expect(notariqon('Émile Zola')).toBe('ÉZ')
+    expect(notariqon('Émile')).toBe('É')
+    expect(notariqon('‏Atah‍ Gibor')).toBe('AG')
+  })
+
+  test('Greek and Arabic words contribute their letters', () => {
+    expect(notariqon('ἀγάπη θέλημα')).toBe('ἀθ')
+    expect(acronym('مُحَمَّد عَلِيّ', { from: 'first' })).toBe('مع')
+  })
+
+  test('rejects unknown modes and non-object options', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => notariqon('x', { mode: 'medial' as any })).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => acronym('x', { from: 'bogus' as any })).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => acronym('x', 'last' as any)).toThrow(GematriaError)
+  })
+})

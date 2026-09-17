@@ -10,7 +10,14 @@
  * range of width $R$, a given value has on the order of $N / R$ collisions by
  * chance alone. Surfacing that fraction is the point. A "match" at
  * commonness 0.2 is noise; the number keeps the tool from implying hidden
- * significance it cannot support (see the README).
+ * significance it cannot support (see the README, and `collisionProfile` for
+ * the whole-lexicon statistics).
+ *
+ * **Admissible words only.** A lexicon is scored under the chosen cipher, and
+ * only words written in the cipher's script with at least one scoring letter
+ * take part (see `LexiconWord`): under `he-hechrachi` a Greek or English entry
+ * is not a zero-valued "match" of every other foreign word, and it is not in
+ * the `commonness` denominator (`lexiconSize`).
  *
  * **Colel** (כולל): the traditional rule that "equality under a difference of
  * one" still counts — `opts.colel` is a ±1 window, `opts.tolerance: n` a ±n
@@ -18,155 +25,173 @@
  * flagged separately in `exact`.
  *
  * **Default lexicon**: pass a lexicon explicitly, or register one once with
- * {@link useDefaultLexicon} (the `@mindpeeker/gematria/lexicon` subpath does
- * this for the bundled Sepher Sephiroth) and then call the two-argument
- * overloads `matches(text, cipher)` / `lookup(target, cipher)`.
+ * `useDefaultLexicon` (the `@mindpeeker/gematria/lexicon` subpath does this for
+ * the bundled Sepher Sephiroth) and then call the two-argument overloads
+ * `matches(text, cipher)` / `lookup(target, cipher)`.
  */
 
 import { GematriaError } from './errors.js'
+import {
+  checkLexicon,
+  defaultLexiconSnapshot,
+  type ScoredWord,
+  scoreLexicon,
+} from './lexicon-registry.js'
 import { getCipher } from './registry.js'
-import type { CipherRef, MatchOptions, MatchResult } from './types.js'
+import type { CipherRef, Lexicon, MatchOptions, MatchResult } from './types.js'
+import { isOptionsObject } from './validate.js'
 import { value } from './value.js'
 
-let DEFAULT_LEXICON: readonly string[] | undefined
-
 /**
- * Register the lexicon used by `matches` / `lookup` (and the `./oracle`
- * `castByValue`) when they are called without an explicit one. Importing the
- * `@mindpeeker/gematria/lexicon` subpath calls this with the bundled corpus.
+ * The effective ±window of validated {@link MatchOptions}: explicit `tolerance`,
+ * else 1 for `colel`, else 0.
  *
- * @throws GematriaError `'invalid_input'` if `lexicon` is not an array
+ * @throws GematriaError `'invalid_input'` if `opts` is not an object, `colel` is
+ *   not a boolean, or `tolerance` is not a non-negative safe integer
+ * @internal shared with the commonness statistics and the `./oracle` bridge
  */
-export function useDefaultLexicon(lexicon: readonly string[]): void {
-  if (!Array.isArray(lexicon)) {
-    throw new GematriaError('invalid_input', 'default lexicon must be an array of strings')
+export function toleranceOf(opts: unknown): number {
+  if (opts === undefined) return 0
+  if (!isOptionsObject(opts)) {
+    throw new GematriaError('invalid_input', 'match options must be an object')
   }
-  DEFAULT_LEXICON = lexicon
-}
-
-/**
- * The registered default lexicon.
- *
- * @throws GematriaError `'invalid_input'` if no default has been registered
- */
-export function getDefaultLexicon(): readonly string[] {
-  if (!DEFAULT_LEXICON) {
+  const { colel, tolerance } = opts
+  if (colel !== undefined && typeof colel !== 'boolean') {
+    throw new GematriaError('invalid_input', `colel must be a boolean, got ${typeof colel}`)
+  }
+  const t = tolerance ?? (colel ? 1 : 0)
+  if (typeof t !== 'number' || !Number.isSafeInteger(t) || t < 0) {
     throw new GematriaError(
       'invalid_input',
-      "no lexicon supplied and no default registered — pass a lexicon, or import the '@mindpeeker/gematria/lexicon' subpath (its defaultLexicon() registers one)",
+      `tolerance must be a non-negative integer, got ${String(t)}`,
     )
-  }
-  return DEFAULT_LEXICON
-}
-
-/** The effective ±window: explicit `tolerance`, else 1 for `colel`, else 0. */
-function toleranceOf(opts: MatchOptions | undefined): number {
-  const t = opts?.tolerance ?? (opts?.colel ? 1 : 0)
-  if (!Number.isInteger(t) || t < 0) {
-    throw new GematriaError('invalid_input', `tolerance must be a non-negative integer, got ${t}`)
   }
   return t
 }
 
-/** Build a {@link MatchResult} from a target value over a lexicon. */
-function build(
+/** Build a {@link MatchResult} from a target value over scored admissible words. */
+export function matchScored(
   target: number,
-  lexicon: readonly string[],
-  cipher: CipherRef,
-  opts: MatchOptions | undefined,
+  scored: readonly ScoredWord[],
+  tolerance: number,
 ): MatchResult {
-  getCipher(cipher) // validate/resolve the cipher even when the lexicon is empty
-  const tolerance = toleranceOf(opts)
   const within: string[] = []
   const exact: string[] = []
-  for (const word of lexicon) {
-    const delta = Math.abs(value(word, cipher) - target)
+  for (const { word, value: v } of scored) {
+    const delta = Math.abs(v - target)
     if (delta <= tolerance) {
       within.push(word)
       if (delta === 0) exact.push(word)
     }
   }
-  const commonness = lexicon.length === 0 ? 0 : within.length / lexicon.length
   return Object.freeze({
     value: target,
     matches: Object.freeze(within),
     exact: Object.freeze(exact),
     tolerance,
-    commonness,
+    commonness: scored.length === 0 ? 0 : within.length / scored.length,
+    lexiconSize: scored.length,
   })
+}
+
+interface LexiconArgs {
+  readonly lexicon: Lexicon
+  readonly cipher: CipherRef
+  readonly opts: unknown
+}
+
+/** Resolve the `(lexicon, cipher, opts)` / `(cipher, opts)` overloads. */
+function lexiconArgs(second: unknown, third: unknown, fourth: unknown): LexiconArgs {
+  if (Array.isArray(second)) {
+    checkLexicon(second)
+    return { lexicon: second, cipher: third as CipherRef, opts: fourth }
+  }
+  if (typeof second !== 'string') {
+    throw new GematriaError('invalid_input', 'expected a lexicon array or a cipher id')
+  }
+  if (third !== undefined && !isOptionsObject(third)) {
+    throw new GematriaError(
+      'invalid_input',
+      'lexicon must be an array of words (got a non-array before the cipher)',
+    )
+  }
+  return { lexicon: defaultLexiconSnapshot(), cipher: second as CipherRef, opts: third }
 }
 
 /**
  * Whether two strings share a value under one cipher. With `opts.colel` (±1) or
  * `opts.tolerance: n` the comparison passes when the values differ by at most
  * that window.
+ *
+ * @throws GematriaError `'invalid_input'` for non-string words or invalid options
+ * @throws GematriaError `'unknown_cipher'` if `cipher` is unknown
  */
 export function equalValue(a: string, b: string, cipher: CipherRef, opts?: MatchOptions): boolean {
-  return Math.abs(value(a, cipher) - value(b, cipher)) <= toleranceOf(opts)
+  const tolerance = toleranceOf(opts)
+  return Math.abs(value(a, cipher) - value(b, cipher)) <= tolerance
 }
 
 /**
- * Every lexicon word whose value equals `text`'s value under `cipher` (or lies
- * within `opts.colel`/`opts.tolerance` of it), plus the honest `commonness`.
- * The lexicon may be passed explicitly or omitted to use the registered default
- * (see {@link useDefaultLexicon}). Matches keep the lexicon's order.
+ * Every admissible lexicon word whose value equals `text`'s value under
+ * `cipher` (or lies within `opts.colel`/`opts.tolerance` of it), plus the honest
+ * `commonness` over the `lexiconSize` admissible words. The lexicon may be passed
+ * explicitly or omitted to use the registered default (see `useDefaultLexicon`).
+ * Matches keep the lexicon's order.
  *
- * @throws GematriaError `'invalid_input'` if the lexicon is missing/invalid
+ * @throws GematriaError `'invalid_input'` if `text` is not a string, the lexicon
+ *   is missing/invalid, or the options are invalid
  * @throws GematriaError `'unknown_cipher'` if `cipher` is unknown
  */
 export function matches(text: string, cipher: CipherRef, opts?: MatchOptions): MatchResult
 export function matches(
   text: string,
-  lexicon: readonly string[],
+  lexicon: Lexicon,
   cipher: CipherRef,
   opts?: MatchOptions,
 ): MatchResult
 export function matches(
   text: string,
-  second: CipherRef | readonly string[],
+  second: CipherRef | Lexicon,
   third?: CipherRef | MatchOptions,
   fourth?: MatchOptions,
 ): MatchResult {
-  const hasLexicon = Array.isArray(second)
-  const lexicon = hasLexicon ? (second as readonly string[]) : getDefaultLexicon()
-  const cipher = (hasLexicon ? third : second) as CipherRef
-  const opts = (hasLexicon ? fourth : (third as MatchOptions | undefined)) as
-    | MatchOptions
-    | undefined
-  return build(value(text, cipher), lexicon, cipher, opts)
+  const args = lexiconArgs(second, third, fourth)
+  const target = value(text, args.cipher)
+  const tolerance = toleranceOf(args.opts)
+  return matchScored(target, scoreLexicon(args.lexicon, getCipher(args.cipher)), tolerance)
 }
 
 /**
- * The reverse of `matches`: every lexicon word whose value under `cipher`
- * equals `target` (or lies within tolerance), plus the honest `commonness` —
- * gematrix.org's `?word=<number>` reverse lookup. The lexicon may be passed
- * explicitly or omitted to use the registered default.
+ * The reverse of `matches`: every admissible lexicon word whose value under
+ * `cipher` equals `target` (or lies within tolerance), plus the honest
+ * `commonness` — gematrix.org's `?word=<number>` reverse lookup. The lexicon may
+ * be passed explicitly or omitted to use the registered default.
  *
- * @throws GematriaError `'invalid_input'` unless `target` is a non-negative integer
- * @throws GematriaError `'invalid_input'` if the lexicon is missing/invalid
+ * @throws GematriaError `'invalid_input'` unless `target` is a non-negative safe
+ *   integer, or if the lexicon is missing/invalid or the options are invalid
  * @throws GematriaError `'unknown_cipher'` if `cipher` is unknown
  */
 export function lookup(target: number, cipher: CipherRef, opts?: MatchOptions): MatchResult
 export function lookup(
   target: number,
-  lexicon: readonly string[],
+  lexicon: Lexicon,
   cipher: CipherRef,
   opts?: MatchOptions,
 ): MatchResult
 export function lookup(
   target: number,
-  second: CipherRef | readonly string[],
+  second: CipherRef | Lexicon,
   third?: CipherRef | MatchOptions,
   fourth?: MatchOptions,
 ): MatchResult {
-  if (!Number.isInteger(target) || target < 0) {
-    throw new GematriaError('invalid_input', `target must be a non-negative integer, got ${target}`)
+  if (typeof target !== 'number' || !Number.isSafeInteger(target) || target < 0) {
+    throw new GematriaError(
+      'invalid_input',
+      `target must be a non-negative integer, got ${String(target)}`,
+    )
   }
-  const hasLexicon = Array.isArray(second)
-  const lexicon = hasLexicon ? (second as readonly string[]) : getDefaultLexicon()
-  const cipher = (hasLexicon ? third : second) as CipherRef
-  const opts = (hasLexicon ? fourth : (third as MatchOptions | undefined)) as
-    | MatchOptions
-    | undefined
-  return build(target, lexicon, cipher, opts)
+  const args = lexiconArgs(second, third, fourth)
+  const cipher = getCipher(args.cipher)
+  const tolerance = toleranceOf(args.opts)
+  return matchScored(target, scoreLexicon(args.lexicon, cipher), tolerance)
 }

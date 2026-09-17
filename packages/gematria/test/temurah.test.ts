@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { GematriaError } from '../src/errors.js'
-import { achbi, albam, atbash, avgad, temurahShift } from '../src/temurah.js'
+import { achbi, aibat, albam, atbash, avgad, temurahShift } from '../src/temurah.js'
 import { value } from '../src/value.js'
 
 const FULL_ALEPHBET = 'אבגדהוזחטיכלמנסעפצקרשת'
@@ -67,10 +67,24 @@ describe('avgad', () => {
 })
 
 describe('achbi', () => {
-  test('folds each half so that א↔י and ב↔ט', () => {
-    expect(achbi('א')).toBe('י')
-    expect(achbi('ב')).toBe('ט')
-    expect(achbi('אב')).toBe('יט')
+  // Mathers/Ginsburg: Achbi (AKBI) pairs א↔כ, ב↔י; each half of eleven is
+  // reversed onto itself, so ו (6th of the first half) and פ (6th of the second)
+  // stay fixed.
+  const PAIRS = 'אכ בי גט דח הז וו זה חד טג יב כא לת מש נר סק עצ פפ צע קס רנ שמ תל'
+
+  test('reverses each half: א↔כ, ב↔י, … with ו and פ fixed', () => {
+    for (const pair of PAIRS.split(' ')) {
+      const [from, to] = [...pair] as [string, string]
+      expect(achbi(from)).toBe(to)
+    }
+    expect(achbi(FULL_ALEPHBET)).toBe('כיטחזוהדגבאתשרקצפעסנמל')
+  })
+
+  test('is named by its first two pairs, A↔K and B↔I', () => {
+    expect(achbi('אב')).toBe('כי')
+    expect(achbi('ו')).toBe('ו')
+    expect(achbi('פ')).toBe('פ')
+    expect(achbi('ל')).toBe('ת')
   })
 
   test('is an involution: achbi(achbi(x)) === x', () => {
@@ -78,9 +92,50 @@ describe('achbi', () => {
     expect(achbi(achbi('שלום'))).toBe('שלומ')
   })
 
-  test('holds the eleventh letter of each half (כ, ת) fixed', () => {
-    expect(achbi('כ')).toBe('כ')
-    expect(achbi('ת')).toBe('ת')
+  test('substitutes יהוה letter by letter', () => {
+    expect(achbi('יהוה')).toBe('בזוז')
+  })
+})
+
+describe('aibat (the 0.1.x achbi mapping)', () => {
+  const PAIRS = 'אי בט גח דז הו וה זד חג טב יא ככ לש מר נק סצ עפ פע צס קנ רמ של תת'
+
+  test('pairs א↔י, ב↔ט, … with כ and ת fixed', () => {
+    for (const pair of PAIRS.split(' ')) {
+      const [from, to] = [...pair] as [string, string]
+      expect(aibat(from)).toBe(to)
+    }
+    expect(aibat(FULL_ALEPHBET)).toBe('יטחזוהדגבאכשרקצפעסנמלת')
+  })
+
+  test('is an involution', () => {
+    expect(aibat(aibat(FULL_ALEPHBET))).toBe(FULL_ALEPHBET)
+  })
+})
+
+describe('temurah input validation', () => {
+  test('every substitution rejects a non-string with GematriaError invalid_input', () => {
+    for (const fn of [atbash, albam, avgad, achbi, aibat]) {
+      // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+      expect(() => fn(5 as any)).toThrow(expect.objectContaining({ code: 'invalid_input' }))
+      // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+      expect(() => fn(undefined as any)).toThrow(GematriaError)
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => temurahShift(undefined as any, 1)).toThrow(
+      expect.objectContaining({ code: 'invalid_input' }),
+    )
+  })
+
+  test('niqqud are stripped before substitution', () => {
+    expect(atbash('אָב')).toBe('תש')
+  })
+})
+
+describe('avgad anchor', () => {
+  test('יהוה → כוזו (Sepher Sephiroth 39, "Metathesis of YHVH")', () => {
+    expect(avgad('יהוה')).toBe('כוזו')
+    expect(value('כוזו', 'he-hechrachi')).toBe(39)
   })
 })
 

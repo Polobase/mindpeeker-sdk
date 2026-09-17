@@ -1,32 +1,31 @@
 /**
  * The English / Latin ciphers.
  *
- * Historical:
- * - **Ordinal** (`en-ordinal`, "Simple") — A=1 … Z=26.
- * - **Reduction** (`en-reduction`, Pythagorean) — each letter's ordinal reduced
- *   to its digital root (A=1…I=9, J=1…), then summed.
- * - **Agrippa** (`la-agrippa`) — Heinrich Cornelius Agrippa's 23-letter Latin
- *   table (*Three Books of Occult Philosophy*, Book II, ch. 20, 1533),
- *   A1 B2 C3 D4 E5 F6 G7 H8 I9 K10 L20 M30 N40 O50 P60 Q70 R80 S90 T100 V200
- *   X300 Y400 Z500, with the common Renaissance reconstruction of the later
- *   letters J=600, U=700, W=900. A reconstructed historical system: classical
- *   Latin had no J/U/W and no native alphabetic numerals of this kind.
- * - **Jewish Gematria** (`la-jewish`) — the English-letter cipher used as the
- *   default on gematrix.org and Gematrinator: A1 B2 C3 D4 E5 F6 G7 H8 I9 K10
- *   L20 M30 N40 O50 P60 Q70 R80 S90 T100 U200 X300 Y400 Z500, following the
- *   same ones/tens/hundreds scale as the 22-letter Hebrew alphabet. J, V and
- *   W have no Hebrew counterpart, so the calculators give them high
- *   sofit-style values: J=600, V=700, W=900. Despite the name, this is a
- *   *modern English-letter convention*, not actual Hebrew gematria — for
- *   that, value Hebrew text under `he-hechrachi`. It differs from
- *   `la-agrippa` only at U and V, whose values are swapped.
- * - **NAEQ / ALW** (`en-naeq`, `extended: true`) — the New Aeon English Qabalah
- *   from Aleister Crowley's *Liber Trigrammaton* (Liber XXVII) / *Liber 805*.
- *   The 26 letters take the values A1 L2 W3 H4 S5 D6 O7 Z8 K9 V10 G11 R12 C13
- *   N14 Y15 J16 U17 F18 Q19 B20 M21 X22 I23 T24 E25 P26 — hence its other name,
- *   the "ALW cipher" (A,L,W = 1,2,3). A documented *historical* Thelemic system,
- *   distinct from and NOT to be confused with the modern ×6 wordplay below; it
- *   is `extended` only so it stays out of the default frontend-parity profile.
+ * Historical and published:
+ * - **Ordinal** (`en-ordinal`, "Simple English") — A=1 … Z=26.
+ * - **Reduction** (`en-reduction`, "Pythagorean") — each letter's ordinal
+ *   reduced to its digital root (A1…I9, J1…R9, S1…Z8), then summed. The
+ *   `keepTen` option applies Hubbard's rule that S (ordinal 19) may count 10;
+ *   under reverse that is H, the mirror of S.
+ * - **Agrippa** (`la-agrippa`) — Heinrich Cornelius Agrippa's Latin key, *De
+ *   Occulta Philosophia* Book II, ch. xx (1533; Freake tr. 1651): A1 B2 C3 D4 E5
+ *   F6 G7 H8 I9 K10 L20 M30 N40 O50 P60 Q70 R80 S90 T100, the vowel V = 200,
+ *   X300 Y400 Z500, and — "their places are supplyed with I, and V simple
+ *   consonants, as in the names of John, and Valentine, and hi, and hu aspirate
+ *   consonants" — consonantal I = 600, consonantal V = 700, HI = 800, HV = 900.
+ *   Read with modern letters: U=200, J=600, V=700, W=900. The digraph HI (800)
+ *   is not scored (H and I count 8 + 9). J/U/W are Agrippa's own assignments,
+ *   not a later reconstruction.
+ * - **Jewish Gematria** (`la-jewish`) — the default English-letter cipher of
+ *   gematrix.org and Gematrinator, A1…T100 U200 X300 Y400 Z500 J600 V700 W900
+ *   (Hubbard, *Number Games*, confirms U200/V700 with "Tisha B'Av" = 911). It is
+ *   *the same table* as Agrippa's key read with modern letters: `la-jewish` is
+ *   Agrippa's system under a modern name. Both ids are kept.
+ * - **NAEQ / ALW** (`en-naeq`, `extended: true`) — the New Aeon English
+ *   Qabalah: A1 L2 W3 H4 S5 D6 O7 Z8 K9 V10 G11 R12 C13 N14 Y15 J16 U17 F18 Q19
+ *   B20 M21 X22 I23 T24 E25 P26, hence its name "ALW cipher". It was discovered
+ *   by James Lees in November 1976, derived from *Liber AL vel Legis* — not
+ *   from *Liber Trigrammaton* (that is the Trigrammaton Qabalah, `en-tq`).
  *
  * Modern (`modern: true` — 20th–21st-century wordplay, NOT ancient; Latin has
  * no native numerals):
@@ -34,76 +33,38 @@
  *   six, A=6 … Z=156. "English" and "Sumerian" name the same values on the
  *   online calculators.
  *
- * No cipher here has a *reverse* twin: reverse is a parameter, so
- * `value(text, cipher, true)` mirrors any of them (a↔z) on demand.
+ * No cipher here has a *reverse* twin: reverse is a parameter over the a…z
+ * alphabet, so `value(text, cipher, true)` mirrors any of them (a↔z).
  *
- * Sources: Agrippa, *De Occulta Philosophia* Bk II (Latin table). Jewish
- * Gematria/gematrix.org, Gematrinator (jewish-gematria.com,
- * gematrinator.com) for `la-jewish`. Aleister Crowley, *Liber Trigrammaton sub
- * figura XXVII* and *Liber 805* (the NAEQ / ALW English Qabalah). The ×6
- * ciphers are recent inventions popularized by online calculators
- * (gematrinator.com, bartoll.se) — see the README's honest-framing section.
+ * Sources: Agrippa, *De Occulta Philosophia* II.xx (Latin key); Gematrinator /
+ * gematrix.org (`la-jewish`); Hubbard, *Number Games* (the Simple, Pythagorean,
+ * Jewish and Sumerian tables and the S/H "1 or 10" rule); the New Aeon English
+ * Qabalah literature (James Lees, 1976). The ×6 ciphers are recent inventions
+ * popularized by online calculators — see the README's honest-framing section.
  */
 
 import { digitRoot } from '../normalize.js'
-import type { Cipher, CipherId, LetterValue } from '../types.js'
+import type { Cipher } from '../types.js'
 import { ENGLISH_MODERN_CIPHERS } from './english-modern.js'
-
-/** a … z, the domain of every Latin cipher table. */
-const LATIN_ALPHABET: readonly string[] = 'abcdefghijklmnopqrstuvwxyz'.split('')
-
-/** Ordinal A=1 … Z=26 (lowercased input), or 0 for a non-letter. */
-function ordinal(ch: string): number {
-  const code = ch.codePointAt(0) ?? 0
-  return code >= 97 && code <= 122 ? code - 96 : 0
-}
+import { LATIN_EXTRA_CIPHERS } from './latin-extra.js'
+import { latinCipher, ordinal, rowsValue } from './latin-shared.js'
 
 function reduction(ch: string): number {
   const o = ordinal(ch)
   return o > 0 ? digitRoot(o) : 0
 }
 
-// Agrippa's Latin table: I and V cover I/J and U/V; J/U/W are the documented
-// Renaissance extensions.
-const AGRIPPA_ROWS: readonly (readonly [string, number])[] = [
-  ['a', 1],
-  ['b', 2],
-  ['c', 3],
-  ['d', 4],
-  ['e', 5],
-  ['f', 6],
-  ['g', 7],
-  ['h', 8],
-  ['i', 9],
-  ['j', 600],
-  ['k', 10],
-  ['l', 20],
-  ['m', 30],
-  ['n', 40],
-  ['o', 50],
-  ['p', 60],
-  ['q', 70],
-  ['r', 80],
-  ['s', 90],
-  ['t', 100],
-  ['u', 700],
-  ['v', 200],
-  ['w', 900],
-  ['x', 300],
-  ['y', 400],
-  ['z', 500],
-]
-
-const AGRIPPA_VALUES: ReadonlyMap<string, number> = new Map(AGRIPPA_ROWS)
-
-function agrippa(ch: string): number {
-  return AGRIPPA_VALUES.get(ch) ?? 0
+/**
+ * `en-reduction` under Hubbard's `keepTen` rule: the letter with ordinal 19 (S)
+ * scores 10 instead of 1. Reverse mirrors it onto H like every other value.
+ */
+export function reductionKeepTen(ch: string): number {
+  return ordinal(ch) === 19 ? 10 : reduction(ch)
 }
 
-// Jewish Gematria (gematrix.org / Gematrinator default): same ones/tens/
-// hundreds scale as Agrippa, but swapped at U/V — the only two letters where
-// it disagrees with the Agrippa table.
-const JEWISH_ROWS: readonly (readonly [string, number])[] = [
+// Agrippa's key read with modern letters (II.xx): vowel V → U = 200,
+// consonantal I → J = 600, consonantal V → V = 700, HV → W = 900.
+const AGRIPPA_KEY = rowsValue([
   ['a', 1],
   ['b', 2],
   ['c', 3],
@@ -113,7 +74,6 @@ const JEWISH_ROWS: readonly (readonly [string, number])[] = [
   ['g', 7],
   ['h', 8],
   ['i', 9],
-  ['j', 600],
   ['k', 10],
   ['l', 20],
   ['m', 30],
@@ -125,96 +85,91 @@ const JEWISH_ROWS: readonly (readonly [string, number])[] = [
   ['s', 90],
   ['t', 100],
   ['u', 200],
-  ['v', 700],
-  ['w', 900],
   ['x', 300],
   ['y', 400],
   ['z', 500],
-]
+  ['j', 600],
+  ['v', 700],
+  ['w', 900],
+])
 
-const JEWISH_VALUES: ReadonlyMap<string, number> = new Map(JEWISH_ROWS)
-
-function jewish(ch: string): number {
-  return JEWISH_VALUES.get(ch) ?? 0
-}
-
-// NAEQ / ALW (Crowley, Liber Trigrammaton XXVII): the 26 letters in the order
-// derived from Liber AL, valued 1..26. Named the "ALW cipher" for A=1 L=2 W=3.
-const NAEQ_ROWS: readonly (readonly [string, number])[] = [
-  ['a', 1],
-  ['l', 2],
-  ['w', 3],
-  ['h', 4],
-  ['s', 5],
-  ['d', 6],
-  ['o', 7],
-  ['z', 8],
-  ['k', 9],
-  ['v', 10],
-  ['g', 11],
-  ['r', 12],
-  ['c', 13],
-  ['n', 14],
-  ['y', 15],
-  ['j', 16],
-  ['u', 17],
-  ['f', 18],
-  ['q', 19],
-  ['b', 20],
-  ['m', 21],
-  ['x', 22],
-  ['i', 23],
-  ['t', 24],
-  ['e', 25],
-  ['p', 26],
-]
-
-const NAEQ_VALUES: ReadonlyMap<string, number> = new Map(NAEQ_ROWS)
-
-function naeq(ch: string): number {
-  return NAEQ_VALUES.get(ch) ?? 0
-}
+// NAEQ / ALW: the 26 letters in the order A L W H S D O Z K V G R C N Y J U F Q
+// B M X I T E P, valued 1..26.
+const NAEQ_ORDER = 'alwhsdozkvgrcnyjufqbmxitep'
+const naeq = rowsValue([...NAEQ_ORDER].map((ch, i) => [ch, i + 1] as const))
 
 function english6(ch: string): number {
   return ordinal(ch) * 6
 }
 
-function table(fn: (ch: string) => number): readonly LetterValue[] {
-  return Object.freeze(LATIN_ALPHABET.map((char) => Object.freeze({ char, value: fn(char) })))
-}
-
-function latinCipher(
-  id: CipherId,
-  label: string,
-  letterValue: (ch: string) => number,
-  modern: boolean,
-  extended = false,
-): Cipher {
-  return Object.freeze({
-    id,
-    label,
-    script: 'latin',
-    modern,
-    extended,
-    letterValue,
-    table: table(letterValue),
-  })
-}
-
 /**
  * The English/Latin ciphers: the historical set, the extended NAEQ, the modern
- * ×6 family, then the gematriaq.com-parity calculator ciphers and Plichta's
- * Prime Number Cross (both from `english-modern.ts`). NAEQ is `extended` (kept
- * out of the default profile) rather than `modern` — it is a documented
- * historical Thelemic cipher, not wordplay.
+ * ×6 family, the gematriaq.com-parity calculator ciphers and Plichta's Prime
+ * Number Cross (`english-modern.ts`), then the SDK-added extended Latin tables
+ * (`latin-extra.ts`: TQ, AQ, Elizabethan, Roman). NAEQ is `extended` (kept out
+ * of the default profile) rather than `modern` — it is a documented Thelemic
+ * system, not calculator wordplay.
  */
 export const ENGLISH_CIPHERS: readonly Cipher[] = Object.freeze([
-  latinCipher('en-ordinal', 'Ordinal', ordinal, false),
-  latinCipher('en-reduction', 'Reduction (Pythagorean)', reduction, false),
-  latinCipher('la-agrippa', 'Agrippa (Latin, reconstructed)', agrippa, false),
-  latinCipher('la-jewish', 'Jewish', jewish, false),
-  latinCipher('en-naeq', 'New Aeon English Qabalah (NAEQ / ALW)', naeq, false, true),
-  latinCipher('en-english', 'English (×6, modern)', english6, true),
-  latinCipher('en-sumerian', 'Sumerian (×6, modern)', english6, true),
+  latinCipher(
+    'en-ordinal',
+    'Ordinal',
+    'Simple English / Ordinal: each letter scores its position, A=1 … Z=26. Kept modern: false ' +
+      'for frontend parity, although English-letter gematria is itself a modern convention.',
+    ordinal,
+    false,
+  ),
+  latinCipher(
+    'en-reduction',
+    'Reduction (Pythagorean)',
+    "Pythagorean / Reduction: each letter's ordinal reduced to its digital root (A1…I9, J1…R9, " +
+      "S1…Z8). Option keepTen applies Hubbard's rule S=10 (H=10 under reverse).",
+    reduction,
+    false,
+  ),
+  latinCipher(
+    'la-agrippa',
+    'Agrippa (Latin)',
+    "Agrippa's Latin key, De Occulta Philosophia II.xx: A1…I9 K10…T100, vowel V (U)=200, X300 " +
+      'Y400 Z500, consonantal I (J)=600, consonantal V=700, HV (W)=900; the digraph HI=800 is ' +
+      'not scored. The same table as la-jewish.',
+    AGRIPPA_KEY,
+    false,
+  ),
+  latinCipher(
+    'la-jewish',
+    'Jewish',
+    "'Jewish Gematria' of gematrix.org and Gematrinator: A1…T100 U200 X300 Y400 Z500 J600 V700 " +
+      "W900 — Agrippa's Latin key under a modern name; an English-letter convention, not Hebrew " +
+      'gematria.',
+    AGRIPPA_KEY,
+    false,
+  ),
+  latinCipher(
+    'en-naeq',
+    'New Aeon English Qabalah (NAEQ / ALW)',
+    'New Aeon English Qabalah (ALW cipher): A1 L2 W3 H4 S5 D6 O7 Z8 K9 V10 … E25 P26, discovered ' +
+      'by James Lees in November 1976 from Liber AL vel Legis.',
+    naeq,
+    false,
+    true,
+  ),
+  latinCipher(
+    'en-english',
+    'English (×6, modern)',
+    'Modern online-calculator cipher: the ordinal times six, A=6 … Z=156 (same values as ' +
+      "'Sumerian').",
+    english6,
+    true,
+  ),
+  latinCipher(
+    'en-sumerian',
+    'Sumerian (×6, modern)',
+    'Modern online-calculator cipher: the ordinal times six, A=6 … Z=156 (same values as ' +
+      "'English'); no connection to Sumerian numerals.",
+    english6,
+    true,
+  ),
   ...ENGLISH_MODERN_CIPHERS,
+  ...LATIN_EXTRA_CIPHERS,
 ])

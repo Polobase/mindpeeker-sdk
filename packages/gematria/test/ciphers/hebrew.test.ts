@@ -1,9 +1,21 @@
 import { describe, expect, test } from 'bun:test'
 import { HE_BASE, HE_NAMES, HEBREW_CIPHERS, heIndex, milui } from '../../src/ciphers/hebrew.js'
-import { value } from '../../src/value.js'
+import { GematriaError } from '../../src/errors.js'
+import { detectScript } from '../../src/normalize.js'
+import { analyze, letterValues, value } from '../../src/value.js'
+
+function codeOf(fn: () => unknown): string | undefined {
+  try {
+    fn()
+  } catch (e) {
+    return e instanceof GematriaError ? e.code : `foreign:${String(e)}`
+  }
+  return undefined
+}
 
 describe('hebrew tables', () => {
-  test('exposes the 22 base letters aleph → tav', () => {
+  test('exposes the 22 base letters aleph → tav (frozen)', () => {
+    expect(Object.isFrozen(HE_BASE)).toBe(true)
     expect(HE_BASE.length).toBe(22)
     expect(HE_BASE[0]).toBe('א')
     expect(HE_BASE[21]).toBe('ת')
@@ -16,6 +28,8 @@ describe('hebrew tables', () => {
       for (const row of c.table) expect(Object.isFrozen(row)).toBe(true)
       // Gadol distinguishes the 5 final forms; the rest use the 22 base letters.
       expect(c.table.length).toBe(c.id === 'he-gadol' ? 27 : 22)
+      expect(c.alphabet).toEqual(HE_BASE)
+      expect(c.fold('ם')).toBe('מ')
     }
   })
 
@@ -122,5 +136,71 @@ describe('extended Hebrew methods', () => {
     expect(value('אמת', 'he-katan-mispari')).toBe(9)
     // distinct from per-letter Katan on a word where they diverge
     expect(value('יהוה', 'he-katan')).not.toBe(value('יהוה', 'he-katan-mispari'))
+  })
+})
+
+describe('milui() validation and the names convention', () => {
+  test('variant ids are case-insensitive; unknown variants and non-strings are invalid_input', () => {
+    expect(milui('יהוה', 'AB')).toBe(72)
+    expect(milui('יהוה', 'Sag' as 'sag')).toBe(63)
+    expect(milui('יהוה', { variant: 'MAH' })).toBe(45)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(codeOf(() => milui('יהוה', 'bogus' as any))).toBe('invalid_input')
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(codeOf(() => milui('יהוה', 72 as any))).toBe('invalid_input')
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(codeOf(() => milui('יהוה', { variant: 'constructor' as any }))).toBe('invalid_input')
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(codeOf(() => milui(42 as any))).toBe('invalid_input')
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(codeOf(() => milui('יהוה', { namesVariant: 'x' as any }))).toBe('invalid_input')
+  })
+
+  test("namesVariant 'plene' spells gimel גימל (83) and pe פה (85)", () => {
+    expect(value('ג', 'he-milui')).toBe(73)
+    expect(value('ג', 'he-milui', { namesVariant: 'plene' })).toBe(83)
+    expect(value('פ', 'he-milui')).toBe(81)
+    expect(value('פ', 'he-milui', { namesVariant: 'plene' })).toBe(85)
+    expect(value('ף', 'he-milui', { namesVariant: 'plene' })).toBe(85)
+    // Godwin-style plene reading of גד: 83 + 434 = 517 (default 507)
+    expect(value('גד', 'he-milui')).toBe(507)
+    expect(value('גד', 'he-milui', { namesVariant: 'plene' })).toBe(517)
+    expect(milui('גד', { namesVariant: 'plene' })).toBe(517)
+    // he-neelam follows: pe פה − 80 = 5, gimel גימל − 3 = 80
+    expect(value('פ', 'he-neelam', { namesVariant: 'plene' })).toBe(5)
+    expect(value('ג', 'he-neelam', { namesVariant: 'plene' })).toBe(80)
+    // the Tetragrammaton fillings are unaffected (no gimel or pe)
+    expect(milui('יהוה', { variant: 'ab', namesVariant: 'plene' })).toBe(72)
+    // only gimel and pe change
+    const std = letterValues('he-milui')
+    const plene = letterValues('he-milui', { namesVariant: 'plene' })
+    const changed = std.filter((row, i) => row.value !== plene[i]?.value).map((row) => row.char)
+    expect(changed).toEqual(['ג', 'פ'])
+    expect(analyze('גפ', 'he-milui', { namesVariant: 'plene' }).value).toBe(168)
+  })
+
+  test('namesVariant on a non-Milui cipher is invalid_input', () => {
+    expect(codeOf(() => value('ג', 'he-hechrachi', { namesVariant: 'plene' }))).toBe(
+      'invalid_input',
+    )
+    expect(value('ג', 'he-hechrachi', { namesVariant: 'standard' })).toBe(3)
+  })
+})
+
+describe('hebrew compatibility normalization', () => {
+  test('presentation forms, ligatures and letterlike symbols score as their letters', () => {
+    expect(value('\uFB4F', 'he-hechrachi')).toBe(31) // ﭏ alef-lamed ligature → אל
+    expect(value('\uFB21', 'he-hechrachi')).toBe(1) // wide alef
+    expect(value('\uFB20', 'he-hechrachi')).toBe(70) // alternative ayin
+    expect(value('\u2135', 'he-hechrachi')).toBe(1) // ℵ alef symbol
+    expect(value('\u05F0', 'he-hechrachi')).toBe(12) // װ double vav → וו
+    expect(value('\u05F2', 'he-hechrachi')).toBe(20) // ײ double yod → יי
+    expect(value('\uFB1F', 'he-hechrachi')).toBe(20) // ײַ with patah
+    expect(detectScript('\uFB4F')).toBe('hebrew')
+  })
+
+  test('bidi and joiner controls inside a word are ignored', () => {
+    expect(value('של\u200Fו\u200Dם', 'he-hechrachi')).toBe(376)
+    expect(value('\uFEFFשלום', 'he-hechrachi', true)).toBe(112)
   })
 })

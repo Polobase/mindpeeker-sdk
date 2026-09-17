@@ -1,15 +1,17 @@
 /**
  * The cipher registry: the single source of truth for which ciphers exist,
  * their order, and how to resolve an id (or friendly {@link CipherAlias}) to
- * its {@link Cipher}. Hebrew ciphers come first, then Greek, then
- * English/Latin — the same order the frontend engine emits, so a `profile()`
- * matches it row-for-row.
+ * its {@link Cipher}. Hebrew ciphers come first, then Greek, Arabic and
+ * English/Latin — the frontend engine's order, so a `profile()` matches it
+ * row-for-row — followed by the alphabetic numeral ciphers of Cyrillic,
+ * Armenian, Georgian, Coptic, Syriac and Gothic.
  */
 
 import { ARABIC_CIPHERS } from './ciphers/arabic.js'
 import { ENGLISH_CIPHERS } from './ciphers/english.js'
 import { GREEK_CIPHERS } from './ciphers/greek.js'
 import { HEBREW_CIPHERS } from './ciphers/hebrew.js'
+import { NUMERAL_CIPHERS } from './ciphers/numerals.js'
 import { GematriaError } from './errors.js'
 import type { Cipher, CipherAlias, CipherId, CipherRef, Script } from './types.js'
 
@@ -19,16 +21,31 @@ export const CIPHERS: readonly Cipher[] = Object.freeze([
   ...GREEK_CIPHERS,
   ...ARABIC_CIPHERS,
   ...ENGLISH_CIPHERS,
+  ...NUMERAL_CIPHERS,
 ])
 
 const BY_ID: ReadonlyMap<CipherId, Cipher> = new Map(CIPHERS.map((c) => [c.id, c]))
 
-/** The applicable cipher ids for each script, in display order. */
+function idsFor(script: Script): readonly CipherId[] {
+  return Object.freeze(CIPHERS.filter((c) => c.script === script).map((c) => c.id))
+}
+
+/**
+ * The applicable cipher ids for each script, in display order. Look a script up
+ * with `Object.hasOwn(CIPHERS_BY_SCRIPT, script)` before indexing untrusted
+ * input.
+ */
 export const CIPHERS_BY_SCRIPT: Readonly<Record<Script, readonly CipherId[]>> = Object.freeze({
-  hebrew: Object.freeze(HEBREW_CIPHERS.map((c) => c.id)),
-  greek: Object.freeze(GREEK_CIPHERS.map((c) => c.id)),
-  arabic: Object.freeze(ARABIC_CIPHERS.map((c) => c.id)),
-  latin: Object.freeze(ENGLISH_CIPHERS.map((c) => c.id)),
+  hebrew: idsFor('hebrew'),
+  greek: idsFor('greek'),
+  arabic: idsFor('arabic'),
+  latin: idsFor('latin'),
+  cyrillic: idsFor('cyrillic'),
+  armenian: idsFor('armenian'),
+  georgian: idsFor('georgian'),
+  coptic: idsFor('coptic'),
+  syriac: idsFor('syriac'),
+  gothic: idsFor('gothic'),
 })
 
 /**
@@ -49,7 +66,7 @@ export const ALIASES: Readonly<Record<CipherAlias, CipherId>> = Object.freeze({
 })
 
 function isAlias(ref: CipherRef): ref is CipherAlias {
-  return Object.hasOwn(ALIASES, ref)
+  return typeof ref === 'string' && Object.hasOwn(ALIASES, ref)
 }
 
 /**

@@ -47,6 +47,53 @@ describe('arabic abjad cipher', () => {
     expect(normalizeFor('أآإ', 'arabic')).toBe('ااا')
     expect(normalizeFor('ة', 'arabic')).toBe('ه')
     expect(normalizeFor('ءَ', 'arabic')).toBe('')
+    expect(normalizeFor('ؤئى', 'arabic')).toBe('ويي')
+  })
+
+  test('hamza on a seat counts as the seat letter; alef maqsura counts as ya', () => {
+    // Reference totals derived independently (seat-letter folding over the
+    // Mashriqi table): م40 و6 س60 ى→ي10 = 116, etc.
+    const expected: Record<string, number> = {
+      موسى: 116,
+      عيسى: 150,
+      مؤمن: 136,
+      على: 110,
+      إلى: 41,
+      سؤال: 97,
+      رئيس: 280,
+    }
+    for (const [word, total] of Object.entries(expected))
+      expect(value(word, 'ar-abjad')).toBe(total)
+    expect(value('ؤ', 'ar-abjad')).toBe(6)
+    expect(value('ئ', 'ar-abjad')).toBe(10)
+    expect(value('ى', 'ar-abjad')).toBe(10)
+    expect(value('ٱ', 'ar-abjad')).toBe(1)
+  })
+
+  test('Persian keheh ک and farsi yeh ی count as kaf and ya; Persian-only letters score 0', () => {
+    expect(value('ک', 'ar-abjad')).toBe(20)
+    expect(value('ی', 'ar-abjad')).toBe(10)
+    expect(value('کتاب', 'ar-abjad')).toBe(value('كتاب', 'ar-abjad'))
+    expect(value('پچژگ', 'ar-abjad')).toBe(0)
+  })
+
+  test('presentation forms and ligatures decompose to base letters', () => {
+    expect(value('\uFDF2', 'ar-abjad')).toBe(66) // ﷲ ALLAH ligature
+    expect(value('\uFEFB', 'ar-abjad')).toBe(31) // ﻻ lam-alef ligature
+    expect(value('\uFE8D\uFEDF\uFEE0\uFEEA', 'ar-abjad')).toBe(66) // positional forms of الله
+    expect(detectScript('\uFEFB')).toBe('arabic')
+  })
+
+  test('the cipher fold agrees with normalization for direct letterValue calls', () => {
+    const c = ARABIC_CIPHERS[0]
+    for (const ch of ['ى', 'ة', 'ک', 'ی', 'ٱ', 'ؤ', 'ئ']) {
+      expect(c?.letterValue(ch)).toBe(value(ch, 'ar-abjad'))
+    }
+  })
+
+  test('format controls (ALM, ZWNJ) do not change the value or the detected script', () => {
+    expect(value('مو\u200Cسى', 'ar-abjad')).toBe(116)
+    expect(detectScript('\u061Cabc')).toBe('latin')
   })
 
   test('detectScript recognizes Arabic, and Hebrew still wins over it', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { GematriaError } from '../src/errors.js'
-import { equalValue, lookup, matches, useDefaultLexicon } from '../src/match.js'
+import { clearDefaultLexicon, useDefaultLexicon } from '../src/lexicon-registry.js'
+import { equalValue, lookup, matches } from '../src/match.js'
 
 describe('equalValue', () => {
   test('true when two words share a value, false otherwise', () => {
@@ -57,10 +58,79 @@ describe('default lexicon overloads', () => {
     expect(lookup(104, 'jewish').matches).toEqual(['cat'])
   })
 
-  test('a bare call throws when no default has been registered', () => {
-    // reset to an explicit, then confirm the explicit-lexicon path still works
+  test('a bare call throws invalid_input when no default has been registered', () => {
+    clearDefaultLexicon()
+    expect(() => matches('god', 'jewish')).toThrow(
+      expect.objectContaining({
+        code: 'invalid_input',
+        message: expect.stringContaining('no lexicon supplied'),
+      }),
+    )
+    expect(() => lookup(61, 'jewish')).toThrow(expect.objectContaining({ code: 'invalid_input' }))
     useDefaultLexicon(['god'])
     expect(matches('god', 'jewish').matches).toEqual(['god'])
+  })
+})
+
+describe('admissible words (script-aware lexicons)', () => {
+  const mixed = ['אחד', 'Αμην', 'abc', 'cab', '', '— !', 'bca']
+
+  test('only words in the cipher script with a scoring letter count, also in the denominator', () => {
+    const r = matches('abc', mixed, 'en-ordinal')
+    expect(r.matches).toEqual(['abc', 'cab', 'bca'])
+    expect(r.lexiconSize).toBe(3)
+    expect(r.commonness).toBe(1)
+    const he = matches('אחד', mixed, 'he-hechrachi')
+    expect(he.matches).toEqual(['אחד'])
+    expect(he.lexiconSize).toBe(1)
+  })
+
+  test('foreign words no longer match each other at value 0', () => {
+    expect(lookup(0, mixed, 'he-hechrachi').matches).toEqual([])
+    const r = matches('abc', mixed, 'he-hechrachi')
+    expect(r.value).toBe(0)
+    expect(r.matches).toEqual([])
+    expect(r.commonness).toBe(0)
+  })
+
+  test('a declared script is authoritative; objects and strings mix', () => {
+    const lexicon = [{ word: 'abc', script: 'greek' as const }, { word: 'cab' }, 'bca']
+    expect(matches('abc', lexicon, 'en-ordinal').matches).toEqual(['cab', 'bca'])
+  })
+
+  test('duplicate words count once per occurrence', () => {
+    const r = lookup(6, ['abc', 'abc', 'cab', 'd'], 'en-ordinal')
+    expect(r.matches).toEqual(['abc', 'abc', 'cab'])
+    expect(r.commonness).toBeCloseTo(3 / 4, 12)
+  })
+})
+
+describe('option and lexicon validation', () => {
+  test('rejects malformed lexicon items', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => matches('x', [1] as any, 'en-ordinal')).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => matches('x', [{ word: 5 }] as any, 'en-ordinal')).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => lookup(1, [{ word: 'a', script: 'klingon' }] as any, 'en-ordinal')).toThrow(
+      GematriaError,
+    )
+  })
+
+  test('rejects non-boolean colel, fractional tolerance and non-object options', () => {
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => matches('a', ['a'], 'en-ordinal', { colel: 'yes' as any })).toThrow(GematriaError)
+    expect(() => matches('a', ['a'], 'en-ordinal', { tolerance: 1.5 })).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => lookup(1, ['a'], 'en-ordinal', 3 as any)).toThrow(GematriaError)
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => equalValue('a', 'b', 'en-ordinal', { tolerance: -2 } as any)).toThrow(
+      GematriaError,
+    )
+  })
+
+  test('rejects an unsafe target', () => {
+    expect(() => lookup(2 ** 53, ['a'], 'en-ordinal')).toThrow(GematriaError)
   })
 })
 
@@ -99,9 +169,13 @@ describe('matches', () => {
     expect(result.commonness).toBe(0)
   })
 
-  test('rejects a non-array lexicon', () => {
+  test('rejects a non-array lexicon with a dedicated message', () => {
     // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
-    expect(() => matches('x', 'nope' as any, 'en-ordinal')).toThrow(GematriaError)
+    expect(() => matches('x', 'nope' as any, 'en-ordinal')).toThrow(
+      expect.objectContaining({ code: 'invalid_input', message: expect.stringContaining('array') }),
+    )
+    // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
+    expect(() => matches('x', new Set(['x']) as any, 'en-ordinal')).toThrow(GematriaError)
   })
 })
 
@@ -132,9 +206,11 @@ describe('lookup', () => {
     expect(() => lookup(-1, lexicon, 'he-hechrachi')).toThrow(GematriaError)
   })
 
-  test('rejects a non-array lexicon', () => {
+  test('rejects a non-array lexicon with a dedicated message', () => {
     // biome-ignore lint/suspicious/noExplicitAny: exercising the runtime guard
-    expect(() => lookup(13, 'nope' as any, 'he-hechrachi')).toThrow(GematriaError)
+    expect(() => lookup(13, 'nope' as any, 'he-hechrachi')).toThrow(
+      expect.objectContaining({ code: 'invalid_input', message: expect.stringContaining('array') }),
+    )
   })
 
   test('rejects an unknown cipher', () => {

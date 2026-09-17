@@ -18,13 +18,20 @@
  * one — the digital root — which sends every letter of a chamber to the same
  * value.
  *
+ * {@link chamberMates}, {@link aiqBekerSubstitute} and {@link aiqBekerEquivalent}
+ * implement that exchange.
+ *
  * Sources: Lon Milo DuQuette, *Llewellyn's Complete Book of Ceremonial Magick*
  * (the nine chambers, finals in the hundreds, sigils on the kameas); Israel
- * Regardie & the Ciceros, *The Golden Dawn* / *Self-Initiation* (Aiq Beker).
+ * Regardie & the Ciceros, *The Golden Dawn* / *Self-Initiation* (Aiq Beker);
+ * S. L. MacGregor Mathers, *The Kabbalah Unveiled* (1887: the chamber table with
+ * the finals as hundreds); Crowley, *Sepher Sephiroth* (Equinox I.8, 1912:
+ * "Truth; Temurah of ADM, by Aiq Bekar AMTh").
  */
 
 import { GematriaError } from './errors.js'
-import { digitRoot, normalizeFor } from './normalize.js'
+import { digitRoot, HEBREW_FINALS, normalizeFor } from './normalize.js'
+import { requireString } from './validate.js'
 
 /** A letter's place in the Aiq Beker grid. */
 export interface AiqBekerCell {
@@ -77,6 +84,125 @@ export function aiqBeker(letter: string): AiqBekerCell {
     if (cell) return cell
   }
   throw new GematriaError('invalid_input', `not a Hebrew letter: ${letter}`)
+}
+
+/**
+ * How final forms are placed in the chambers by {@link chamberMates},
+ * {@link aiqBekerSubstitute} and {@link aiqBekerEquivalent}:
+ *
+ * - `'distinct'` (default, as in {@link aiqBeker} and {@link NINE_CHAMBERS}) —
+ *   the finals are the hundreds 500–900, so ם sits with ו and ס.
+ * - `'fold'` — a final counts as its base letter (ם as מ, with ד and ת), the
+ *   reading of transliterated sources that do not mark finals: *Sepher
+ *   Sephiroth* gives אמת (AMTh, 441) as the "Temurah of ADM [אדם, 45], by Aiq
+ *   Bekar".
+ */
+export type ChamberFinals = 'distinct' | 'fold'
+
+/** Options for the Aiq Beker substitution helpers. */
+export interface ChamberOptions {
+  /** Placement of final forms. Default `'distinct'`. See {@link ChamberFinals}. */
+  readonly finals?: ChamberFinals
+}
+
+function finalsMode(opts: unknown): ChamberFinals {
+  if (opts === undefined) return 'distinct'
+  if (typeof opts !== 'object' || opts === null || Array.isArray(opts)) {
+    throw new GematriaError('invalid_input', 'chamber options must be an object')
+  }
+  const finals = (opts as { finals?: unknown }).finals ?? 'distinct'
+  if (finals !== 'distinct' && finals !== 'fold') {
+    throw new GematriaError(
+      'invalid_input',
+      `finals must be 'distinct' or 'fold', got ${String(finals)}`,
+    )
+  }
+  return finals
+}
+
+/** The chamber cell of one normalized character, or `undefined` if it is no Hebrew letter. */
+function cellOf(ch: string, finals: ChamberFinals): AiqBekerCell | undefined {
+  return CELL_BY_CHAR.get(finals === 'fold' ? (HEBREW_FINALS[ch] ?? ch) : ch)
+}
+
+/**
+ * The other two letters of `letter`'s Aiq Beker chamber, in chamber order
+ * (units, tens, hundreds). The first Hebrew letter in `letter` is used; niqqud
+ * are stripped. `chamberMates('ד')` is `['מ', 'ת']`; `chamberMates('ם')` is
+ * `['ו', 'ס']`, or `['ד', 'ת']` with `{ finals: 'fold' }`.
+ *
+ * @throws GematriaError `'invalid_input'` if `letter` is not a string, holds no
+ *   Hebrew letter, or `opts` is invalid
+ */
+export function chamberMates(letter: string, opts?: ChamberOptions): readonly string[] {
+  requireString(letter, 'letter')
+  const finals = finalsMode(opts)
+  for (const ch of normalizeFor(letter, 'hebrew')) {
+    const cell = cellOf(ch, finals)
+    if (!cell) continue
+    const row = NINE_CHAMBERS[cell.chamber - 1] as readonly string[]
+    return Object.freeze(row.filter((_, i) => i !== cell.position - 1))
+  }
+  throw new GematriaError('invalid_input', `not a Hebrew letter: ${letter}`)
+}
+
+/**
+ * Aiq Beker substitution: replace every Hebrew letter of `text` by the member
+ * of its chamber at `position` — 1 (units), 2 (tens) or 3 (hundreds, finals for
+ * chambers 5–9). Niqqud are stripped; other characters pass through. The
+ * substituted word keeps each letter's chamber, so its per-letter digital roots
+ * — and hence its chamber reduction digit by digit — are unchanged:
+ * `aiqBekerSubstitute('אמת', 1)` is `'אדד'`.
+ *
+ * @throws GematriaError `'invalid_input'` if `text` is not a string, `position`
+ *   is not 1, 2 or 3, or `opts` is invalid
+ */
+export function aiqBekerSubstitute(
+  text: string,
+  position: 1 | 2 | 3,
+  opts?: ChamberOptions,
+): string {
+  requireString(text)
+  if (position !== 1 && position !== 2 && position !== 3) {
+    throw new GematriaError('invalid_input', `position must be 1, 2 or 3, got ${String(position)}`)
+  }
+  const finals = finalsMode(opts)
+  let out = ''
+  for (const ch of normalizeFor(text, 'hebrew')) {
+    const cell = cellOf(ch, finals)
+    out += cell
+      ? ((NINE_CHAMBERS[cell.chamber - 1] as readonly string[])[position - 1] as string)
+      : ch
+  }
+  return out
+}
+
+/**
+ * Whether two words are Aiq Beker exchanges of each other: they have the same
+ * number of Hebrew letters and each letter of `a` shares its chamber with the
+ * letter of `b` at the same place (non-Hebrew characters are ignored). This is
+ * the traditional "any letter may be exchanged for another of its chamber";
+ * `aiqBekerEquivalent('אדם', 'אמת', { finals: 'fold' })` is `true` (45 ↔ 441,
+ * *Sepher Sephiroth*), and `false` with the default distinct finals.
+ *
+ * @throws GematriaError `'invalid_input'` if either word is not a string or
+ *   `opts` is invalid
+ */
+export function aiqBekerEquivalent(a: string, b: string, opts?: ChamberOptions): boolean {
+  requireString(a, 'a')
+  requireString(b, 'b')
+  const finals = finalsMode(opts)
+  const chambers = (text: string): number[] => {
+    const out: number[] = []
+    for (const ch of normalizeFor(text, 'hebrew')) {
+      const cell = cellOf(ch, finals)
+      if (cell) out.push(cell.chamber)
+    }
+    return out
+  }
+  const ca = chambers(a)
+  const cb = chambers(b)
+  return ca.length === cb.length && ca.every((chamber, i) => chamber === cb[i])
 }
 
 /**

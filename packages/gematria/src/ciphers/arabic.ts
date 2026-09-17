@@ -10,71 +10,41 @@
  * \text{ش}300\,\text{ت}400\,\text{ث}500\,\text{خ}600\,\text{ذ}700\,\text{ض}800\,
  * \text{ظ}900\,\text{غ}1000.$$
  *
- * Normalization (see {@link normalizeFor}) folds the alef variants آ أ إ ٱ to
- * bare alef ا, folds tāʾ marbūṭa ة to hāʾ ه (5), drops the free-standing hamza
- * ء and the harakāt/tatwīl marks, and leaves the isolated/medial/final glyph
- * shapes to Unicode canonical form (they share one code point per letter). As
- * with Hebrew, summing is order-independent, so right-to-left needs no special
- * handling. This is `modern: false`: the Abjad numerals are the historical
+ * **Conventions** (applied by {@link normalizeFor} and by this cipher's `fold`):
+ * a hamza on a seat counts as its seat letter (أ إ آ → ا = 1, ؤ → و = 6,
+ * ئ → ي = 10); alef wasla ٱ → ا; tāʾ marbūṭa ة counts as hāʾ ه (5); alef maqsūra
+ * ى counts as yāʾ ي (10); the Persian/Urdu code points keheh ک and farsi yeh ی
+ * count as ك (20) and ي (10). The free-standing hamza ء, the harakāt, tanwīn,
+ * dagger alef and tatwīl carry no value. The Persian-only letters پ چ ژ گ are
+ * not folded and score 0. Summing is order-independent, so right-to-left needs
+ * no special handling. The Western/Maghribi order is not shipped (no verified
+ * table). This is `modern: false`: the Abjad numerals are the historical
  * pre-Hindu-Arabic number system of the script.
  *
- * Sources: standard *Ḥisāb al-Jummal* Abjad tables (Mashriqi order); Andrew
- * Chumbley, *Qutub* (the 28-letter Arabic values); H. P. Blavatsky and the
- * comparative-alphabet literature (alif = 1 … ghayn = 1000).
+ * Sources: Freedman's comparative Greek/Hebrew/Arabic numeral table (the 28
+ * letters in numerical order, ghayn = 1000); standard *Ḥisāb al-Jummal* Abjad
+ * tables (Mashriqi order).
  */
 
-import type { Cipher, LetterValue } from '../types.js'
+import { ARABIC_LETTER_FOLDS } from '../normalize.js'
+import type { Cipher } from '../types.js'
+import { defineCipher, glyphs, numeralLadder } from './define.js'
 
-// [glyph, value] in Mashriqi (Eastern) Abjad order.
-const ARABIC_ROWS: readonly (readonly [string, number])[] = [
-  ['ا', 1],
-  ['ب', 2],
-  ['ج', 3],
-  ['د', 4],
-  ['ه', 5],
-  ['و', 6],
-  ['ز', 7],
-  ['ح', 8],
-  ['ط', 9],
-  ['ي', 10],
-  ['ك', 20],
-  ['ل', 30],
-  ['م', 40],
-  ['ن', 50],
-  ['س', 60],
-  ['ع', 70],
-  ['ف', 80],
-  ['ص', 90],
-  ['ق', 100],
-  ['ر', 200],
-  ['ش', 300],
-  ['ت', 400],
-  ['ث', 500],
-  ['خ', 600],
-  ['ذ', 700],
-  ['ض', 800],
-  ['ظ', 900],
-  ['غ', 1000],
-]
-
-const ARABIC_VALUES: ReadonlyMap<string, number> = new Map(ARABIC_ROWS)
-
-function abjad(ch: string): number {
-  return ARABIC_VALUES.get(ch) ?? 0
-}
-
-const ARABIC_TABLE: readonly LetterValue[] = Object.freeze(
-  ARABIC_ROWS.map(([char, value]) => Object.freeze({ char, value })),
-)
+/** The 28 letters in Mashriqi (Eastern) Abjad order. */
+const ABJAD = glyphs('ا ب ج د ه و ز ح ط ي ك ل م ن س ع ف ص ق ر ش ت ث خ ذ ض ظ غ')
 
 /** The single Arabic cipher (Abjad, Mashriqi order). */
 export const ARABIC_CIPHERS: readonly Cipher[] = Object.freeze([
-  Object.freeze({
+  defineCipher({
     id: 'ar-abjad',
     label: 'Abjad (Mashriqi)',
+    description:
+      'Arabic Abjad (Ḥisāb al-Jummal), Mashriqi order: ا1…ط9, ي10…ص90, ق100…ظ900, غ1000; hamza ' +
+      'counts as its seat, ة as ه, ى as ي.',
     script: 'arabic',
     modern: false,
-    letterValue: abjad,
-    table: ARABIC_TABLE,
+    alphabet: ABJAD,
+    variants: ARABIC_LETTER_FOLDS,
+    value: (letter) => numeralLadder(ABJAD.indexOf(letter)),
   }),
 ])

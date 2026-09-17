@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { GematriaError } from '../src/errors.js'
 import {
   ALIASES,
@@ -10,8 +12,8 @@ import {
 } from '../src/registry.js'
 
 describe('cipher registry', () => {
-  test('holds all 31 ciphers with unique ids, deeply frozen', () => {
-    expect(CIPHERS.length).toBe(31)
+  test('holds all 43 ciphers with unique ids, deeply frozen', () => {
+    expect(CIPHERS.length).toBe(43)
     const ids = CIPHERS.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(Object.isFrozen(CIPHERS)).toBe(true)
@@ -36,29 +38,49 @@ describe('cipher registry', () => {
 
   test('CIPHERS_BY_SCRIPT partitions the registry by script', () => {
     expect(CIPHERS_BY_SCRIPT.hebrew.length).toBe(11)
-    expect(CIPHERS_BY_SCRIPT.greek).toEqual(['gr-isopsephy'])
+    expect(CIPHERS_BY_SCRIPT.greek).toEqual(['gr-isopsephy', 'gr-ordinal'])
     expect(CIPHERS_BY_SCRIPT.arabic).toEqual(['ar-abjad'])
-    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(18)
-    const total =
-      CIPHERS_BY_SCRIPT.hebrew.length +
-      CIPHERS_BY_SCRIPT.greek.length +
-      CIPHERS_BY_SCRIPT.arabic.length +
-      CIPHERS_BY_SCRIPT.latin.length
+    expect(CIPHERS_BY_SCRIPT.latin.length).toBe(23)
+    expect(CIPHERS_BY_SCRIPT.cyrillic).toEqual(['cu-cyrillic'])
+    expect(CIPHERS_BY_SCRIPT.armenian).toEqual(['hy-numerals'])
+    expect(CIPHERS_BY_SCRIPT.georgian).toEqual(['ka-numerals'])
+    expect(CIPHERS_BY_SCRIPT.coptic).toEqual(['cop-numerals'])
+    expect(CIPHERS_BY_SCRIPT.syriac).toEqual(['syr-numerals'])
+    expect(CIPHERS_BY_SCRIPT.gothic).toEqual(['got-numerals'])
+    const total = Object.values(CIPHERS_BY_SCRIPT).reduce((sum, ids) => sum + ids.length, 0)
     expect(total).toBe(CIPHERS.length)
+    for (const [script, ids] of Object.entries(CIPHERS_BY_SCRIPT)) {
+      for (const id of ids)
+        expect(getCipher(id).script).toBe(script as (typeof CIPHERS)[number]['script'])
+    }
+  })
+
+  test('the frontend-parity ids keep their registry positions', () => {
+    expect(CIPHERS.slice(0, 11).map((c) => c.script)).toEqual(Array(11).fill('hebrew'))
+    expect(CIPHERS[11]?.id).toBe('gr-isopsephy')
+    expect(CIPHERS_BY_SCRIPT.latin.slice(0, 2)).toEqual(['en-ordinal', 'en-reduction'])
   })
 
   test('extended methods are flagged and excluded from the default profile', () => {
     const extended = CIPHERS.filter((c) => c.extended).map((c) => c.id)
     expect(extended.sort()).toEqual([
+      'en-aq',
       'en-naeq',
+      'en-tq',
+      'gr-ordinal',
       'he-katan-mispari',
       'he-kidmi',
       'he-milui',
       'he-neelam',
       'he-perati',
+      'la-elizabethan-kaye',
+      'la-elizabethan-simple',
+      'la-roman',
     ])
-    // ar-abjad is the sole cipher of its script, so it is NOT extended
-    expect(CIPHERS.find((c) => c.id === 'ar-abjad')?.extended).toBeFalsy()
+    // the sole cipher of a script is never extended
+    for (const ids of Object.values(CIPHERS_BY_SCRIPT)) {
+      if (ids.length === 1) expect(getCipher(ids[0] as (typeof ids)[number]).extended).toBe(false)
+    }
   })
 
   test('getCipher resolves a known id and throws unknown_cipher otherwise', () => {
@@ -114,5 +136,19 @@ describe('cipher aliases', () => {
     } catch (e) {
       expect((e as GematriaError).code).toBe('unknown_cipher')
     }
+  })
+})
+
+describe('README cipher catalog', () => {
+  const readme = readFileSync(join(import.meta.dir, '..', 'README.md'), 'utf8')
+
+  test('every stated cipher count equals CIPHERS.length', () => {
+    const counts = [...readme.matchAll(/\*\*(\d+) ciphers\*\*/g)].map((m) => Number(m[1]))
+    expect(counts.length).toBeGreaterThan(0)
+    for (const count of counts) expect(count).toBe(CIPHERS.length)
+  })
+
+  test('every cipher id is documented', () => {
+    for (const c of CIPHERS) expect(readme.includes(`\`${c.id}\``), c.id).toBe(true)
   })
 })
