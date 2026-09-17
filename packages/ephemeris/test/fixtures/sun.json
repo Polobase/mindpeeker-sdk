@@ -1,0 +1,1206 @@
+{
+  "generator": "python 3.14.0, astropy 8.0.1, pyerfa 2.0.1.5, scipy 1.18.1",
+  "source": "astropy get_sun -> GeocentricTrueEcliptic / TETE; E = GAST - RA + 12h - UT",
+  "cases": [
+    {
+      "jde": 2478928.28576224,
+      "longitude": 270.264641611728,
+      "distanceAu": 0.98382895922458,
+      "rightAscension": 270.2884189579328,
+      "declination": -23.428017748357977,
+      "equationOfTimeMinutes": 1.7278791670853622
+    },
+    {
+      "jde": 2467589.347620946,
+      "longitude": 253.5772444887921,
+      "distanceAu": 0.9854825994607267,
+      "rightAscension": 252.1904240545935,
+      "declination": -22.426564031780075,
+      "equationOfTimeMinutes": 9.357692235804933
+    },
+    {
+      "jde": 2440623.431164806,
+      "longitude": 316.7144973304179,
+      "distanceAu": 0.9861569957661841,
+      "rightAscension": 319.16933575011666,
+      "declination": -15.830952278152123,
+      "equationOfTimeMinutes": -14.090326465874341
+    },
+    {
+      "jde": 2482015.8071243055,
+      "longitude": 74.88553568440187,
+      "distanceAu": 1.0144204902456562,
+      "rightAscension": 73.5975466234904,
+      "declination": 22.573695448081555,
+      "equationOfTimeMinutes": 1.3492176091660646
+    },
+    {
+      "jde": 2442016.035805587,
+      "longitude": 247.1675475936702,
+      "distanceAu": 0.9862923036500145,
+      "rightAscension": 245.34930045046326,
+      "declination": -21.50963757942285,
+      "equationOfTimeMinutes": 11.668156989361904
+    },
+    {
+      "jde": 2463353.065530234,
+      "longitude": 40.761601666898294,
+      "distanceAu": 1.0074457994679316,
+      "rightAscension": 38.340903789096,
+      "declination": 15.049423452197914,
+      "equationOfTimeMinutes": 2.844111741925879
+    },
+    {
+      "jde": 2440803.463284104,
+      "longitude": 132.13342574730544,
+      "distanceAu": 1.0144731469805677,
+      "rightAscension": 134.59717392666158,
+      "declination": 17.160964264000597,
+      "equationOfTimeMinutes": -6.0066965111040105
+    },
+    {
+      "jde": 2461530.5703354785,
+      "longitude": 44.36380040962021,
+      "distanceAu": 1.008420410083708,
+      "rightAscension": 41.902915068809925,
+      "declination": 16.147618770583748,
+      "equationOfTimeMinutes": 3.245744710579146
+    },
+    {
+      "jde": 2445274.597104375,
+      "longitude": 218.3312343276229,
+      "distanceAu": 0.9924858590959937,
+      "rightAscension": 215.95653709227167,
+      "declination": -14.283841146529484,
+      "equationOfTimeMinutes": 16.372807246090915
+    },
+    {
+      "jde": 2423660.988982566,
+      "longitude": 155.10077377756838,
+      "distanceAu": 1.0097752751578317,
+      "rightAscension": 156.93362901373374,
+      "declination": 9.643795278458416,
+      "equationOfTimeMinutes": -1.104014089425931
+    },
+    {
+      "jde": 2452327.6495733056,
+      "longitude": 333.3322180499532,
+      "distanceAu": 0.9891892001806423,
+      "rightAscension": 335.25978844232736,
+      "declination": -10.284087829561113,
+      "equationOfTimeMinutes": -13.547078329806794
+    },
+    {
+      "jde": 2465911.940279724,
+      "longitude": 42.869447368117356,
+      "distanceAu": 1.007924952234098,
+      "rightAscension": 40.42086452266913,
+      "declination": 15.698219686835936,
+      "equationOfTimeMinutes": 3.0881607836969494
+    },
+    {
+      "jde": 2465248.827618296,
+      "longitude": 107.46068594033471,
+      "distanceAu": 1.0166444200102451,
+      "rightAscension": 108.9226311684217,
+      "declination": 22.293451387798267,
+      "equationOfTimeMinutes": -5.2964064570331
+    },
+    {
+      "jde": 2451428.195957914,
+      "longitude": 163.6459387286528,
+      "distanceAu": 1.008004125686173,
+      "rightAscension": 164.93139019842192,
+      "declination": 6.4304675141108065,
+      "equationOfTimeMinutes": 1.5939284952160904
+    },
+    {
+      "jde": 2422595.940091182,
+      "longitude": 184.98797820405525,
+      "distanceAu": 1.0015950440214278,
+      "rightAscension": 184.5779731152984,
+      "declination": -1.9825380556690846,
+      "equationOfTimeMinutes": 9.283392857085566
+    },
+    {
+      "jde": 2488038.1496282835,
+      "longitude": 248.72655605951283,
+      "distanceAu": 0.9863748849674179,
+      "rightAscension": 247.00689374712957,
+      "declination": -21.74705941167715,
+      "equationOfTimeMinutes": 11.324981896379356
+    },
+    {
+      "jde": 2449041.6591045028,
+      "longitude": 334.5445586286796,
+      "distanceAu": 0.9895302275271729,
+      "rightAscension": 336.4071984861531,
+      "declination": -9.844277800717933,
+      "equationOfTimeMinutes": -13.41334243856771
+    },
+    {
+      "jde": 2481969.4126612255,
+      "longitude": 30.051822332783598,
+      "distanceAu": 1.0042475638204325,
+      "rightAscension": 27.961653980601596,
+      "declination": 11.486014927519932,
+      "equationOfTimeMinutes": 0.9769789425500619
+    },
+    {
+      "jde": 2458179.3698710348,
+      "longitude": 341.216168602579,
+      "distanceAu": 0.9909390152346848,
+      "rightAscension": 342.66908495569703,
+      "declination": -7.357626576228708,
+      "equationOfTimeMinutes": -12.248753024012728
+    },
+    {
+      "jde": 2416140.4506927985,
+      "longitude": 304.8149533462502,
+      "distanceAu": 0.9846171301208375,
+      "rightAscension": 307.1623905096747,
+      "declination": -19.069027230531564,
+      "equationOfTimeMinutes": -12.401250713910486
+    },
+    {
+      "jde": 2425520.9191097408,
+      "longitude": 187.97137573669096,
+      "distanceAu": 1.0007911172030413,
+      "rightAscension": 187.32047062512254,
+      "declination": -3.1635532823554975,
+      "equationOfTimeMinutes": 10.277970904820215
+    },
+    {
+      "jde": 2448507.4923504633,
+      "longitude": 164.85208697002508,
+      "distanceAu": 1.0076397398771693,
+      "rightAscension": 166.05139628518234,
+      "declination": 5.966772626117343,
+      "equationOfTimeMinutes": 2.008724031618385
+    },
+    {
+      "jde": 2472219.8837959724,
+      "longitude": 137.52678442333806,
+      "distanceAu": 1.0138470696497979,
+      "rightAscension": 139.97040754675754,
+      "declination": 15.575605104593704,
+      "equationOfTimeMinutes": -5.474884881549684
+    },
+    {
+      "jde": 2437154.561056075,
+      "longitude": 135.49745360942023,
+      "distanceAu": 1.0138977394224284,
+      "rightAscension": 137.96000132263333,
+      "declination": 16.191490188290807,
+      "equationOfTimeMinutes": -5.592786130379324
+    },
+    {
+      "jde": 2456769.402850522,
+      "longitude": 31.696786006421885,
+      "distanceAu": 1.0050437926151399,
+      "rightAscension": 29.53560503157562,
+      "declination": 12.06200817010879,
+      "equationOfTimeMinutes": 1.3833538092868025
+    },
+    {
+      "jde": 2476588.172634477,
+      "longitude": 123.55524227386883,
+      "distanceAu": 1.015726429063388,
+      "rightAscension": 125.86205627273021,
+      "declination": 19.35072626163588,
+      "equationOfTimeMinutes": -6.6400050199303
+    },
+    {
+      "jde": 2470098.318178035,
+      "longitude": 205.62633601577207,
+      "distanceAu": 0.9963619214322922,
+      "rightAscension": 203.75579054929972,
+      "declination": -9.9028941276135,
+      "equationOfTimeMinutes": 14.947172683025798
+    },
+    {
+      "jde": 2423121.7385077546,
+      "longitude": 346.88197303319924,
+      "distanceAu": 0.9927911901296462,
+      "rightAscension": 347.93211016575395,
+      "declination": -5.1814151137456985,
+      "equationOfTimeMinutes": -11.132448359332088
+    },
+    {
+      "jde": 2474224.5200524926,
+      "longitude": 315.45104230085207,
+      "distanceAu": 0.9857172057645267,
+      "rightAscension": 317.9120890588826,
+      "declination": -16.199794553517645,
+      "equationOfTimeMinutes": -13.76831661870952
+    },
+    {
+      "jde": 2461326.2478327523,
+      "longitude": 199.42548530332846,
+      "distanceAu": 0.9980117762997598,
+      "rightAscension": 197.92936804862734,
+      "declination": -7.601848909271035,
+      "equationOfTimeMinutes": 13.577905294528279
+    },
+    {
+      "jde": 2441468.8711362947,
+      "longitude": 69.99397625532966,
+      "distanceAu": 1.0140243772776898,
+      "rightAscension": 68.35437756983634,
+      "declination": 21.95290376743129,
+      "equationOfTimeMinutes": 2.400098664419943
+    },
+    {
+      "jde": 2420046.3722944297,
+      "longitude": 192.00547397537355,
+      "distanceAu": 0.9995657919098151,
+      "rightAscension": 191.03898989434265,
+      "declination": -4.74889187980863,
+      "equationOfTimeMinutes": 11.531362819465727
+    },
+    {
+      "jde": 2482889.3515822007,
+      "longitude": 213.14236384093425,
+      "distanceAu": 0.9944115465745771,
+      "rightAscension": 210.92656792537815,
+      "declination": -12.554830309433676,
+      "equationOfTimeMinutes": 16.064020977508093
+    },
+    {
+      "jde": 2485325.433262312,
+      "longitude": 96.32322708887848,
+      "distanceAu": 1.0165134226302315,
+      "rightAscension": 96.88596520028642,
+      "declination": 23.27419354894221,
+      "equationOfTimeMinutes": -3.331732384261983
+    },
+    {
+      "jde": 2456831.8243887066,
+      "longitude": 91.78598247250575,
+      "distanceAu": 1.0163576847965206,
+      "rightAscension": 91.94642966462979,
+      "declination": 23.422822023908036,
+      "equationOfTimeMinutes": -2.1575109045039653
+    },
+    {
+      "jde": 2440983.572248132,
+      "longitude": 311.5460707890743,
+      "distanceAu": 0.9853268694689877,
+      "rightAscension": 314.00628563973424,
+      "declination": -17.32379654122593,
+      "equationOfTimeMinutes": -13.545025280748035
+    },
+    {
+      "jde": 2433344.8089787085,
+      "longitude": 343.1568037167068,
+      "distanceAu": 0.9916505293392232,
+      "rightAscension": 344.47790532741254,
+      "declination": -6.620913610044724,
+      "equationOfTimeMinutes": -11.951763911849014
+    },
+    {
+      "jde": 2481013.305095255,
+      "longitude": 164.1477918055837,
+      "distanceAu": 1.0081739106347876,
+      "rightAscension": 165.39688775275732,
+      "declination": 6.23602421603786,
+      "equationOfTimeMinutes": 1.6840157268336498
+    },
+    {
+      "jde": 2455343.55961037,
+      "longitude": 65.67911595728621,
+      "distanceAu": 1.0131145007590983,
+      "rightAscension": 63.77508681513343,
+      "declination": 21.251421389044545,
+      "equationOfTimeMinutes": 2.9190834984383685
+    },
+    {
+      "jde": 2439814.7359611792,
+      "longitude": 237.20527241725893,
+      "distanceAu": 0.9880483301974611,
+      "rightAscension": 234.9193024998475,
+      "declination": -19.539711762696648,
+      "equationOfTimeMinutes": 14.541031658229429
+    },
+    {
+      "jde": 2449426.613213468,
+      "longitude": 354.2879619025569,
+      "distanceAu": 0.994488169038504,
+      "rightAscension": 354.75653054382246,
+      "declination": -2.2688737236455125,
+      "equationOfTimeMinutes": -9.097887265612599
+    },
+    {
+      "jde": 2416409.228306392,
+      "longitude": 207.13987846252195,
+      "distanceAu": 0.9952148433992116,
+      "rightAscension": 205.18625840372184,
+      "declination": -10.458398687142962,
+      "equationOfTimeMinutes": 15.175906891971067
+    },
+    {
+      "jde": 2459182.9315899285,
+      "longitude": 247.6564894272302,
+      "distanceAu": 0.9862871573339287,
+      "rightAscension": 245.86874934901147,
+      "declination": -21.584868912903566,
+      "equationOfTimeMinutes": 11.577664939611303
+    },
+    {
+      "jde": 2419706.8929207507,
+      "longitude": 217.59565005842396,
+      "distanceAu": 0.9923618136538969,
+      "rightAscension": 215.2363562345105,
+      "declination": -14.052438434579317,
+      "equationOfTimeMinutes": 16.308064269379727
+    },
+    {
+      "jde": 2456654.2991116373,
+      "longitude": 276.19597533440714,
+      "distanceAu": 0.9834434280988245,
+      "rightAscension": 276.7481035828804,
+      "declination": -23.290242151520836,
+      "equationOfTimeMinutes": -1.270937739734137
+    },
+    {
+      "jde": 2435032.89122829,
+      "longitude": 203.47165861564793,
+      "distanceAu": 0.9964555973360292,
+      "rightAscension": 201.72103690256446,
+      "declination": -9.118315668791286,
+      "equationOfTimeMinutes": 14.508792681261617
+    },
+    {
+      "jde": 2477005.085735365,
+      "longitude": 173.33397845038203,
+      "distanceAu": 1.005704313425442,
+      "rightAscension": 173.87914470061762,
+      "declination": 2.645301070813889,
+      "equationOfTimeMinutes": 5.0033854803608335
+    },
+    {
+      "jde": 2439495.3461536733,
+      "longitude": 283.7890995132297,
+      "distanceAu": 0.9833063629829343,
+      "rightAscension": 284.9763707624945,
+      "declination": -22.731127076750038,
+      "equationOfTimeMinutes": -4.912473058842011
+    },
+    {
+      "jde": 2451340.591408277,
+      "longitude": 79.74467777776165,
+      "distanceAu": 1.0153300960182596,
+      "rightAscension": 78.84469859634845,
+      "declination": 23.041054718425418,
+      "equationOfTimeMinutes": 0.551447528986202
+    },
+    {
+      "jde": 2448299.016381035,
+      "longitude": 322.2700339522445,
+      "distanceAu": 0.9870149640958017,
+      "rightAscension": 324.6304210806252,
+      "declination": -14.089681146492058,
+      "equationOfTimeMinutes": -14.243005142156804
+    },
+    {
+      "jde": 2440138.989650084,
+      "longitude": 196.24143418657295,
+      "distanceAu": 0.9985487072985384,
+      "rightAscension": 194.96319257212363,
+      "declination": -6.3890591213788595,
+      "equationOfTimeMinutes": 12.769810835985993
+    },
+    {
+      "jde": 2431654.3793042568,
+      "longitude": 114.88372729123829,
+      "distanceAu": 1.0162674657581676,
+      "rightAscension": 116.8203739370132,
+      "declination": 21.15837278398536,
+      "equationOfTimeMinutes": -6.006761534214746
+    },
+    {
+      "jde": 2422307.1746164593,
+      "longitude": 261.63000985073216,
+      "distanceAu": 0.9842339572626768,
+      "rightAscension": 260.8887331224327,
+      "declination": -23.183716507371187,
+      "equationOfTimeMinutes": 5.5600600336002515
+    },
+    {
+      "jde": 2421058.712189372,
+      "longitude": 111.4029832373989,
+      "distanceAu": 1.0164811136225234,
+      "rightAscension": 113.13443615975442,
+      "declination": 21.74787991882506,
+      "equationOfTimeMinutes": -5.595323443203597
+    },
+    {
+      "jde": 2439532.6633288823,
+      "longitude": 321.72941852623444,
+      "distanceAu": 0.9869940936562156,
+      "rightAscension": 324.1036141755466,
+      "declination": -14.26687167612016,
+      "equationOfTimeMinutes": -14.293549989320624
+    },
+    {
+      "jde": 2446417.439157119,
+      "longitude": 265.94434229089416,
+      "distanceAu": 0.9839844007167047,
+      "rightAscension": 265.5808352351123,
+      "declination": -23.38094680756983,
+      "equationOfTimeMinutes": 3.6416095090915235
+    },
+    {
+      "jde": 2424491.2139270706,
+      "longitude": 254.07985600559107,
+      "distanceAu": 0.985075245656507,
+      "rightAscension": 252.72892898613412,
+      "declination": -22.497894622867367,
+      "equationOfTimeMinutes": 8.939351715526271
+    },
+    {
+      "jde": 2442346.8451941703,
+      "longitude": 212.53661119939653,
+      "distanceAu": 0.9940517492050494,
+      "rightAscension": 210.34108776098523,
+      "declination": -12.354461307734923,
+      "equationOfTimeMinutes": 15.945520784788982
+    },
+    {
+      "jde": 2478445.390216631,
+      "longitude": 153.2990388978465,
+      "distanceAu": 1.0107289126205163,
+      "rightAscension": 155.22639030619882,
+      "declination": 10.291109043873455,
+      "equationOfTimeMinutes": -1.8777988100121235
+    },
+    {
+      "jde": 2477321.6032503694,
+      "longitude": 126.373263866102,
+      "distanceAu": 1.015404339294328,
+      "rightAscension": 128.75462427153965,
+      "declination": 18.670725619681065,
+      "equationOfTimeMinutes": -6.603629904681014
+    },
+    {
+      "jde": 2427019.725413036,
+      "longitude": 225.6098689559984,
+      "distanceAu": 0.9904597316477789,
+      "rightAscension": 223.14156489120478,
+      "declination": -16.521630418559283,
+      "equationOfTimeMinutes": 16.191189539786315
+    },
+    {
+      "jde": 2463907.52559216,
+      "longitude": 223.91012007110294,
+      "distanceAu": 0.9913459492735027,
+      "rightAscension": 221.45323473395084,
+      "declination": -16.009278685385727,
+      "equationOfTimeMinutes": 16.394421557335725
+    },
+    {
+      "jde": 2451391.3003659537,
+      "longitude": 128.13763605872057,
+      "distanceAu": 1.0150674131372959,
+      "rightAscension": 130.55583115478603,
+      "declination": 18.230570966681537,
+      "equationOfTimeMinutes": -6.367107132386494
+    },
+    {
+      "jde": 2426356.6115556513,
+      "longitude": 293.98983849686647,
+      "distanceAu": 0.9836587121710285,
+      "rightAscension": 295.87719781316645,
+      "declination": -21.320301037697714,
+      "equationOfTimeMinutes": -9.145096364474625
+    },
+    {
+      "jde": 2429332.3792317947,
+      "longitude": 348.40206568806644,
+      "distanceAu": 0.9930328213491003,
+      "rightAscension": 349.336689860844,
+      "declination": -4.587983682563595,
+      "equationOfTimeMinutes": -10.736011146618551
+    },
+    {
+      "jde": 2423660.1984806242,
+      "longitude": 154.33720201921506,
+      "distanceAu": 1.0099552818424073,
+      "rightAscension": 156.21228526909397,
+      "declination": 9.92259624774183,
+      "equationOfTimeMinutes": -1.3351581989152805
+    },
+    {
+      "jde": 2421162.623943079,
+      "longitude": 212.36989549602424,
+      "distanceAu": 0.9938157904046153,
+      "rightAscension": 210.17895136291563,
+      "declination": -12.302184058356056,
+      "equationOfTimeMinutes": 15.906196030245923
+    },
+    {
+      "jde": 2456648.3395625665,
+      "longitude": 270.1250404521931,
+      "distanceAu": 0.9837042677817405,
+      "rightAscension": 270.1362824982226,
+      "declination": -23.435355512026682,
+      "equationOfTimeMinutes": 1.680487125617205
+    },
+    {
+      "jde": 2425674.8137346716,
+      "longitude": 343.24692607027947,
+      "distanceAu": 0.9918249971715002,
+      "rightAscension": 344.5619196791102,
+      "declination": -6.586894083474247,
+      "equationOfTimeMinutes": -11.941606009944437
+    },
+    {
+      "jde": 2448889.8020737446,
+      "longitude": 181.49053547843525,
+      "distanceAu": 1.003013032360086,
+      "rightAscension": 181.36756669546483,
+      "declination": -0.5928946829914458,
+      "equationOfTimeMinutes": 8.03432257095201
+    },
+    {
+      "jde": 2449729.2240276644,
+      "longitude": 291.02126526276675,
+      "distanceAu": 0.9834248774165423,
+      "rightAscension": 292.7262781644005,
+      "declination": -21.79468221759466,
+      "equationOfTimeMinutes": -7.909315031141375
+    },
+    {
+      "jde": 2430739.4472888582,
+      "longitude": 293.9101229407911,
+      "distanceAu": 0.9836233381465024,
+      "rightAscension": 295.7919125084978,
+      "declination": -21.32879443887102,
+      "equationOfTimeMinutes": -9.086452923694708
+    },
+    {
+      "jde": 2427318.3408393925,
+      "longitude": 159.87773831364592,
+      "distanceAu": 1.0085824564905927,
+      "rightAscension": 161.4211074298954,
+      "declination": 7.868822933815114,
+      "equationOfTimeMinutes": 0.39769546192950145
+    },
+    {
+      "jde": 2470577.935457213,
+      "longitude": 321.37821266966796,
+      "distanceAu": 0.9866442300283128,
+      "rightAscension": 323.7571880392753,
+      "declination": -14.370642241346962,
+      "equationOfTimeMinutes": -14.128280614800559
+    },
+    {
+      "jde": 2423467.3611892606,
+      "longitude": 327.16920610426286,
+      "distanceAu": 0.9881668880406804,
+      "rightAscension": 329.37693222473285,
+      "declination": -12.457943507480243,
+      "equationOfTimeMinutes": -14.268345935874507
+    },
+    {
+      "jde": 2484035.153667962,
+      "longitude": 263.6260235255559,
+      "distanceAu": 0.9844066523735127,
+      "rightAscension": 263.05885618075774,
+      "declination": -23.271716044265116,
+      "equationOfTimeMinutes": 4.953025702200549
+    },
+    {
+      "jde": 2485910.9148548786,
+      "longitude": 314.0542606032212,
+      "distanceAu": 0.9853937229248407,
+      "rightAscension": 316.5177663183092,
+      "declination": -16.60217194173457,
+      "equationOfTimeMinutes": -13.548791559976365
+    },
+    {
+      "jde": 2417785.137496292,
+      "longitude": 124.37744488660829,
+      "distanceAu": 1.0153476060516096,
+      "rightAscension": 126.71293311139043,
+      "declination": 19.17428531946569,
+      "equationOfTimeMinutes": -6.301106610458547
+    },
+    {
+      "jde": 2417694.3728549844,
+      "longitude": 37.40733791518141,
+      "distanceAu": 1.0070940062233666,
+      "rightAscension": 35.053283469060624,
+      "declination": 13.989868109923083,
+      "equationOfTimeMinutes": 2.487578146560452
+    },
+    {
+      "jde": 2486750.319225063,
+      "longitude": 61.7906860410017,
+      "distanceAu": 1.0121343805928094,
+      "rightAscension": 59.689510399789555,
+      "declination": 20.51005412222755,
+      "equationOfTimeMinutes": 3.190179134114004
+    },
+    {
+      "jde": 2432250.8684209264,
+      "longitude": 344.9458919556114,
+      "distanceAu": 0.9921398735938783,
+      "rightAscension": 346.1389352071874,
+      "declination": -5.931835658503633,
+      "equationOfTimeMinutes": -11.56758833891729
+    },
+    {
+      "jde": 2467635.4800774837,
+      "longitude": 300.54611873874416,
+      "distanceAu": 0.9839604442389133,
+      "rightAscension": 302.74871703843667,
+      "declination": -20.031030607016884,
+      "equationOfTimeMinutes": -10.9915922645569
+    },
+    {
+      "jde": 2473166.5065306663,
+      "longitude": 353.4169073455308,
+      "distanceAu": 0.9939182872842762,
+      "rightAscension": 353.955705555095,
+      "declination": -2.6132295164372294,
+      "equationOfTimeMinutes": -9.270394923014322
+    },
+    {
+      "jde": 2421168.2719164356,
+      "longitude": 218.01637942640156,
+      "distanceAu": 0.9923091406428078,
+      "rightAscension": 215.6470928172563,
+      "declination": -14.187901378885897,
+      "equationOfTimeMinutes": 16.301628097606056
+    },
+    {
+      "jde": 2434378.051970038,
+      "longitude": 279.82867867760854,
+      "distanceAu": 0.9832534267464572,
+      "rightAscension": 280.6936939108765,
+      "declination": -23.082643858530076,
+      "equationOfTimeMinutes": -3.1474165999257764
+    },
+    {
+      "jde": 2480712.307145574,
+      "longitude": 227.54478816858463,
+      "distanceAu": 0.9906203917910591,
+      "rightAscension": 225.08267747554626,
+      "declination": -17.06079760958972,
+      "equationOfTimeMinutes": 16.222837185811727
+    },
+    {
+      "jde": 2416104.6588173835,
+      "longitude": 268.3541501530013,
+      "distanceAu": 0.9836683492204605,
+      "rightAscension": 268.20607681431875,
+      "declination": -23.439285780716563,
+      "equationOfTimeMinutes": 2.310491657633591
+    },
+    {
+      "jde": 2477314.833664391,
+      "longitude": 119.90911197631972,
+      "distanceAu": 1.0160117912214923,
+      "rightAscension": 122.08439089360365,
+      "declination": 20.159867896716154,
+      "equationOfTimeMinutes": -6.612121882612314
+    },
+    {
+      "jde": 2440064.687318571,
+      "longitude": 124.19530754915829,
+      "distanceAu": 1.01551626461942,
+      "rightAscension": 126.52473330734688,
+      "declination": 19.214220869597426,
+      "equationOfTimeMinutes": -6.418625966981395
+    },
+    {
+      "jde": 2423204.741060178,
+      "longitude": 68.0278052354611,
+      "distanceAu": 1.013890301631524,
+      "rightAscension": 66.2614082105708,
+      "declination": 21.653427240887183,
+      "equationOfTimeMinutes": 2.792501685137978
+    },
+    {
+      "jde": 2455206.7578470786,
+      "longitude": 289.88436288785545,
+      "distanceAu": 0.9834407958856904,
+      "rightAscension": 291.5151133455557,
+      "declination": -21.96604691576095,
+      "equationOfTimeMinutes": -7.393103805245218
+    },
+    {
+      "jde": 2448092.948434703,
+      "longitude": 117.46849694414234,
+      "distanceAu": 1.0161464625680903,
+      "rightAscension": 119.53750006792778,
+      "declination": 20.669274836836102,
+      "equationOfTimeMinutes": -6.3148728377856855
+    },
+    {
+      "jde": 2460531.6511109653,
+      "longitude": 137.05545732077786,
+      "distanceAu": 1.0138319781350553,
+      "rightAscension": 139.5056127883618,
+      "declination": 15.723459097228996,
+      "equationOfTimeMinutes": -5.505488139410346
+    },
+    {
+      "jde": 2459349.054183346,
+      "longitude": 53.96430930530499,
+      "distanceAu": 1.0107692948133165,
+      "rightAscension": 51.588608688404754,
+      "declination": 18.762042054010422,
+      "equationOfTimeMinutes": 3.6521212949196524
+    },
+    {
+      "jde": 2421335.817703625,
+      "longitude": 26.716722387955397,
+      "distanceAu": 1.0041463128027295,
+      "rightAscension": 24.78464475605616,
+      "declination": 10.306716840738009,
+      "equationOfTimeMinutes": 0.31721155119647904
+    },
+    {
+      "jde": 2433536.000206425,
+      "longitude": 168.1773729531164,
+      "distanceAu": 1.0065872622710867,
+      "rightAscension": 169.1294872453295,
+      "declination": 4.67649623294298,
+      "equationOfTimeMinutes": 3.2329218716325414
+    },
+    {
+      "jde": 2435573.8978200555,
+      "longitude": 20.489867640384922,
+      "distanceAu": 1.0021747082962675,
+      "rightAscension": 18.923420247669068,
+      "declination": 8.005577656075266,
+      "equationOfTimeMinutes": -1.3343402714295394
+    },
+    {
+      "jde": 2424994.5974056614,
+      "longitude": 32.91662586311672,
+      "distanceAu": 1.005776016632096,
+      "rightAscension": 30.705298708708746,
+      "declination": 12.488303409465614,
+      "equationOfTimeMinutes": 1.6660018160392553
+    },
+    {
+      "jde": 2441917.1547163194,
+      "longitude": 149.38989544514538,
+      "distanceAu": 1.011284696763964,
+      "rightAscension": 151.50688588684616,
+      "declination": 11.687671485058507,
+      "equationOfTimeMinutes": -2.807991553131046
+    },
+    {
+      "jde": 2466934.7490956457,
+      "longitude": 330.7098734657234,
+      "distanceAu": 0.9885402256932088,
+      "rightAscension": 332.76646383880643,
+      "declination": -11.22034629245818,
+      "equationOfTimeMinutes": -13.767564722176644
+    },
+    {
+      "jde": 2429220.242725308,
+      "longitude": 234.72772599703433,
+      "distanceAu": 0.9885157723859296,
+      "rightAscension": 232.36901679008614,
+      "declination": -18.955555847167687,
+      "equationOfTimeMinutes": 15.025803329398286
+    },
+    {
+      "jde": 2437301.0842295014,
+      "longitude": 280.9365670533643,
+      "distanceAu": 0.9832126233644376,
+      "rightAscension": 281.89352721288975,
+      "declination": -22.991524931844896,
+      "equationOfTimeMinutes": -3.649421070061223
+    },
+    {
+      "jde": 2461011.0075060786,
+      "longitude": 249.55312477284318,
+      "distanceAu": 0.9860524286400849,
+      "rightAscension": 247.885308996804,
+      "declination": -21.882111415298503,
+      "equationOfTimeMinutes": 10.886356861416218
+    },
+    {
+      "jde": 2461261.464401913,
+      "longitude": 136.41470815553757,
+      "distanceAu": 1.0138977630647301,
+      "rightAscension": 138.87045381241455,
+      "declination": 15.91611180814066,
+      "equationOfTimeMinutes": -5.5994158153524864
+    },
+    {
+      "jde": 2430944.582477236,
+      "longitude": 134.66704619606318,
+      "distanceAu": 1.0139904954275032,
+      "rightAscension": 137.1335500946746,
+      "declination": 16.437373900765394,
+      "equationOfTimeMinutes": -5.691723312364303
+    },
+    {
+      "jde": 2443422.0709616407,
+      "longitude": 192.20240932175585,
+      "distanceAu": 0.9998256868208184,
+      "rightAscension": 191.22203385539257,
+      "declination": -4.823186041932594,
+      "equationOfTimeMinutes": 11.58400026398862
+    },
+    {
+      "jde": 2481161.177011388,
+      "longitude": 312.45295353645025,
+      "distanceAu": 0.9852076384856857,
+      "rightAscension": 314.91514894778385,
+      "declination": -17.061737733859598,
+      "equationOfTimeMinutes": -13.387396584612574
+    },
+    {
+      "jde": 2416975.101814686,
+      "longitude": 48.2732415129042,
+      "distanceAu": 1.0099026162121594,
+      "rightAscension": 45.81097116387415,
+      "declination": 17.276724995630662,
+      "equationOfTimeMinutes": 3.675014233635032
+    },
+    {
+      "jde": 2441270.7394678174,
+      "longitude": 232.1989109868439,
+      "distanceAu": 0.9891528423579358,
+      "rightAscension": 229.78508450969116,
+      "declination": -18.322782260147946,
+      "equationOfTimeMinutes": 15.52273077756503
+    },
+    {
+      "jde": 2423371.418436959,
+      "longitude": 229.7454523902535,
+      "distanceAu": 0.9894782802881995,
+      "rightAscension": 227.2959995564629,
+      "declination": -17.678013460140175,
+      "equationOfTimeMinutes": 15.791239099571328
+    },
+    {
+      "jde": 2432033.274929175,
+      "longitude": 127.92671752830242,
+      "distanceAu": 1.0149953726999261,
+      "rightAscension": 130.3432567983852,
+      "declination": 18.292135230003314,
+      "equationOfTimeMinutes": -6.2674691315052655
+    },
+    {
+      "jde": 2463694.7652005013,
+      "longitude": 17.756995718994357,
+      "distanceAu": 1.0009591284946473,
+      "rightAscension": 16.374272071320814,
+      "declination": 6.965893223380421,
+      "equationOfTimeMinutes": -2.111944670397534
+    },
+    {
+      "jde": 2445462.22519177,
+      "longitude": 46.58184921200872,
+      "distanceAu": 1.0091522528114651,
+      "rightAscension": 44.11511227369322,
+      "declination": 16.795281936439068,
+      "equationOfTimeMinutes": 3.479597813320936
+    },
+    {
+      "jde": 2439971.9292899375,
+      "longitude": 35.26423452845179,
+      "distanceAu": 1.0063136237680335,
+      "rightAscension": 32.97237941468138,
+      "declination": 13.280318016675853,
+      "equationOfTimeMinutes": 2.0800583403643103
+    },
+    {
+      "jde": 2438155.05454307,
+      "longitude": 44.33168055362233,
+      "distanceAu": 1.0086191304208858,
+      "rightAscension": 41.86978658477413,
+      "declination": 16.141792817269984,
+      "equationOfTimeMinutes": 3.288273134702706
+    },
+    {
+      "jde": 2459774.6277623908,
+      "longitude": 111.68946360958537,
+      "distanceAu": 1.016492556329104,
+      "rightAscension": 113.43685905260863,
+      "declination": 21.690506604241982,
+      "equationOfTimeMinutes": -5.873121188539443
+    },
+    {
+      "jde": 2448721.759897061,
+      "longitude": 19.65084158167513,
+      "distanceAu": 1.0017356092944079,
+      "rightAscension": 18.139607369942006,
+      "declination": 7.687683230038949,
+      "equationOfTimeMinutes": -1.5758325465102985
+    },
+    {
+      "jde": 2449316.3661866533,
+      "longitude": 242.59657209437918,
+      "distanceAu": 0.9871062996566629,
+      "rightAscension": 240.53134411477618,
+      "declination": -20.67900541830127,
+      "equationOfTimeMinutes": 13.143382675520883
+    },
+    {
+      "jde": 2423746.9029021407,
+      "longitude": 240.07451829329545,
+      "distanceAu": 0.9872899041427495,
+      "rightAscension": 237.89483319625703,
+      "declination": -20.172606541264596,
+      "equationOfTimeMinutes": 13.770826302236543
+    },
+    {
+      "jde": 2440168.0431817197,
+      "longitude": 225.18976206342748,
+      "distanceAu": 0.9906994609443485,
+      "rightAscension": 222.72358907684023,
+      "declination": -16.395841944359272,
+      "equationOfTimeMinutes": 16.274299507431955
+    },
+    {
+      "jde": 2446951.764113399,
+      "longitude": 74.08306648393126,
+      "distanceAu": 1.014603120340907,
+      "rightAscension": 72.73291732333682,
+      "declination": 22.49409676493192,
+      "equationOfTimeMinutes": 1.664318243488978
+    },
+    {
+      "jde": 2487070.573724958,
+      "longitude": 18.045915745076528,
+      "distanceAu": 1.0007497641164997,
+      "rightAscension": 16.643867802343614,
+      "declination": 7.074889747537502,
+      "equationOfTimeMinutes": -1.9912176101807688
+    },
+    {
+      "jde": 2450470.377031727,
+      "longitude": 301.8789117685842,
+      "distanceAu": 0.9841194356072092,
+      "rightAscension": 304.1317954396834,
+      "declination": -19.739891035916376,
+      "equationOfTimeMinutes": -11.479884451212357
+    },
+    {
+      "jde": 2448327.6451440817,
+      "longitude": 351.0524770625865,
+      "distanceAu": 0.9935849272506381,
+      "rightAscension": 351.7804253579897,
+      "declination": -3.547283830806582,
+      "equationOfTimeMinutes": -9.972144869331885
+    },
+    {
+      "jde": 2431704.336833781,
+      "longitude": 162.87352296567133,
+      "distanceAu": 1.0079174740373396,
+      "rightAscension": 164.21427091921913,
+      "declination": 6.729007056004896,
+      "equationOfTimeMinutes": 1.3796328161663496
+    },
+    {
+      "jde": 2452808.1815370684,
+      "longitude": 86.07000341380845,
+      "distanceAu": 1.0159453477679155,
+      "rightAscension": 85.71778407614052,
+      "declination": 23.381447413566473,
+      "equationOfTimeMinutes": -0.8369351163487693
+    },
+    {
+      "jde": 2454186.067976497,
+      "longitude": 5.51847848465901,
+      "distanceAu": 0.9975233730267418,
+      "rightAscension": 5.065454350263759,
+      "declination": 2.192557783678469,
+      "equationOfTimeMinutes": -5.768037746209842
+    },
+    {
+      "jde": 2440750.1508591413,
+      "longitude": 81.24627077558581,
+      "distanceAu": 1.0155481792112968,
+      "rightAscension": 80.4723981333119,
+      "declination": 23.156087029026814,
+      "equationOfTimeMinutes": 0.3008964856108065
+    },
+    {
+      "jde": 2439396.778188375,
+      "longitude": 184.69384853707194,
+      "distanceAu": 1.0019396816666986,
+      "rightAscension": 184.30778199587806,
+      "declination": -1.8659560361482086,
+      "equationOfTimeMinutes": 9.147032865375326
+    },
+    {
+      "jde": 2469738.3603061005,
+      "longitude": 210.8797926024726,
+      "distanceAu": 0.9948859113287845,
+      "rightAscension": 208.75325359027147,
+      "declination": -11.776494263640846,
+      "equationOfTimeMinutes": 15.794737205353329
+    },
+    {
+      "jde": 2426512.840581132,
+      "longitude": 88.03974428641718,
+      "distanceAu": 1.0162492321425762,
+      "rightAscension": 87.86341288332211,
+      "declination": 23.436104707320233,
+      "equationOfTimeMinutes": -1.1414173033838892
+    },
+    {
+      "jde": 2464695.628347601,
+      "longitude": 282.29591788529996,
+      "distanceAu": 0.9833342109623625,
+      "rightAscension": 283.3629906160417,
+      "declination": -22.863747998789542,
+      "equationOfTimeMinutes": -4.0891071364788445
+    },
+    {
+      "jde": 2446687.1765767066,
+      "longitude": 170.57626997820404,
+      "distanceAu": 1.0060462902057825,
+      "rightAscension": 171.34183117946992,
+      "declination": 3.7348587673958114,
+      "equationOfTimeMinutes": 4.065714032756347
+    },
+    {
+      "jde": 2435037.9359935834,
+      "longitude": 208.48598745666092,
+      "distanceAu": 0.9950793994766337,
+      "rightAscension": 206.46578444684314,
+      "declination": -10.939295787983982,
+      "equationOfTimeMinutes": 15.419154107175075
+    },
+    {
+      "jde": 2477505.478209438,
+      "longitude": 309.12889343069304,
+      "distanceAu": 0.9848701413433592,
+      "rightAscension": 311.5602596151662,
+      "declination": -17.963865228663106,
+      "equationOfTimeMinutes": -12.885147667577499
+    },
+    {
+      "jde": 2440306.6548686163,
+      "longitude": 5.31316434653936,
+      "distanceAu": 0.997682008823548,
+      "rightAscension": 4.876674749129816,
+      "declination": 2.1115234793534614,
+      "equationOfTimeMinutes": -5.845286274475967
+    },
+    {
+      "jde": 2425628.961236875,
+      "longitude": 296.8769163806962,
+      "distanceAu": 0.9838467639311468,
+      "rightAscension": 298.91847071606054,
+      "declination": -20.791059458404167,
+      "equationOfTimeMinutes": -10.1456124284433
+    },
+    {
+      "jde": 2422698.143967312,
+      "longitude": 287.8415879235144,
+      "distanceAu": 0.9833884929922597,
+      "rightAscension": 289.33265806895065,
+      "declination": -22.25730562712348,
+      "equationOfTimeMinutes": -6.787340360805985
+    },
+    {
+      "jde": 2432951.808530295,
+      "longitude": 315.1696919187936,
+      "distanceAu": 0.9859049981453258,
+      "rightAscension": 317.63511171907646,
+      "declination": -16.292240321360627,
+      "equationOfTimeMinutes": -14.02566176182745
+    },
+    {
+      "jde": 2436146.417195498,
+      "longitude": 221.22584748546603,
+      "distanceAu": 0.9916269307866582,
+      "rightAscension": 218.7959826019301,
+      "declination": -15.199637071885032,
+      "equationOfTimeMinutes": 16.378544072343573
+    },
+    {
+      "jde": 2419188.06093758,
+      "longitude": 68.96822360743693,
+      "distanceAu": 1.0140548080796514,
+      "rightAscension": 67.26021697268338,
+      "declination": 21.806901642675935,
+      "equationOfTimeMinutes": 2.66453000228843
+    },
+    {
+      "jde": 2486918.3203227716,
+      "longitude": 224.4238260004115,
+      "distanceAu": 0.991488611662334,
+      "rightAscension": 221.96467709981826,
+      "declination": -16.15896726007286,
+      "equationOfTimeMinutes": 16.45047583051138
+    },
+    {
+      "jde": 2473689.762739637,
+      "longitude": 146.08700094587545,
+      "distanceAu": 1.0122314435916555,
+      "rightAscension": 148.33156745151598,
+      "declination": 12.819544967895496,
+      "equationOfTimeMinutes": -3.7832806174520783
+    },
+    {
+      "jde": 2435084.857558559,
+      "longitude": 255.72336298535944,
+      "distanceAu": 0.9849520134217296,
+      "rightAscension": 254.49805216978683,
+      "declination": -22.679958619800068,
+      "equationOfTimeMinutes": 8.282773838729902
+    },
+    {
+      "jde": 2473074.283191858,
+      "longitude": 259.96535663763586,
+      "distanceAu": 0.9847506939879774,
+      "rightAscension": 259.08422798637145,
+      "declination": -23.052974262008206,
+      "equationOfTimeMinutes": 6.614665834158799
+    },
+    {
+      "jde": 2418823.282744545,
+      "longitude": 69.40712943141745,
+      "distanceAu": 1.0141079588364863,
+      "rightAscension": 67.72766981046014,
+      "declination": 21.872992440747186,
+      "equationOfTimeMinutes": 2.6200250262449742
+    },
+    {
+      "jde": 2423360.1845538355,
+      "longitude": 218.47071312704347,
+      "distanceAu": 0.9921669546474492,
+      "rightAscension": 216.091733646121,
+      "declination": -14.331834430935693,
+      "equationOfTimeMinutes": 16.317745410235318
+    },
+    {
+      "jde": 2446255.9674890754,
+      "longitude": 107.18044967045255,
+      "distanceAu": 1.0166564804691456,
+      "rightAscension": 108.62350590205475,
+      "declination": 22.338691929729908,
+      "equationOfTimeMinutes": -5.146871915383073
+    },
+    {
+      "jde": 2422704.288553988,
+      "longitude": 294.1040842808072,
+      "distanceAu": 0.9836608933944415,
+      "rightAscension": 295.9973898311851,
+      "declination": -21.297435229232388,
+      "equationOfTimeMinutes": -9.220691449142393
+    },
+    {
+      "jde": 2416774.3249133728,
+      "longitude": 206.9919195232428,
+      "distanceAu": 0.9951825494801084,
+      "rightAscension": 205.04588167858827,
+      "declination": -10.405179584270895,
+      "equationOfTimeMinutes": 15.157652352662012
+    }
+  ]
+}

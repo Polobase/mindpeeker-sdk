@@ -1,0 +1,2556 @@
+{
+  "generator": "python 3.14.0, astropy 8.0.1, pyerfa 2.0.1.5, scipy 1.18.1",
+  "source": "erfa.moon98 (transcription check); JPL DE440s geometric geocentric (accuracy)",
+  "cases": [
+    {
+      "jde": 2453134.9743813598,
+      "moon98": {
+        "longitude": 293.2055091512292,
+        "latitude": -5.026260216152643,
+        "distanceKm": 367798.61013745615
+      },
+      "de440s": {
+        "longitude": 293.20599383537035,
+        "latitude": -5.026506034333029,
+        "distanceKm": 367797.7952492125,
+        "rightAscension": 295.9899988756853,
+        "declination": -26.39734257991824,
+        "phaseAngle": 64.01740723186273,
+        "illuminatedFraction": 0.7190490303940997
+      }
+    },
+    {
+      "jde": 2445968.516784605,
+      "moon98": {
+        "longitude": 180.447490700303,
+        "latitude": 4.340568503125421,
+        "distanceKm": 356978.33038762584
+      },
+      "de440s": {
+        "longitude": 180.4502034070647,
+        "latitude": 4.340360848511948,
+        "distanceKm": 356973.3070292048,
+        "rightAscension": 182.14215235052376,
+        "declination": 3.8024926730888264,
+        "phaseAngle": 175.33843458612955,
+        "illuminatedFraction": 0.0016539361227518867
+      }
+    },
+    {
+      "jde": 2416771.293682602,
+      "moon98": {
+        "longitude": 311.2887220480444,
+        "latitude": 3.1266698370779715,
+        "distanceKm": 401370.24849249865
+      },
+      "de440s": {
+        "longitude": 311.28894541835433,
+        "latitude": 3.1268282786191848,
+        "distanceKm": 401373.04446799203,
+        "rightAscension": 312.86043181020256,
+        "declination": -14.389929688332767,
+        "phaseAngle": 72.57505742216424,
+        "illuminatedFraction": 0.6497280867257449
+      }
+    },
+    {
+      "jde": 2469518.287950985,
+      "moon98": {
+        "longitude": 157.20586439356197,
+        "latitude": -4.996798668237189,
+        "distanceKm": 394702.31829245086
+      },
+      "de440s": {
+        "longitude": 157.20620323906584,
+        "latitude": -4.996658684285278,
+        "distanceKm": 394703.7198972639,
+        "rightAscension": 157.0575250263308,
+        "declination": 4.21859457463742,
+        "phaseAngle": 20.937127166600916,
+        "illuminatedFraction": 0.9669865575423788
+      }
+    },
+    {
+      "jde": 2458384.34303169,
+      "moon98": {
+        "longitude": 333.9057464134185,
+        "latitude": -2.5008021276573547,
+        "distanceKm": 401125.84946467704
+      },
+      "de440s": {
+        "longitude": 333.90626309893514,
+        "latitude": -2.5009246744315416,
+        "distanceKm": 401124.4728140898,
+        "rightAscension": 336.7315601144296,
+        "declination": -12.403925923253743,
+        "phaseAngle": 25.913030053526647,
+        "illuminatedFraction": 0.9497292096975601
+      }
+    },
+    {
+      "jde": 2469467.275535335,
+      "moon98": {
+        "longitude": 202.39888249166907,
+        "latitude": -4.206476242397457,
+        "distanceKm": 383944.8512753518
+      },
+      "de440s": {
+        "longitude": 202.39880504033718,
+        "latitude": -4.20696786353688,
+        "distanceKm": 383944.2384216769,
+        "rightAscension": 199.11213538073318,
+        "declination": -12.616944301082297,
+        "phaseAngle": 76.06057097362942,
+        "illuminatedFraction": 0.6204479999706929
+      }
+    },
+    {
+      "jde": 2482545.5600048415,
+      "moon98": {
+        "longitude": 95.8437426014246,
+        "latitude": 0.544501752430956,
+        "distanceKm": 402491.91788847983
+      },
+      "de440s": {
+        "longitude": 95.84389893580386,
+        "latitude": 0.5444395369468956,
+        "distanceKm": 402489.0066946024,
+        "rightAscension": 96.39109339405063,
+        "declination": 23.843715291682624,
+        "phaseAngle": 41.101465048139055,
+        "illuminatedFraction": 0.8767732915134856
+      }
+    },
+    {
+      "jde": 2417522.0376510303,
+      "moon98": {
+        "longitude": 113.3271484948312,
+        "latitude": -1.1201235599348247,
+        "distanceKm": 401347.85892618576
+      },
+      "de440s": {
+        "longitude": 113.3278434047272,
+        "latitude": -1.1202095660663671,
+        "distanceKm": 401344.9445322454,
+        "rightAscension": 114.97447946243207,
+        "declination": 20.329018659438745,
+        "phaseAngle": 68.97137879624417,
+        "illuminatedFraction": 0.679417130101744
+      }
+    },
+    {
+      "jde": 2433200.5535770184,
+      "moon98": {
+        "longitude": 60.120999949718396,
+        "latitude": 3.648565410673128,
+        "distanceKm": 402356.5141850565
+      },
+      "de440s": {
+        "longitude": 60.12086470459817,
+        "latitude": 3.6490007214234885,
+        "distanceKm": 402353.4581253404,
+        "rightAscension": 57.10137734460577,
+        "declination": 23.748239166550896,
+        "phaseAngle": 42.74417450968376,
+        "illuminatedFraction": 0.8671957610089399
+      }
+    },
+    {
+      "jde": 2484290.7105924296,
+      "moon98": {
+        "longitude": 41.98427752662992,
+        "latitude": -2.79332090159184,
+        "distanceKm": 387368.0223078958
+      },
+      "de440s": {
+        "longitude": 41.98333972382431,
+        "latitude": -2.7934588518696475,
+        "distanceKm": 387367.38622758916,
+        "rightAscension": 40.424539029894056,
+        "declination": 12.76148009514726,
+        "phaseAngle": 67.1688630683899,
+        "illuminatedFraction": 0.6940082541687074
+      }
+    },
+    {
+      "jde": 2447779.377054509,
+      "moon98": {
+        "longitude": 274.1517520159201,
+        "latitude": -4.113157545188567,
+        "distanceKm": 388920.67132905073
+      },
+      "de440s": {
+        "longitude": 274.15151978349894,
+        "latitude": -4.113447930090839,
+        "distanceKm": 388917.6243709357,
+        "rightAscension": 274.6689066683884,
+        "declination": -27.488983236727506,
+        "phaseAngle": 72.90826857672948,
+        "illuminatedFraction": 0.6469511939822062
+      }
+    },
+    {
+      "jde": 2424998.1809742786,
+      "moon98": {
+        "longitude": 342.4886154495124,
+        "latitude": -4.887320267701638,
+        "distanceKm": 364896.02797079494
+      },
+      "de440s": {
+        "longitude": 342.48880048742603,
+        "latitude": -4.887191547714702,
+        "distanceKm": 364897.9432747735,
+        "rightAscension": 345.7601549722344,
+        "declination": -11.388292348979725,
+        "phaseAngle": 125.814103092696,
+        "illuminatedFraction": 0.2074213515526982
+      }
+    },
+    {
+      "jde": 2444103.62476135,
+      "moon98": {
+        "longitude": 93.96555648061292,
+        "latitude": -4.767853509265647,
+        "distanceKm": 397432.8208972114
+      },
+      "de440s": {
+        "longitude": 93.9656232757674,
+        "latitude": -4.767820863552795,
+        "distanceKm": 397435.5521621054,
+        "rightAscension": 94.17039492653772,
+        "declination": 18.614344782319694,
+        "phaseAngle": 129.0901610924149,
+        "illuminatedFraction": 0.18472873279482505
+      }
+    },
+    {
+      "jde": 2453493.7723585195,
+      "moon98": {
+        "longitude": 339.21828482203347,
+        "latitude": -3.618695419420753,
+        "distanceKm": 373040.3300350184
+      },
+      "de440s": {
+        "longitude": 339.2184272027377,
+        "latitude": -3.61869788905364,
+        "distanceKm": 373040.9460794735,
+        "rightAscension": 342.1894525927784,
+        "declination": -11.464997337279081,
+        "phaseAngle": 116.10362553667257,
+        "illuminatedFraction": 0.28000200301909506
+      }
+    },
+    {
+      "jde": 2463896.7676754217,
+      "moon98": {
+        "longitude": 245.5383866481617,
+        "latitude": 4.219063943817069,
+        "distanceKm": 401026.2316225016
+      },
+      "de440s": {
+        "longitude": 245.5385967063743,
+        "latitude": 4.219324674697897,
+        "distanceKm": 401025.1245529963,
+        "rightAscension": 244.4066766817603,
+        "declination": -17.066680702108034,
+        "phaseAngle": 147.29310765943498,
+        "illuminatedFraction": 0.0792771059158594
+      }
+    },
+    {
+      "jde": 2448900.639000512,
+      "moon98": {
+        "longitude": 299.2267026037855,
+        "latitude": 2.8736899460390077,
+        "distanceKm": 402822.6168917889
+      },
+      "de440s": {
+        "longitude": 299.22587415284147,
+        "latitude": 2.873341396513991,
+        "distanceKm": 402821.7491121357,
+        "rightAscension": 300.75099206248194,
+        "declination": -17.501155604931853,
+        "phaseAngle": 72.7967444528403,
+        "illuminatedFraction": 0.6478811642496699
+      }
+    },
+    {
+      "jde": 2441924.8225047025,
+      "moon98": {
+        "longitude": 185.02012641993807,
+        "latitude": -5.073035507050119,
+        "distanceKm": 380177.95051624073
+      },
+      "de440s": {
+        "longitude": 185.02062067921764,
+        "latitude": -5.072961880180298,
+        "distanceKm": 380176.6533772814,
+        "rightAscension": 182.58496967070184,
+        "declination": -6.650083212876146,
+        "phaseAngle": 151.29409541376359,
+        "illuminatedFraction": 0.061451665065229755
+      }
+    },
+    {
+      "jde": 2422069.9074066454,
+      "moon98": {
+        "longitude": 276.3618460185135,
+        "latitude": 2.7842792364131816,
+        "distanceKm": 397665.5656449332
+      },
+      "de440s": {
+        "longitude": 276.3613786957212,
+        "latitude": 2.7842378202559868,
+        "distanceKm": 397667.5478012565,
+        "rightAscension": 276.78603025340703,
+        "declination": -20.51478919104999,
+        "phaseAngle": 66.01166041537226,
+        "illuminatedFraction": 0.7032753583029454
+      }
+    },
+    {
+      "jde": 2442014.095562428,
+      "moon98": {
+        "longitude": 275.4560457248653,
+        "latitude": 0.6288358520815049,
+        "distanceKm": 405521.87224363926
+      },
+      "de440s": {
+        "longitude": 275.4556490029001,
+        "latitude": 0.6284937516144145,
+        "distanceKm": 405522.91573976196,
+        "rightAscension": 275.915042960411,
+        "declination": -22.702102058860817,
+        "phaseAngle": 149.66661053519036,
+        "illuminatedFraction": 0.06844930626587309
+      }
+    },
+    {
+      "jde": 2473441.9969916954,
+      "moon98": {
+        "longitude": 22.68610241422212,
+        "latitude": -2.1456593691371864,
+        "distanceKm": 369180.375374806
+      },
+      "de440s": {
+        "longitude": 22.685623384143614,
+        "latitude": -2.14544800500841,
+        "distanceKm": 369177.57014285866,
+        "rightAscension": 21.785886722314007,
+        "declination": 6.829675550373414,
+        "phaseAngle": 59.699846805847585,
+        "illuminatedFraction": 0.7522649661552341
+      }
+    },
+    {
+      "jde": 2442820.7130015143,
+      "moon98": {
+        "longitude": 96.71990115526867,
+        "latitude": -3.853110097359435,
+        "distanceKm": 380541.80845519993
+      },
+      "de440s": {
+        "longitude": 96.72010244602822,
+        "latitude": -3.8531058639511055,
+        "distanceKm": 380538.99724006536,
+        "rightAscension": 97.11142453830922,
+        "declination": 19.42181428822403,
+        "phaseAngle": 45.91938555711046,
+        "illuminatedFraction": 0.8478348923105756
+      }
+    },
+    {
+      "jde": 2463761.5235739155,
+      "moon98": {
+        "longitude": 262.9670526995804,
+        "latitude": 4.539939840175119,
+        "distanceKm": 385857.3322898833
+      },
+      "de440s": {
+        "longitude": 262.96642895224994,
+        "latitude": 4.539939614129275,
+        "distanceKm": 385860.978345849,
+        "rightAscension": 262.59520069054713,
+        "declination": -18.711803587901237,
+        "phaseAngle": 4.570162187347647,
+        "illuminatedFraction": 0.9984102541653412
+      }
+    },
+    {
+      "jde": 2424871.761161659,
+      "moon98": {
+        "longitude": 125.19464002789393,
+        "latitude": 2.489080565267963,
+        "distanceKm": 395348.9839731807
+      },
+      "de440s": {
+        "longitude": 125.1946441339305,
+        "latitude": 2.489083572181241,
+        "distanceKm": 395350.48777079943,
+        "rightAscension": 128.20004907193584,
+        "declination": 21.39014931873489,
+        "phaseAngle": 35.52690177735195,
+        "illuminatedFraction": 0.9069213871561176
+      }
+    },
+    {
+      "jde": 2456024.4086997043,
+      "moon98": {
+        "longitude": 198.94840645818064,
+        "latitude": -3.7632860654841367,
+        "distanceKm": 358911.28046769265
+      },
+      "de440s": {
+        "longitude": 198.9497695639184,
+        "latitude": -3.763561066990587,
+        "distanceKm": 358915.6192476229,
+        "rightAscension": 196.03241483842405,
+        "declination": -10.900659314698201,
+        "phaseAngle": 4.0254019779485875,
+        "illuminatedFraction": 0.9987665129088721
+      }
+    },
+    {
+      "jde": 2457598.131838023,
+      "moon98": {
+        "longitude": 58.14340631472398,
+        "latitude": -5.003626952743792,
+        "distanceKm": 370019.0132671479
+      },
+      "de440s": {
+        "longitude": 58.14376000472155,
+        "latitude": -5.003299257301961,
+        "distanceKm": 370020.32207467395,
+        "rightAscension": 57.04524064647545,
+        "declination": 14.861980691053924,
+        "phaseAngle": 111.96413118872185,
+        "illuminatedFraction": 0.3129869618999961
+      }
+    },
+    {
+      "jde": 2443675.455452947,
+      "moon98": {
+        "longitude": 198.41890672045548,
+        "latitude": 1.4164108495437346,
+        "distanceKm": 380756.51991163817
+      },
+      "de440s": {
+        "longitude": 198.4190322044145,
+        "latitude": 1.4164226043831178,
+        "distanceKm": 380757.48765109543,
+        "rightAscension": 197.53188246979227,
+        "declination": -5.91001094313649,
+        "phaseAngle": 65.9266687433563,
+        "illuminatedFraction": 0.7039527653803375
+      }
+    },
+    {
+      "jde": 2433045.876343038,
+      "moon98": {
+        "longitude": 184.83705729375768,
+        "latitude": 1.863862299678591,
+        "distanceKm": 363078.6029962585
+      },
+      "de440s": {
+        "longitude": 184.8378052965579,
+        "latitude": 1.8637616010886797,
+        "distanceKm": 363078.29548313183,
+        "rightAscension": 185.1792663942451,
+        "declination": -0.21220352970642278,
+        "phaseAngle": 43.50659918145837,
+        "illuminatedFraction": 0.8626475416401261
+      }
+    },
+    {
+      "jde": 2432389.8205953334,
+      "moon98": {
+        "longitude": 189.75178080367033,
+        "latitude": 3.9624767210169507,
+        "distanceKm": 379056.36626553856
+      },
+      "de440s": {
+        "longitude": 189.7512263733175,
+        "latitude": 3.9627949236705424,
+        "distanceKm": 379057.6468354121,
+        "rightAscension": 190.51620530198645,
+        "declination": -0.21946822877409286,
+        "phaseAngle": 109.690354680578,
+        "illuminatedFraction": 0.33153161796721464
+      }
+    },
+    {
+      "jde": 2430639.3654307732,
+      "moon98": {
+        "longitude": 152.39332411253238,
+        "latitude": -0.12431293281977517,
+        "distanceKm": 390939.11886228697
+      },
+      "de440s": {
+        "longitude": 152.39254950617536,
+        "latitude": -0.1244854629721204,
+        "distanceKm": 390939.4608947711,
+        "rightAscension": 154.32379323259283,
+        "declination": 10.508425569278145,
+        "phaseAngle": 139.3297633351914,
+        "illuminatedFraction": 0.1207635108633468
+      }
+    },
+    {
+      "jde": 2457718.8742853724,
+      "moon98": {
+        "longitude": 210.46371185761276,
+        "latitude": 3.9312722833873393,
+        "distanceKm": 405736.69516067556
+      },
+      "de440s": {
+        "longitude": 210.46413541530376,
+        "latitude": 3.930986867372765,
+        "distanceKm": 405737.78340418526,
+        "rightAscension": 209.74321085746496,
+        "declination": -7.94717452821661,
+        "phaseAngle": 145.63719215421244,
+        "illuminatedFraction": 0.08725997053445878
+      }
+    },
+    {
+      "jde": 2415974.900815517,
+      "moon98": {
+        "longitude": 253.90671067089673,
+        "latitude": 3.640659938349928,
+        "distanceKm": 404654.56061670877
+      },
+      "de440s": {
+        "longitude": 253.90540906164728,
+        "latitude": 3.640714620918879,
+        "distanceKm": 404650.5234432346,
+        "rightAscension": 253.00024675338312,
+        "declination": -18.863800251568826,
+        "phaseAngle": 65.70070288567204,
+        "illuminatedFraction": 0.7057515888900998
+      }
+    },
+    {
+      "jde": 2421697.36649288,
+      "moon98": {
+        "longitude": 60.10128791790507,
+        "latitude": 2.064073641279973,
+        "distanceKm": 368503.5390903907
+      },
+      "de440s": {
+        "longitude": 60.10247993260017,
+        "latitude": 2.0638180478212047,
+        "distanceKm": 368506.0614274586,
+        "rightAscension": 57.4524202260342,
+        "declination": 22.19754628064121,
+        "phaseAngle": 142.87256181371467,
+        "illuminatedFraction": 0.1013525154485912
+      }
+    },
+    {
+      "jde": 2445130.3986654785,
+      "moon98": {
+        "longitude": 293.7848357222387,
+        "latitude": -0.9500264591192861,
+        "distanceKm": 404753.3073763696
+      },
+      "de440s": {
+        "longitude": 293.7840483406054,
+        "latitude": -0.9497382872055077,
+        "distanceKm": 404754.501427435,
+        "rightAscension": 295.83471677542093,
+        "declination": -22.28251222871624,
+        "phaseAngle": 34.99815544231502,
+        "illuminatedFraction": 0.9095852546788166
+      }
+    },
+    {
+      "jde": 2450777.604736634,
+      "moon98": {
+        "longitude": 186.40644038956455,
+        "latitude": 1.7059555318193969,
+        "distanceKm": 404103.09529936046
+      },
+      "de440s": {
+        "longitude": 186.40641558404965,
+        "latitude": 1.7062132254998983,
+        "distanceKm": 404101.5188132333,
+        "rightAscension": 186.55681493345685,
+        "declination": -0.9764863278221974,
+        "phaseAngle": 123.40095122211216,
+        "illuminatedFraction": 0.22475269994094693
+      }
+    },
+    {
+      "jde": 2415677.6106315022,
+      "moon98": {
+        "longitude": 288.6537447186721,
+        "latitude": 4.789584237817165,
+        "distanceKm": 394941.70882886427
+      },
+      "de440s": {
+        "longitude": 288.6535724590305,
+        "latitude": 4.78976516792306,
+        "distanceKm": 394936.7032968595,
+        "rightAscension": 289.5131004119627,
+        "declination": -17.405302423498455,
+        "phaseAngle": 97.18883246163067,
+        "illuminatedFraction": 0.43743007110151194
+      }
+    },
+    {
+      "jde": 2420112.1848151563,
+      "moon98": {
+        "longitude": 43.38876334263972,
+        "latitude": 4.030257542782176,
+        "distanceKm": 396829.49066817935
+      },
+      "de440s": {
+        "longitude": 43.389308874920985,
+        "latitude": 4.03056247590401,
+        "distanceKm": 396830.0465275897,
+        "rightAscension": 39.64569472892098,
+        "declination": 19.70688022965077,
+        "phaseAngle": 34.770243671153324,
+        "illuminatedFraction": 0.9107227480691227
+      }
+    },
+    {
+      "jde": 2458276.4568635435,
+      "moon98": {
+        "longitude": 348.2694726880805,
+        "latitude": -3.3890264741559446,
+        "distanceKm": 395382.4126402812
+      },
+      "de440s": {
+        "longitude": 348.26941732652546,
+        "latitude": -3.388935354107821,
+        "distanceKm": 395385.8811614815,
+        "rightAscension": 350.5489525902706,
+        "declination": -7.755994134566667,
+        "phaseAngle": 91.93619881503611,
+        "illuminatedFraction": 0.48310669355504315
+      }
+    },
+    {
+      "jde": 2451843.693077473,
+      "moon98": {
+        "longitude": 198.90822368762974,
+        "latitude": 5.019362745293828,
+        "distanceKm": 380238.71762426157
+      },
+      "de440s": {
+        "longitude": 198.9090753381709,
+        "latitude": 5.019273500736209,
+        "distanceKm": 380239.5104161286,
+        "rightAscension": 199.35209955975776,
+        "declination": -2.7590583335830012,
+        "phaseAngle": 164.95298223510866,
+        "illuminatedFraction": 0.017143444829261945
+      }
+    },
+    {
+      "jde": 2464624.80029014,
+      "moon98": {
+        "longitude": 126.25907521003843,
+        "latitude": -2.371882214152816,
+        "distanceKm": 371838.19618777104
+      },
+      "de440s": {
+        "longitude": 126.26071821408634,
+        "latitude": -2.3721611814504198,
+        "distanceKm": 371836.2900397959,
+        "rightAscension": 128.0266655993815,
+        "declination": 16.40354503542835,
+        "phaseAngle": 95.4059017365843,
+        "illuminatedFraction": 0.45289456979229453
+      }
+    },
+    {
+      "jde": 2445335.142148286,
+      "moon98": {
+        "longitude": 116.10884212808692,
+        "latitude": 1.9750720052465431,
+        "distanceKm": 357475.9535736378
+      },
+      "de440s": {
+        "longitude": 116.11042303032748,
+        "latitude": 1.9758111951764674,
+        "distanceKm": 357478.41592007654,
+        "rightAscension": 118.51342054382447,
+        "declination": 22.86926598553117,
+        "phaseAngle": 16.554391647124714,
+        "illuminatedFraction": 0.9792748416572539
+      }
+    },
+    {
+      "jde": 2437029.2146764486,
+      "moon98": {
+        "longitude": 109.53467356556494,
+        "latitude": -4.762592528737018,
+        "distanceKm": 402466.01954965683
+      },
+      "de440s": {
+        "longitude": 109.5339240390659,
+        "latitude": -4.762791877236039,
+        "distanceKm": 402466.9315391981,
+        "rightAscension": 110.42662106844095,
+        "declination": 17.30458941123736,
+        "phaseAngle": 85.26921574516567,
+        "illuminatedFraction": 0.5412369883475068
+      }
+    },
+    {
+      "jde": 2426543.7004069723,
+      "moon98": {
+        "longitude": 194.09170748336922,
+        "latitude": -0.5319605333742956,
+        "distanceKm": 369070.4176953481
+      },
+      "de440s": {
+        "longitude": 194.09171203444274,
+        "latitude": -0.5323511086082237,
+        "distanceKm": 369068.3443877422,
+        "rightAscension": 192.76119727303075,
+        "declination": -6.050928484896961,
+        "phaseAngle": 103.24968966272006,
+        "illuminatedFraction": 0.3854024406497475
+      }
+    },
+    {
+      "jde": 2456434.948172489,
+      "moon98": {
+        "longitude": 203.94283289180737,
+        "latitude": -2.05931949437235,
+        "distanceKm": 369590.90642956295
+      },
+      "de440s": {
+        "longitude": 203.943722794421,
+        "latitude": -2.0588050387770567,
+        "distanceKm": 369589.98307350226,
+        "rightAscension": 201.39412753197203,
+        "declination": -11.20194129146643,
+        "phaseAngle": 37.530440064726335,
+        "illuminatedFraction": 0.8965149029813233
+      }
+    },
+    {
+      "jde": 2452677.972255104,
+      "moon98": {
+        "longitude": 26.715402415065864,
+        "latitude": -3.1719777539657255,
+        "distanceKm": 404427.0262133917
+      },
+      "de440s": {
+        "longitude": 26.71463570786927,
+        "latitude": -3.172210786928343,
+        "distanceKm": 404427.98408675706,
+        "rightAscension": 25.939094364014725,
+        "declination": 7.341333442937877,
+        "phaseAngle": 111.37282016466943,
+        "illuminatedFraction": 0.31778246436979596
+      }
+    },
+    {
+      "jde": 2483598.0119594643,
+      "moon98": {
+        "longitude": 276.2507706817043,
+        "latitude": 3.9868102749901175,
+        "distanceKm": 399404.0369448428
+      },
+      "de440s": {
+        "longitude": 276.25000480716784,
+        "latitude": 3.9870232087316513,
+        "distanceKm": 399401.8004286927,
+        "rightAscension": 276.6075224277769,
+        "declination": -19.296084964168443,
+        "phaseAngle": 95.1126889383586,
+        "illuminatedFraction": 0.45544255916144843
+      }
+    },
+    {
+      "jde": 2451260.6022944334,
+      "moon98": {
+        "longitude": 74.62898883312766,
+        "latitude": -4.752742347081718,
+        "distanceKm": 368893.71998760133
+      },
+      "de440s": {
+        "longitude": 74.63101092946133,
+        "latitude": -4.7526205201215115,
+        "distanceKm": 368897.6561288123,
+        "rightAscension": 73.89200876022079,
+        "declination": 17.829708526437035,
+        "phaseAngle": 107.19182262278507,
+        "illuminatedFraction": 0.3522141461775973
+      }
+    },
+    {
+      "jde": 2474357.417318101,
+      "moon98": {
+        "longitude": 210.06371147953564,
+        "latitude": -2.721365701514984,
+        "distanceKm": 392899.86954365193
+      },
+      "de440s": {
+        "longitude": 210.06340033660115,
+        "latitude": -2.7217985815742622,
+        "distanceKm": 392896.232483686,
+        "rightAscension": 206.98707717585157,
+        "declination": -14.038196424530415,
+        "phaseAngle": 55.91791471623053,
+        "illuminatedFraction": 0.7801900284447811
+      }
+    },
+    {
+      "jde": 2418465.171107104,
+      "moon98": {
+        "longitude": 301.1753496483179,
+        "latitude": -3.7080728217958625,
+        "distanceKm": 375648.29412661993
+      },
+      "de440s": {
+        "longitude": 301.17484891021365,
+        "latitude": -3.7083348428131395,
+        "distanceKm": 375648.3908804102,
+        "rightAscension": 304.2903454031802,
+        "declination": -23.52343893208958,
+        "phaseAngle": 44.95916233753169,
+        "illuminatedFraction": 0.853805296535926
+      }
+    },
+    {
+      "jde": 2462502.71615076,
+      "moon98": {
+        "longitude": 241.56771970840862,
+        "latitude": -2.14742872037102,
+        "distanceKm": 364373.5613627537
+      },
+      "de440s": {
+        "longitude": 241.56793759986655,
+        "latitude": -2.147332321033647,
+        "distanceKm": 364373.42326281284,
+        "rightAscension": 238.9853302746806,
+        "declination": -22.573644267781386,
+        "phaseAngle": 140.60096477974298,
+        "illuminatedFraction": 0.11362786932486224
+      }
+    },
+    {
+      "jde": 2458349.4895882094,
+      "moon98": {
+        "longitude": 243.61284536671758,
+        "latitude": 4.6628444511112574,
+        "distanceKm": 395811.8217155571
+      },
+      "de440s": {
+        "longitude": 243.61341931808587,
+        "latitude": 4.663004644128024,
+        "distanceKm": 395815.8245098883,
+        "rightAscension": 242.51717708021562,
+        "declination": -16.290768529280452,
+        "phaseAngle": 82.24168270018721,
+        "illuminatedFraction": 0.5674973835868427
+      }
+    },
+    {
+      "jde": 2427738.7851407058,
+      "moon98": {
+        "longitude": 101.69351467026723,
+        "latitude": 2.0562199408268427,
+        "distanceKm": 400414.9588369431
+      },
+      "de440s": {
+        "longitude": 101.69291909231723,
+        "latitude": 2.055824401315786,
+        "distanceKm": 400414.6075524603,
+        "rightAscension": 102.91124764075151,
+        "declination": 24.98234376142292,
+        "phaseAngle": 67.39492244879361,
+        "illuminatedFraction": 0.6921885680138163
+      }
+    },
+    {
+      "jde": 2482867.378001436,
+      "moon98": {
+        "longitude": 18.403070512246266,
+        "latitude": 4.635212619412855,
+        "distanceKm": 363270.935556914
+      },
+      "de440s": {
+        "longitude": 18.403499082955495,
+        "latitude": 4.635195986494999,
+        "distanceKm": 363269.1459182857,
+        "rightAscension": 15.180055793867817,
+        "declination": 11.493880130941577,
+        "phaseAngle": 8.387501854150106,
+        "illuminatedFraction": 0.994652087536129
+      }
+    },
+    {
+      "jde": 2435583.587218297,
+      "moon98": {
+        "longitude": 147.56439834215385,
+        "latitude": -5.076315068382406,
+        "distanceKm": 373766.8864144559
+      },
+      "de440s": {
+        "longitude": 147.56424135610612,
+        "latitude": -5.076070414987191,
+        "distanceKm": 373764.71746184095,
+        "rightAscension": 147.99847933262478,
+        "declination": 7.5493682944206535,
+        "phaseAngle": 62.40652968850692,
+        "illuminatedFraction": 0.731597518153654
+      }
+    },
+    {
+      "jde": 2430434.696437103,
+      "moon98": {
+        "longitude": 345.31522613565045,
+        "latitude": -0.17229328264637833,
+        "distanceKm": 383898.5359915452
+      },
+      "de440s": {
+        "longitude": 345.31545782976633,
+        "latitude": -0.1725919754574722,
+        "distanceKm": 383897.0215653692,
+        "rightAscension": 346.5484862612282,
+        "declination": -5.947645074669958,
+        "phaseAngle": 170.3172542495915,
+        "illuminatedFraction": 0.007122918065857464
+      }
+    },
+    {
+      "jde": 2421873.378590388,
+      "moon98": {
+        "longitude": 211.78545662052954,
+        "latitude": -3.461062295282529,
+        "distanceKm": 406216.69545850874
+      },
+      "de440s": {
+        "longitude": 211.784705501125,
+        "latitude": -3.4612376926561814,
+        "distanceKm": 406218.0830811896,
+        "rightAscension": 208.37637809954765,
+        "declination": -15.343833962118934,
+        "phaseAngle": 160.6625764518511,
+        "illuminatedFraction": 0.028207564935972373
+      }
+    },
+    {
+      "jde": 2476417.193752299,
+      "moon98": {
+        "longitude": 346.8683555038661,
+        "latitude": 4.991852754337567,
+        "distanceKm": 359529.68422303826
+      },
+      "de440s": {
+        "longitude": 346.86904105421763,
+        "latitude": 4.991982812874213,
+        "distanceKm": 359528.39152621396,
+        "rightAscension": 345.97955924648846,
+        "declination": -0.5813325243152802,
+        "phaseAngle": 149.39067174172035,
+        "illuminatedFraction": 0.0696704304179363
+      }
+    },
+    {
+      "jde": 2475805.5424420517,
+      "moon98": {
+        "longitude": 197.73878441192963,
+        "latitude": -5.183575957432194,
+        "distanceKm": 373182.6422785951
+      },
+      "de440s": {
+        "longitude": 197.73912971351353,
+        "latitude": -5.183851890186053,
+        "distanceKm": 373183.35088764364,
+        "rightAscension": 194.33989312067686,
+        "declination": -11.745314041066697,
+        "phaseAngle": 56.08609695604366,
+        "illuminatedFraction": 0.7789732491348662
+      }
+    },
+    {
+      "jde": 2435945.142629062,
+      "moon98": {
+        "longitude": 234.19701412765815,
+        "latitude": 0.4091733103517681,
+        "distanceKm": 377564.6814992579
+      },
+      "de440s": {
+        "longitude": 234.19762092691448,
+        "latitude": 0.4093812416977999,
+        "distanceKm": 377567.55409172893,
+        "rightAscension": 231.9323088294714,
+        "declination": -18.427348072887906,
+        "phaseAngle": 27.760702478579102,
+        "illuminatedFraction": 0.9424503241316022
+      }
+    },
+    {
+      "jde": 2474273.011746197,
+      "moon98": {
+        "longitude": 176.1208562275851,
+        "latitude": 0.4945272022549675,
+        "distanceKm": 377893.52001440065
+      },
+      "de440s": {
+        "longitude": 176.12140062288432,
+        "latitude": 0.4944222723445589,
+        "distanceKm": 377895.2778869336,
+        "rightAscension": 176.63681528480365,
+        "declination": 1.9952883009852802,
+        "phaseAngle": 8.02012027377777,
+        "illuminatedFraction": 0.9951095674794399
+      }
+    },
+    {
+      "jde": 2444898.8008914413,
+      "moon98": {
+        "longitude": 132.08426220868117,
+        "latitude": 1.2920825288071303,
+        "distanceKm": 381444.3849993363
+      },
+      "de440s": {
+        "longitude": 132.08554135511747,
+        "latitude": 1.2917959398631904,
+        "distanceKm": 381445.0474525152,
+        "rightAscension": 134.92792392104067,
+        "declination": 18.411068357762733,
+        "phaseAngle": 104.13258519679647,
+        "illuminatedFraction": 0.37791672151312855
+      }
+    },
+    {
+      "jde": 2450289.0281939907,
+      "moon98": {
+        "longitude": 221.4353145955712,
+        "latitude": 2.6040656709230228,
+        "distanceKm": 381193.73959803523
+      },
+      "de440s": {
+        "longitude": 221.43664302146215,
+        "latitude": 2.603966838016929,
+        "distanceKm": 381192.6030841251,
+        "rightAscension": 219.82995099710885,
+        "declination": -12.783457761703927,
+        "phaseAngle": 80.3211581907841,
+        "illuminatedFraction": 0.5840626837081649
+      }
+    },
+    {
+      "jde": 2474404.94340685,
+      "moon98": {
+        "longitude": 108.88139504067864,
+        "latitude": 4.638815491448998,
+        "distanceKm": 358922.36404952634
+      },
+      "de440s": {
+        "longitude": 108.8798629068071,
+        "latitude": 4.639196955815469,
+        "distanceKm": 358921.38084517664,
+        "rightAscension": 111.16219388199114,
+        "declination": 26.69669066940131,
+        "phaseAngle": 156.9603512576314,
+        "illuminatedFraction": 0.03988287664758172
+      }
+    },
+    {
+      "jde": 2485567.281763794,
+      "moon98": {
+        "longitude": 311.139278438957,
+        "latitude": -0.5845178638071251,
+        "distanceKm": 365720.2906847688
+      },
+      "de440s": {
+        "longitude": 311.14052209223325,
+        "latitude": -0.5846645901862949,
+        "distanceKm": 365717.09513738006,
+        "rightAscension": 313.7621772833238,
+        "declination": -17.983966466118495,
+        "phaseAngle": 155.16206972567593,
+        "illuminatedFraction": 0.04625020053627493
+      }
+    },
+    {
+      "jde": 2427714.757703502,
+      "moon98": {
+        "longitude": 140.8872924826333,
+        "latitude": -1.0953492914630558,
+        "distanceKm": 403695.05409210216
+      },
+      "de440s": {
+        "longitude": 140.8865038953977,
+        "latitude": -1.0955322702808195,
+        "distanceKm": 403692.5719248141,
+        "rightAscension": 142.92068740614576,
+        "declination": 13.500722905093578,
+        "phaseAngle": 130.42415102806774,
+        "illuminatedFraction": 0.17577957836816305
+      }
+    },
+    {
+      "jde": 2433537.5547286887,
+      "moon98": {
+        "longitude": 181.69148089604127,
+        "latitude": -0.30905763570257355,
+        "distanceKm": 369008.76720239443
+      },
+      "de440s": {
+        "longitude": 181.69062073317951,
+        "latitude": -0.30858201183843337,
+        "distanceKm": 369005.643602373,
+        "rightAscension": 181.42831495467195,
+        "declination": -0.955771581403354,
+        "phaseAngle": 167.97249545634799,
+        "illuminatedFraction": 0.01097615945080821
+      }
+    },
+    {
+      "jde": 2468409.063491985,
+      "moon98": {
+        "longitude": 309.54688500700723,
+        "latitude": -0.35703424964976244,
+        "distanceKm": 404018.01598313457
+      },
+      "de440s": {
+        "longitude": 309.5472257194399,
+        "latitude": -0.35714756636509803,
+        "distanceKm": 404019.12145017873,
+        "rightAscension": 312.08591617133806,
+        "declination": -18.203182746266638,
+        "phaseAngle": 145.31964611199317,
+        "illuminatedFraction": 0.08883040371216028
+      }
+    },
+    {
+      "jde": 2423339.7499224525,
+      "moon98": {
+        "longitude": 87.91681148838556,
+        "latitude": -5.264820472027079,
+        "distanceKm": 388760.24789489334
+      },
+      "de440s": {
+        "longitude": 87.91739601457701,
+        "latitude": -5.2649332602619054,
+        "distanceKm": 388755.891442834,
+        "rightAscension": 87.81734633449086,
+        "declination": 18.166138714848557,
+        "phaseAngle": 69.73641733338243,
+        "illuminatedFraction": 0.6731697285511261
+      }
+    },
+    {
+      "jde": 2443078.3359619034,
+      "moon98": {
+        "longitude": 264.0964093038956,
+        "latitude": 4.100254779219809,
+        "distanceKm": 366716.0723083803
+      },
+      "de440s": {
+        "longitude": 264.09530081002174,
+        "latitude": 4.09992198396254,
+        "distanceKm": 366721.1543727039,
+        "rightAscension": 263.76175862276256,
+        "declination": -19.212488445950367,
+        "phaseAngle": 129.21606951060025,
+        "illuminatedFraction": 0.1838766883582429
+      }
+    },
+    {
+      "jde": 2447737.1318458393,
+      "moon98": {
+        "longitude": 89.2213593105446,
+        "latitude": 4.385619381622884,
+        "distanceKm": 379193.460011538
+      },
+      "de440s": {
+        "longitude": 89.22130576810544,
+        "latitude": 4.385580379844457,
+        "distanceKm": 379196.028701305,
+        "rightAscension": 89.12206363582867,
+        "declination": 27.825888295375762,
+        "phaseAngle": 142.4430602230205,
+        "illuminatedFraction": 0.10362601515624514
+      }
+    },
+    {
+      "jde": 2478836.805064752,
+      "moon98": {
+        "longitude": 181.92439835804512,
+        "latitude": 4.424789594288706,
+        "distanceKm": 369667.43133845896
+      },
+      "de440s": {
+        "longitude": 181.92388110531212,
+        "latitude": 4.424341325261319,
+        "distanceKm": 369666.7102079594,
+        "rightAscension": 183.52511495031297,
+        "declination": 3.2948479911070656,
+        "phaseAngle": 174.52058319260524,
+        "illuminatedFraction": 0.0022847169035565273
+      }
+    },
+    {
+      "jde": 2457124.8235342978,
+      "moon98": {
+        "longitude": 294.2252935854205,
+        "latitude": 5.122683974413697,
+        "distanceKm": 375099.3720739524
+      },
+      "de440s": {
+        "longitude": 294.22529067788787,
+        "latitude": 5.123389892918856,
+        "distanceKm": 375094.9685865173,
+        "rightAscension": 295.19019354477246,
+        "declination": -16.218426804388756,
+        "phaseAngle": 91.9797513342606,
+        "illuminatedFraction": 0.48272684803525856
+      }
+    },
+    {
+      "jde": 2447378.862298832,
+      "moon98": {
+        "longitude": 50.59503828268356,
+        "latitude": 4.772316553287116,
+        "distanceKm": 381105.6962194309
+      },
+      "de440s": {
+        "longitude": 50.59393521057159,
+        "latitude": 4.772010183533175,
+        "distanceKm": 381109.4102023227,
+        "rightAscension": 46.78596773946046,
+        "declination": 22.498290109495866,
+        "phaseAngle": 97.28244717567999,
+        "illuminatedFraction": 0.4366196343796975
+      }
+    },
+    {
+      "jde": 2439720.9667712,
+      "moon98": {
+        "longitude": 305.39887390865573,
+        "latitude": -5.027805677095704,
+        "distanceKm": 387909.20887760236
+      },
+      "de440s": {
+        "longitude": 305.3995929937913,
+        "latitude": -5.0277834481031425,
+        "distanceKm": 387910.6414249015,
+        "rightAscension": 309.0988200124296,
+        "declination": -23.795899884959738,
+        "phaseAngle": 19.997084053866974,
+        "illuminatedFraction": 0.969855012976258
+      }
+    },
+    {
+      "jde": 2415332.101525263,
+      "moon98": {
+        "longitude": 68.22310435907625,
+        "latitude": -0.5915475677051385,
+        "distanceKm": 366927.4820951478
+      },
+      "de440s": {
+        "longitude": 68.22263841764749,
+        "latitude": -0.5916819512887621,
+        "distanceKm": 366929.9550303426,
+        "rightAscension": 66.56842617149641,
+        "declination": 21.104459180172277,
+        "phaseAngle": 22.42626167307493,
+        "illuminatedFraction": 0.9621856359396516
+      }
+    },
+    {
+      "jde": 2467732.9584968365,
+      "moon98": {
+        "longitude": 32.88685792926068,
+        "latitude": 3.5357933037668605,
+        "distanceKm": 366290.9962637174
+      },
+      "de440s": {
+        "longitude": 32.887869363250616,
+        "latitude": 3.535779576390279,
+        "distanceKm": 366285.21408255206,
+        "rightAscension": 29.423840941102487,
+        "declination": 15.79144268355137,
+        "phaseAngle": 173.90306217032517,
+        "illuminatedFraction": 0.002828189004221493
+      }
+    },
+    {
+      "jde": 2423902.1772800526,
+      "moon98": {
+        "longitude": 312.2660240569002,
+        "latitude": 1.5375832292105842,
+        "distanceKm": 379996.3924642017
+      },
+      "de440s": {
+        "longitude": 312.26627351668935,
+        "latitude": 1.5378258863440812,
+        "distanceKm": 379999.0394227323,
+        "rightAscension": 314.28383480887135,
+        "declination": -15.648193188545399,
+        "phaseAngle": 95.97669833351378,
+        "illuminatedFraction": 0.44793800413609436
+      }
+    },
+    {
+      "jde": 2462400.7661588187,
+      "moon98": {
+        "longitude": 342.58540289057584,
+        "latitude": 4.754650301114461,
+        "distanceKm": 398879.47655025224
+      },
+      "de440s": {
+        "longitude": 342.5859965906453,
+        "latitude": 4.754462037497835,
+        "distanceKm": 398878.18124092,
+        "rightAscension": 342.1284115628832,
+        "declination": -2.439754549124808,
+        "phaseAngle": 16.613751248622407,
+        "illuminatedFraction": 0.9791269901763933
+      }
+    },
+    {
+      "jde": 2440596.604507387,
+      "moon98": {
+        "longitude": 321.25741578137144,
+        "latitude": -1.9088688357363532,
+        "distanceKm": 359999.73722720164
+      },
+      "de440s": {
+        "longitude": 321.2569776678948,
+        "latitude": -1.9086441953888367,
+        "distanceKm": 360004.0156310025,
+        "rightAscension": 324.27860542523854,
+        "declination": -16.22562993456703,
+        "phaseAngle": 148.0615407624872,
+        "illuminatedFraction": 0.07569160636012118
+      }
+    },
+    {
+      "jde": 2454117.7749631596,
+      "moon98": {
+        "longitude": 272.658617478611,
+        "latitude": -4.929970927570758,
+        "distanceKm": 381614.37325689977
+      },
+      "de440s": {
+        "longitude": 272.65808698020294,
+        "latitude": -4.930293975992272,
+        "distanceKm": 381615.5225335005,
+        "rightAscension": 273.00927379303084,
+        "declination": -28.34325200061647,
+        "phaseAngle": 155.3645238120657,
+        "illuminatedFraction": 0.04551090821113829
+      }
+    },
+    {
+      "jde": 2427238.514802999,
+      "moon98": {
+        "longitude": 353.9006357395378,
+        "latitude": 1.9582613042271817,
+        "distanceKm": 387896.7829958204
+      },
+      "de440s": {
+        "longitude": 353.90093699042086,
+        "latitude": 1.9582961911965433,
+        "distanceKm": 387902.61275397753,
+        "rightAscension": 353.6258278681871,
+        "declination": -0.6249309694812085,
+        "phaseAngle": 90.30585704592703,
+        "illuminatedFraction": 0.49733090643076017
+      }
+    },
+    {
+      "jde": 2424246.545266369,
+      "moon98": {
+        "longitude": 157.92046892340144,
+        "latitude": 2.2418075104671114,
+        "distanceKm": 392072.4986298661
+      },
+      "de440s": {
+        "longitude": 157.92005420195977,
+        "latitude": 2.241344739561674,
+        "distanceKm": 392068.3675975418,
+        "rightAscension": 160.43745905833373,
+        "declination": 10.680886369444972,
+        "phaseAngle": 37.775797530904484,
+        "illuminatedFraction": 0.8952069208206624
+      }
+    },
+    {
+      "jde": 2456126.412725169,
+      "moon98": {
+        "longitude": 100.94931209884153,
+        "latitude": -3.079779584723343,
+        "distanceKm": 396654.6448972955
+      },
+      "de440s": {
+        "longitude": 100.95007483767054,
+        "latitude": -3.07974162744333,
+        "distanceKm": 396651.1261091772,
+        "rightAscension": 101.63897029127078,
+        "declination": 19.915340335027455,
+        "phaseAngle": 164.89628051097424,
+        "illuminatedFraction": 0.017272141206145508
+      }
+    },
+    {
+      "jde": 2424951.981892345,
+      "moon98": {
+        "longitude": 104.86412880735263,
+        "latitude": 0.9496229148195444,
+        "distanceKm": 392365.08431545814
+      },
+      "de440s": {
+        "longitude": 104.86360754325946,
+        "latitude": 0.9498870735210854,
+        "distanceKm": 392365.8580554554,
+        "rightAscension": 106.24922158076318,
+        "declination": 23.563787183248895,
+        "phaseAngle": 65.91005206770029,
+        "illuminatedFraction": 0.7040851524691263
+      }
+    },
+    {
+      "jde": 2469483.949735364,
+      "moon98": {
+        "longitude": 72.93441439898169,
+        "latitude": 0.2959690102189547,
+        "distanceKm": 403126.0294315591
+      },
+      "de440s": {
+        "longitude": 72.93466419932196,
+        "latitude": 0.29604086957704623,
+        "distanceKm": 403125.49649427854,
+        "rightAscension": 71.46084846314471,
+        "declination": 22.63701001846322,
+        "phaseAngle": 70.06737369175168,
+        "illuminatedFraction": 0.6704574646901846
+      }
+    },
+    {
+      "jde": 2487133.3668509736,
+      "moon98": {
+        "longitude": 61.45070519459881,
+        "latitude": 1.7264149707292251,
+        "distanceKm": 359603.2252261658
+      },
+      "de440s": {
+        "longitude": 61.45113974930373,
+        "latitude": 1.72656702447722,
+        "distanceKm": 359600.2522724454,
+        "rightAscension": 58.95651046401228,
+        "declination": 22.132213775569237,
+        "phaseAngle": 162.4509768334855,
+        "illuminatedFraction": 0.023270343455389864
+      }
+    },
+    {
+      "jde": 2459907.0096061397,
+      "moon98": {
+        "longitude": 235.16093688247128,
+        "latitude": -1.0739521680862576,
+        "distanceKm": 367700.48497942096
+      },
+      "de440s": {
+        "longitude": 235.1619744711374,
+        "latitude": -1.07453510005902,
+        "distanceKm": 367697.9294150545,
+        "rightAscension": 232.54121326897007,
+        "declination": -20.097353584282203,
+        "phaseAngle": 173.87247432643596,
+        "illuminatedFraction": 0.002856610659291159
+      }
+    },
+    {
+      "jde": 2486407.727917917,
+      "moon98": {
+        "longitude": 220.43504660489876,
+        "latitude": 3.3045691662960173,
+        "distanceKm": 399459.17415062926
+      },
+      "de440s": {
+        "longitude": 220.4350475463584,
+        "latitude": 3.3043049999027714,
+        "distanceKm": 399462.57618673943,
+        "rightAscension": 219.07784175832165,
+        "declination": -11.803214035967198,
+        "phaseAngle": 43.07617551435209,
+        "illuminatedFraction": 0.8652231647316302
+      }
+    },
+    {
+      "jde": 2442457.3087642267,
+      "moon98": {
+        "longitude": 352.5763247762323,
+        "latitude": 4.8104974868225705,
+        "distanceKm": 405711.3283960695
+      },
+      "de440s": {
+        "longitude": 352.5760027959414,
+        "latitude": 4.810141140762216,
+        "distanceKm": 405711.3295336657,
+        "rightAscension": 351.2839564812608,
+        "declination": 1.4733830386240174,
+        "phaseAngle": 151.44889988373495,
+        "illuminatedFraction": 0.06080439906372154
+      }
+    },
+    {
+      "jde": 2455653.3506957535,
+      "moon98": {
+        "longitude": 352.65567643178287,
+        "latitude": 4.9928859737058175,
+        "distanceKm": 406557.8130206089
+      },
+      "de440s": {
+        "longitude": 352.6557023848211,
+        "latitude": 4.992833734329122,
+        "distanceKm": 406557.5995006898,
+        "rightAscension": 351.28492309315993,
+        "declination": 1.6731425361682364,
+        "phaseAngle": 160.21790704847749,
+        "illuminatedFraction": 0.029506704440794007
+      }
+    },
+    {
+      "jde": 2468624.4708440476,
+      "moon98": {
+        "longitude": 272.16854058455397,
+        "latitude": -2.4940452778435134,
+        "distanceKm": 382510.88379680144
+      },
+      "de440s": {
+        "longitude": 272.16800562086536,
+        "latitude": -2.494391579456265,
+        "distanceKm": 382505.3700487983,
+        "rightAscension": 272.4081524992747,
+        "declination": -25.91089427765928,
+        "phaseAngle": 100.5702360081014,
+        "illuminatedFraction": 0.40827964455149096
+      }
+    },
+    {
+      "jde": 2482178.359662037,
+      "moon98": {
+        "longitude": 301.92664934474436,
+        "latitude": 0.00034758214864980534,
+        "distanceKm": 370953.6756397989
+      },
+      "de440s": {
+        "longitude": 301.9239576265792,
+        "latitude": -0.00045838795562589974,
+        "distanceKm": 370953.0167109813,
+        "rightAscension": 304.17704161331426,
+        "declination": -19.72407375222734,
+        "phaseAngle": 110.61112951408114,
+        "illuminatedFraction": 0.3239882658956573
+      }
+    },
+    {
+      "jde": 2454693.3973071873,
+      "moon98": {
+        "longitude": 299.2683239854371,
+        "latitude": -1.7501436855159203,
+        "distanceKm": 396425.994735344
+      },
+      "de440s": {
+        "longitude": 299.2695007751807,
+        "latitude": -1.7501972502238274,
+        "distanceKm": 396425.78559269017,
+        "rightAscension": 301.8116301814282,
+        "declination": -22.015885452367367,
+        "phaseAngle": 23.18422472531428,
+        "illuminatedFraction": 0.9596218843159909
+      }
+    },
+    {
+      "jde": 2452586.790532741,
+      "moon98": {
+        "longitude": 272.3081042176458,
+        "latitude": -2.100190590017985,
+        "distanceKm": 373305.3705870127
+      },
+      "de440s": {
+        "longitude": 272.3078916408182,
+        "latitude": -2.0995314150983444,
+        "distanceKm": 373308.1136208739,
+        "rightAscension": 272.55581974618383,
+        "declination": -25.51883007552298,
+        "phaseAngle": 133.2505280253552,
+        "illuminatedFraction": 0.15740514859770255
+      }
+    },
+    {
+      "jde": 2445392.756254044,
+      "moon98": {
+        "longitude": 156.43583236613455,
+        "latitude": 4.561187941418614,
+        "distanceKm": 361759.50826986326
+      },
+      "de440s": {
+        "longitude": 156.4348040825489,
+        "latitude": 4.5606882733306175,
+        "distanceKm": 361758.2230091921,
+        "rightAscension": 159.92022525525883,
+        "declination": 13.384911747254517,
+        "phaseAngle": 4.837446911794468,
+        "illuminatedFraction": 0.9982189784684099
+      }
+    },
+    {
+      "jde": 2429191.1241417,
+      "moon98": {
+        "longitude": 158.10857210501356,
+        "latitude": -4.919582949483235,
+        "distanceKm": 372811.1183524105
+      },
+      "de440s": {
+        "longitude": 158.10850407520135,
+        "latitude": -4.919400228116034,
+        "distanceKm": 372810.81079273927,
+        "rightAscension": 157.92465235362272,
+        "declination": 3.963944488093648,
+        "phaseAngle": 132.23788260198012,
+        "illuminatedFraction": 0.16389487760823296
+      }
+    },
+    {
+      "jde": 2453136.1783473594,
+      "moon98": {
+        "longitude": 310.2661984914841,
+        "latitude": -5.283474245836537,
+        "distanceKm": 373339.69071032683
+      },
+      "de440s": {
+        "longitude": 310.266373134122,
+        "latitude": -5.283246835812813,
+        "distanceKm": 373340.16165273276,
+        "rightAscension": 314.25856020302507,
+        "declination": -22.751177069437702,
+        "phaseAngle": 79.83641280086607,
+        "illuminatedFraction": 0.5882296126970826
+      }
+    },
+    {
+      "jde": 2474758.0853360742,
+      "moon98": {
+        "longitude": 76.64524535534272,
+        "latitude": 5.083080160757393,
+        "distanceKm": 372871.1964849616
+      },
+      "de440s": {
+        "longitude": 76.64500614359235,
+        "latitude": 5.083257374134946,
+        "distanceKm": 372871.2857290321,
+        "rightAscension": 74.92141015580917,
+        "declination": 27.820265901810533,
+        "phaseAngle": 136.4572350539185,
+        "illuminatedFraction": 0.13756980567670152
+      }
+    },
+    {
+      "jde": 2479187.1493493156,
+      "moon98": {
+        "longitude": 120.88578875967805,
+        "latitude": 1.577438686924383,
+        "distanceKm": 402903.26837346423
+      },
+      "de440s": {
+        "longitude": 120.88584759955779,
+        "latitude": 1.5778038352673864,
+        "distanceKm": 402900.24007035774,
+        "rightAscension": 123.4684653743053,
+        "declination": 21.49152372397873,
+        "phaseAngle": 136.55432695606967,
+        "illuminatedFraction": 0.13698663409470468
+      }
+    },
+    {
+      "jde": 2429589.646700131,
+      "moon98": {
+        "longitude": 3.465346946131398,
+        "latitude": 2.264075783658152,
+        "distanceKm": 400900.6302485938
+      },
+      "de440s": {
+        "longitude": 3.4657687871673937,
+        "latitude": 2.2640953111207014,
+        "distanceKm": 400899.0917905057,
+        "rightAscension": 2.2794049057947796,
+        "declination": 3.455726019502359,
+        "phaseAngle": 55.37111322514848,
+        "illuminatedFraction": 0.7841293364894812
+      }
+    },
+    {
+      "jde": 2441931.6324991765,
+      "moon98": {
+        "longitude": 269.58491162840363,
+        "latitude": -0.5045343867008055,
+        "distanceKm": 404266.13260648295
+      },
+      "de440s": {
+        "longitude": 269.58384399511857,
+        "latitude": -0.5048032681456439,
+        "distanceKm": 404263.3850857034,
+        "rightAscension": 269.5446641945269,
+        "declination": -23.947161376426113,
+        "phaseAngle": 73.66499273779196,
+        "illuminatedFraction": 0.6406265449196894
+      }
+    },
+    {
+      "jde": 2480352.7038722346,
+      "moon98": {
+        "longitude": 353.3503677671462,
+        "latitude": -3.8753269086002424,
+        "distanceKm": 371502.5983374565
+      },
+      "de440s": {
+        "longitude": 353.3504360374154,
+        "latitude": -3.8748331755400494,
+        "distanceKm": 371495.6536806868,
+        "rightAscension": 355.4345144422349,
+        "declination": -6.196874641766311,
+        "phaseAngle": 59.823003362668906,
+        "illuminatedFraction": 0.75133645661661
+      }
+    },
+    {
+      "jde": 2452070.8295324184,
+      "moon98": {
+        "longitude": 307.75538487377077,
+        "latitude": -2.7495362126775182,
+        "distanceKm": 403381.7142022829
+      },
+      "de440s": {
+        "longitude": 307.75461447902694,
+        "latitude": -2.749339801968218,
+        "distanceKm": 403383.2982608049,
+        "rightAscension": 310.9215165531789,
+        "declination": -20.985832613916962,
+        "phaseAngle": 48.19164075211498,
+        "illuminatedFraction": 0.8333206127094133
+      }
+    },
+    {
+      "jde": 2480680.821815364,
+      "moon98": {
+        "longitude": 358.2356677583874,
+        "latitude": -2.141926945821794,
+        "distanceKm": 378968.61431302986
+      },
+      "de440s": {
+        "longitude": 358.2358583005093,
+        "latitude": -2.141517630108278,
+        "distanceKm": 378968.52925426816,
+        "rightAscension": 359.2332468343741,
+        "declination": -2.666337988145178,
+        "phaseAngle": 18.038215486341812,
+        "illuminatedFraction": 0.9754250973669254
+      }
+    },
+    {
+      "jde": 2476115.1567825056,
+      "moon98": {
+        "longitude": 325.25458657662017,
+        "latitude": 4.496608074412192,
+        "distanceKm": 368830.3204992695
+      },
+      "de440s": {
+        "longitude": 325.253601912749,
+        "latitude": 4.496430681188653,
+        "distanceKm": 368829.3857921958,
+        "rightAscension": 326.0006175652086,
+        "declination": -8.85880517456954,
+        "phaseAngle": 125.12542881134863,
+        "illuminatedFraction": 0.21231584813442056
+      }
+    },
+    {
+      "jde": 2436771.0300588547,
+      "moon98": {
+        "longitude": 316.2893440125254,
+        "latitude": 3.874955488832022,
+        "distanceKm": 374204.7554786138
+      },
+      "de440s": {
+        "longitude": 316.29051763112903,
+        "latitude": 3.8746754364320557,
+        "distanceKm": 374209.2140052507,
+        "rightAscension": 317.5629310133254,
+        "declination": -12.255312933383586,
+        "phaseAngle": 18.6224512425257,
+        "illuminatedFraction": 0.9738216768249535
+      }
+    },
+    {
+      "jde": 2483996.7494008522,
+      "moon98": {
+        "longitude": 140.49409448312977,
+        "latitude": -4.855704960649515,
+        "distanceKm": 374336.09313496127
+      },
+      "de440s": {
+        "longitude": 140.49522228811077,
+        "latitude": -4.856220486791995,
+        "distanceKm": 374336.79794093885,
+        "rightAscension": 141.32978400781764,
+        "declination": 10.038841242539815,
+        "phaseAngle": 95.5230077210059,
+        "illuminatedFraction": 0.4518772717190022
+      }
+    },
+    {
+      "jde": 2441935.9515682557,
+      "moon98": {
+        "longitude": 321.6742187338986,
+        "latitude": 3.669799568180582,
+        "distanceKm": 394780.8163953236
+      },
+      "de440s": {
+        "longitude": 321.67526057005944,
+        "latitude": 3.669592664134785,
+        "distanceKm": 394778.6013119282,
+        "rightAscension": 322.84769917538335,
+        "declination": -10.805792064992506,
+        "phaseAngle": 26.088486657917365,
+        "illuminatedFraction": 0.9490579807628212
+      }
+    },
+    {
+      "jde": 2457968.775319054,
+      "moon98": {
+        "longitude": 261.06452067053027,
+        "latitude": 4.702675628244531,
+        "distanceKm": 404875.5000520117
+      },
+      "de440s": {
+        "longitude": 261.0644214447502,
+        "latitude": 4.702770396765098,
+        "distanceKm": 404874.39463613305,
+        "rightAscension": 260.6084455710052,
+        "declination": -18.441294958063082,
+        "phaseAngle": 50.112470687232566,
+        "illuminatedFraction": 0.8206413196945201
+      }
+    },
+    {
+      "jde": 2437385.9056276293,
+      "moon98": {
+        "longitude": 132.26437422362096,
+        "latitude": -2.11080370741205,
+        "distanceKm": 404483.23218799947
+      },
+      "de440s": {
+        "longitude": 132.26325661223106,
+        "latitude": -2.111411898366013,
+        "distanceKm": 404482.29659957916,
+        "rightAscension": 134.11482239374197,
+        "declination": 15.094516551459542,
+        "phaseAngle": 54.13676755870176,
+        "illuminatedFraction": 0.7929262101006402
+      }
+    },
+    {
+      "jde": 2422449.253773035,
+      "moon98": {
+        "longitude": 242.53890624256272,
+        "latitude": 1.5458675218234732,
+        "distanceKm": 403714.7515941287
+      },
+      "de440s": {
+        "longitude": 242.5389627316094,
+        "latitude": 1.5454886806392665,
+        "distanceKm": 403715.53625325905,
+        "rightAscension": 240.79009599958283,
+        "declination": -19.15999783965156,
+        "phaseAngle": 18.598988577092882,
+        "illuminatedFraction": 0.9738870201710557
+      }
+    },
+    {
+      "jde": 2467499.750866953,
+      "moon98": {
+        "longitude": 207.48579211227957,
+        "latitude": -2.469847687029615,
+        "distanceKm": 399697.72198380815
+      },
+      "de440s": {
+        "longitude": 207.4867128842715,
+        "latitude": -2.4697604067732155,
+        "distanceKm": 399696.5341664902,
+        "rightAscension": 204.60842406419292,
+        "declination": -12.881513169987452,
+        "phaseAngle": 136.8929281843032,
+        "illuminatedFraction": 0.13496103150463917
+      }
+    },
+    {
+      "jde": 2460760.168961597,
+      "moon98": {
+        "longitude": 313.9129376516909,
+        "latitude": -3.64714823758996,
+        "distanceKm": 375057.2873424584
+      },
+      "de440s": {
+        "longitude": 313.91364530762996,
+        "latitude": -3.6461927340395546,
+        "distanceKm": 375050.21171450755,
+        "rightAscension": 317.4975787846855,
+        "declination": -20.13990549208305,
+        "phaseAngle": 128.45143146043802,
+        "illuminatedFraction": 0.18907449447487334
+      }
+    },
+    {
+      "jde": 2423259.410796275,
+      "moon98": {
+        "longitude": 111.78916508410369,
+        "latitude": -4.76604594376646,
+        "distanceKm": 368235.50408853014
+      },
+      "de440s": {
+        "longitude": 111.79037033378648,
+        "latitude": -4.7662598299649455,
+        "distanceKm": 368234.42235823633,
+        "rightAscension": 112.75426306621482,
+        "declination": 16.975172142426292,
+        "phaseAngle": 170.2965070968128,
+        "illuminatedFraction": 0.00715340215186866
+      }
+    },
+    {
+      "jde": 2427939.8604551097,
+      "moon98": {
+        "longitude": 222.7031357517612,
+        "latitude": -4.7963917477948055,
+        "distanceKm": 388519.4868563177
+      },
+      "de440s": {
+        "longitude": 222.70354901971604,
+        "latitude": -4.796279581049906,
+        "distanceKm": 388521.32529864274,
+        "rightAscension": 218.70302719479497,
+        "declination": -20.22087181338102,
+        "phaseAngle": 13.640101193264902,
+        "illuminatedFraction": 0.985898093535058
+      }
+    },
+    {
+      "jde": 2441165.1028841175,
+      "moon98": {
+        "longitude": 242.9469932007589,
+        "latitude": -5.013795154863824,
+        "distanceKm": 392863.6254880744
+      },
+      "de440s": {
+        "longitude": 242.94778947531603,
+        "latitude": -5.014012893194705,
+        "distanceKm": 392862.9223843997,
+        "rightAscension": 239.82337817879136,
+        "declination": -25.668453225932282,
+        "phaseAngle": 65.71160012937976,
+        "illuminatedFraction": 0.7056649135267997
+      }
+    },
+    {
+      "jde": 2451611.474878191,
+      "moon98": {
+        "longitude": 9.193737136273409,
+        "latitude": -4.707666963026465,
+        "distanceKm": 381188.0830526411
+      },
+      "de440s": {
+        "longitude": 9.193908275814143,
+        "latitude": -4.707738704121279,
+        "distanceKm": 381185.12158169964,
+        "rightAscension": 10.297345375850123,
+        "declination": -0.6854689014664842,
+        "phaseAngle": 157.9687245056149,
+        "illuminatedFraction": 0.03651038322178041
+      }
+    },
+    {
+      "jde": 2477967.662659082,
+      "moon98": {
+        "longitude": 259.09953759913736,
+        "latitude": 5.081761665336407,
+        "distanceKm": 387154.86080764444
+      },
+      "de440s": {
+        "longitude": 259.0980679828123,
+        "latitude": 5.082112456738418,
+        "distanceKm": 387155.0731278175,
+        "rightAscension": 258.5809184243428,
+        "declination": -17.914329841101893,
+        "phaseAngle": 33.824740951270215,
+        "illuminatedFraction": 0.9153720886047627
+      }
+    },
+    {
+      "jde": 2468657.052859954,
+      "moon98": {
+        "longitude": 337.810422087018,
+        "latitude": 3.2017210375496292,
+        "distanceKm": 402965.9829835296
+      },
+      "de440s": {
+        "longitude": 337.8108280220727,
+        "latitude": 3.201429992567531,
+        "distanceKm": 402964.1667853689,
+        "rightAscension": 338.28493539545093,
+        "declination": -5.66565203377905,
+        "phaseAngle": 67.38128985952183,
+        "illuminatedFraction": 0.6922983898713145
+      }
+    },
+    {
+      "jde": 2446304.4382649567,
+      "moon98": {
+        "longitude": 291.6057549355881,
+        "latitude": -4.738007053407218,
+        "distanceKm": 380668.85842814244
+      },
+      "de440s": {
+        "longitude": 291.6051269833824,
+        "latitude": -4.738028831893889,
+        "distanceKm": 380668.13272839045,
+        "rightAscension": 294.1810581832453,
+        "declination": -26.3852929606287,
+        "phaseAngle": 42.133854486902045,
+        "illuminatedFraction": 0.8707897874910587
+      }
+    },
+    {
+      "jde": 2431226.347842005,
+      "moon98": {
+        "longitude": 329.85775416695304,
+        "latitude": -2.5388401586667997,
+        "distanceKm": 369767.8906962482
+      },
+      "de440s": {
+        "longitude": 329.85758506730673,
+        "latitude": -2.538143775117192,
+        "distanceKm": 369768.1736521579,
+        "rightAscension": 332.872334832323,
+        "declination": -13.899753576739435,
+        "phaseAngle": 94.86313895587327,
+        "illuminatedFraction": 0.4576120449198714
+      }
+    },
+    {
+      "jde": 2462779.0548749533,
+      "moon98": {
+        "longitude": 286.4348692602679,
+        "latitude": 3.1033229525810713,
+        "distanceKm": 372548.754933548
+      },
+      "de440s": {
+        "longitude": 286.4364134251266,
+        "latitude": 3.104359910607945,
+        "distanceKm": 372544.8925755101,
+        "rightAscension": 287.4237314454378,
+        "declination": -19.341712722202605,
+        "phaseAngle": 84.80168181287206,
+        "illuminatedFraction": 0.5453016738963374
+      }
+    },
+    {
+      "jde": 2454149.115988668,
+      "moon98": {
+        "longitude": 327.7150576300153,
+        "latitude": -1.6690001759919793,
+        "distanceKm": 364030.19822258153
+      },
+      "de440s": {
+        "longitude": 327.71541920136127,
+        "latitude": -1.6694586768308561,
+        "distanceKm": 364028.76449650055,
+        "rightAscension": 330.492700371206,
+        "declination": -13.834337335839635,
+        "phaseAngle": 178.12467951496347,
+        "illuminatedFraction": 0.0002677977770420559
+      }
+    },
+    {
+      "jde": 2470624.2921819338,
+      "moon98": {
+        "longitude": 328.0297959483363,
+        "latitude": 3.8296710459924803,
+        "distanceKm": 375516.3454635727
+      },
+      "de440s": {
+        "longitude": 328.03033125387685,
+        "latitude": 3.8293980369469116,
+        "distanceKm": 375513.0316669721,
+        "rightAscension": 328.8661359655988,
+        "declination": -8.556500051200825,
+        "phaseAngle": 139.96607267379284,
+        "illuminatedFraction": 0.11716815684782517
+      }
+    },
+    {
+      "jde": 2466950.454569997,
+      "moon98": {
+        "longitude": 167.7274246507188,
+        "latitude": 3.298548969599835,
+        "distanceKm": 405737.01287478494
+      },
+      "de440s": {
+        "longitude": 167.72703910423425,
+        "latitude": 3.2983307500573407,
+        "distanceKm": 405737.4261579901,
+        "rightAscension": 170.01053810479155,
+        "declination": 7.885454203842713,
+        "phaseAngle": 3.509872549198854,
+        "illuminatedFraction": 0.9990621322114461
+      }
+    },
+    {
+      "jde": 2454816.8157869037,
+      "moon98": {
+        "longitude": 135.2879046009932,
+        "latitude": -0.4616365382886419,
+        "distanceKm": 367066.67010858015
+      },
+      "de440s": {
+        "longitude": 135.28769145185763,
+        "latitude": -0.4615628392910767,
+        "distanceKm": 367073.6357400788,
+        "rightAscension": 137.60951222450976,
+        "declination": 15.810661518344801,
+        "phaseAngle": 50.45416832055427,
+        "illuminatedFraction": 0.8183476248962731
+      }
+    },
+    {
+      "jde": 2441429.728624554,
+      "moon98": {
+        "longitude": 142.25067592840296,
+        "latitude": -1.851669317439973,
+        "distanceKm": 392473.47483087727
+      },
+      "de440s": {
+        "longitude": 142.25052495037053,
+        "latitude": -1.8519966483866845,
+        "distanceKm": 392473.82134163217,
+        "rightAscension": 143.9970864644142,
+        "declination": 12.344838838710425,
+        "phaseAngle": 69.81459034210897,
+        "illuminatedFraction": 0.6725296005090988
+      }
+    },
+    {
+      "jde": 2439454.85418231,
+      "moon98": {
+        "longitude": 30.952445456676827,
+        "latitude": -1.3902092070667913,
+        "distanceKm": 399255.89723352523
+      },
+      "de440s": {
+        "longitude": 30.95280282181338,
+        "latitude": -1.3898924306904141,
+        "distanceKm": 399256.9704560567,
+        "rightAscension": 29.31343887868526,
+        "declination": 10.505245338731054,
+        "phaseAngle": 31.620893251761654,
+        "illuminatedFraction": 0.9257679014479001
+      }
+    },
+    {
+      "jde": 2453675.210811,
+      "moon98": {
+        "longitude": 202.28344717507923,
+        "latitude": -0.7935811125302923,
+        "distanceKm": 390786.42130559846
+      },
+      "de440s": {
+        "longitude": 202.2839858479497,
+        "latitude": -0.7934259365154267,
+        "distanceKm": 390783.2850655929,
+        "rightAscension": 200.3059093335531,
+        "declination": -9.41225605937505,
+        "phaseAngle": 163.84359908382936,
+        "illuminatedFraction": 0.019747147382952746
+      }
+    },
+    {
+      "jde": 2470116.418469337,
+      "moon98": {
+        "longitude": 128.1253939489522,
+        "latitude": -5.283456507151293,
+        "distanceKm": 398230.8053658611
+      },
+      "de440s": {
+        "longitude": 128.12535278701554,
+        "latitude": -5.283447406172564,
+        "distanceKm": 398229.63052970165,
+        "rightAscension": 129.141525003444,
+        "declination": 13.119907594580573,
+        "phaseAngle": 84.30809307462552,
+        "illuminatedFraction": 0.5495895981795854
+      }
+    },
+    {
+      "jde": 2476448.1044866103,
+      "moon98": {
+        "longitude": 38.122072074647775,
+        "latitude": 2.3153352214488248,
+        "distanceKm": 369846.59412914433
+      },
+      "de440s": {
+        "longitude": 38.1217079151172,
+        "latitude": 2.3152836370987857,
+        "distanceKm": 369847.77972860466,
+        "rightAscension": 34.97576094524116,
+        "declination": 16.399441892098398,
+        "phaseAngle": 129.58719444033187,
+        "illuminatedFraction": 0.1813741176235661
+      }
+    },
+    {
+      "jde": 2467251.3128818693,
+      "moon98": {
+        "longitude": 175.44425895833479,
+        "latitude": 1.5574728756799265,
+        "distanceKm": 398731.74608605367
+      },
+      "de440s": {
+        "longitude": 175.44360065413514,
+        "latitude": 1.5571004247706035,
+        "distanceKm": 398730.11006274004,
+        "rightAscension": 176.43666281893096,
+        "declination": 3.239813354091313,
+        "phaseAngle": 74.02913046945241,
+        "illuminatedFraction": 0.6375742965188347
+      }
+    },
+    {
+      "jde": 2426917.4621302523,
+      "moon98": {
+        "longitude": 72.94604668538335,
+        "latitude": 5.132261316375587,
+        "distanceKm": 399377.3036960398
+      },
+      "de440s": {
+        "longitude": 72.94638435315444,
+        "latitude": 5.132436439626157,
+        "distanceKm": 399378.0735157748,
+        "rightAscension": 70.78258674957232,
+        "declination": 27.451790391491897,
+        "phaseAngle": 127.04024139321912,
+        "illuminatedFraction": 0.19881210391240833
+      }
+    },
+    {
+      "jde": 2429571.7828703346,
+      "moon98": {
+        "longitude": 127.45263657105824,
+        "latitude": -5.225076194270693,
+        "distanceKm": 372007.540314388
+      },
+      "de440s": {
+        "longitude": 127.45237076147073,
+        "latitude": -5.225230043503545,
+        "distanceKm": 372009.55882881535,
+        "rightAscension": 128.49206086913313,
+        "declination": 13.355057940368946,
+        "phaseAngle": 86.37025520288319,
+        "illuminatedFraction": 0.531654315638162
+      }
+    },
+    {
+      "jde": 2485678.027697197,
+      "moon98": {
+        "longitude": 334.69989484284,
+        "latitude": -3.2547267071029884,
+        "distanceKm": 371481.872634733
+      },
+      "de440s": {
+        "longitude": 334.69923905167377,
+        "latitude": -3.2548573540944887,
+        "distanceKm": 371484.869210771,
+        "rightAscension": 337.7680487168815,
+        "declination": -12.810618422134892,
+        "phaseAngle": 70.3445572572141,
+        "illuminatedFraction": 0.6681815011853907
+      }
+    },
+    {
+      "jde": 2442129.9570728373,
+      "moon98": {
+        "longitude": 357.29320597712297,
+        "latitude": 4.990951934084553,
+        "distanceKm": 392133.6214412783
+      },
+      "de440s": {
+        "longitude": 357.2925727861186,
+        "latitude": 4.990964438284245,
+        "distanceKm": 392129.16446073866,
+        "rightAscension": 355.53046857057524,
+        "declination": 3.5027886841678177,
+        "phaseAngle": 172.81593930385304,
+        "illuminatedFraction": 0.003925235103332203
+      }
+    },
+    {
+      "jde": 2450480.0651218286,
+      "moon98": {
+        "longitude": 218.74168087017222,
+        "latitude": 3.245793379117268,
+        "distanceKm": 390776.98493377556
+      },
+      "de440s": {
+        "longitude": 218.74216286433003,
+        "latitude": 3.245608004823205,
+        "distanceKm": 390777.12298932654,
+        "rightAscension": 217.41891005937498,
+        "declination": -11.33638180577336,
+        "phaseAngle": 86.86604006422192,
+        "illuminatedFraction": 0.5273353244049874
+      }
+    },
+    {
+      "jde": 2478957.609397434,
+      "moon98": {
+        "longitude": 344.32489404940793,
+        "latitude": -4.097144504204953,
+        "distanceKm": 377773.72639211634
+      },
+      "de440s": {
+        "longitude": 344.325398743105,
+        "latitude": -4.096937960918734,
+        "distanceKm": 377776.83711307973,
+        "rightAscension": 347.1618004323607,
+        "declination": -9.944934428051706,
+        "phaseAngle": 135.5676460689872,
+        "illuminatedFraction": 0.14296126099330964
+      }
+    },
+    {
+      "jde": 2416581.345850892,
+      "moon98": {
+        "longitude": 324.4292539826817,
+        "latitude": 2.8693684653597913,
+        "distanceKm": 405217.95536034554
+      },
+      "de440s": {
+        "longitude": 324.4292249088314,
+        "latitude": 2.8698603463230117,
+        "distanceKm": 405217.5253011282,
+        "rightAscension": 325.75998795917707,
+        "declination": -10.676312637495586,
+        "phaseAngle": 123.7211681127567,
+        "illuminatedFraction": 0.2224241211299926
+      }
+    },
+    {
+      "jde": 2474341.9907788644,
+      "moon98": {
+        "longitude": 353.3369604720288,
+        "latitude": -0.45829566514265746,
+        "distanceKm": 389674.9085918886
+      },
+      "de440s": {
+        "longitude": 353.3357467023972,
+        "latitude": -0.4581354147626149,
+        "distanceKm": 389677.0713057117,
+        "rightAscension": 354.06246310166154,
+        "declination": -3.066031625058423,
+        "phaseAngle": 101.89221931297233,
+        "illuminatedFraction": 0.39696434833055755
+      }
+    },
+    {
+      "jde": 2434776.6256945105,
+      "moon98": {
+        "longitude": 306.65513940254493,
+        "latitude": 1.1543006410713208,
+        "distanceKm": 371108.8300661182
+      },
+      "de440s": {
+        "longitude": 306.6558898276725,
+        "latitude": 1.1541489413929666,
+        "distanceKm": 371104.078031372,
+        "rightAscension": 308.7440708405866,
+        "declination": -17.4970353246101,
+        "phaseAngle": 172.7864705543416,
+        "illuminatedFraction": 0.00395746085202392
+      }
+    },
+    {
+      "jde": 2482867.7788682035,
+      "moon98": {
+        "longitude": 24.31667654236343,
+        "latitude": 4.411626807341176,
+        "distanceKm": 364696.65214769705
+      },
+      "de440s": {
+        "longitude": 24.317028274618615,
+        "latitude": 4.411513670993007,
+        "distanceKm": 364694.6418420214,
+        "rightAscension": 20.85494302814428,
+        "declination": 13.521975566459941,
+        "phaseAngle": 13.25093391963417,
+        "illuminatedFraction": 0.9866877611855283
+      }
+    },
+    {
+      "jde": 2468456.8477520775,
+      "moon98": {
+        "longitude": 219.44756829670186,
+        "latitude": -5.0117531868889404,
+        "distanceKm": 364895.72134176124
+      },
+      "de440s": {
+        "longitude": 219.44671942109747,
+        "latitude": -5.011477385429327,
+        "distanceKm": 364891.8306804656,
+        "rightAscension": 215.36500662036235,
+        "declination": -19.382399843565068,
+        "phaseAngle": 9.43467795828614,
+        "illuminatedFraction": 0.9932365643817314
+      }
+    },
+    {
+      "jde": 2439480.2104617096,
+      "moon98": {
+        "longitude": 7.090932703664161,
+        "latitude": -3.2063643187505853,
+        "distanceKm": 403984.4375469712
+      },
+      "de440s": {
+        "longitude": 7.090557725616143,
+        "latitude": -3.206190350344269,
+        "distanceKm": 403985.4634212115,
+        "rightAscension": 7.777288788615181,
+        "declination": -0.13041108003948534,
+        "phaseAngle": 81.14316917196598,
+        "illuminatedFraction": 0.576982984920008
+      }
+    },
+    {
+      "jde": 2486275.5658559757,
+      "moon98": {
+        "longitude": 275.36573857851124,
+        "latitude": -0.7022659849868197,
+        "distanceKm": 373623.07671883237
+      },
+      "de440s": {
+        "longitude": 275.3666002339103,
+        "latitude": -0.7025033200635042,
+        "distanceKm": 373623.8325095045,
+        "rightAscension": 275.87666934065055,
+        "declination": -24.02022546774693,
+        "phaseAngle": 141.81316191545667,
+        "illuminatedFraction": 0.10700053377542068
+      }
+    },
+    {
+      "jde": 2415217.317342125,
+      "moon98": {
+        "longitude": 351.5404411645157,
+        "latitude": 5.0466025486845805,
+        "distanceKm": 366252.8616849377
+      },
+      "de440s": {
+        "longitude": 351.5402895237085,
+        "latitude": 5.046555221168207,
+        "distanceKm": 366251.68565256987,
+        "rightAscension": 350.2419016471184,
+        "declination": 1.2823548390774067,
+        "phaseAngle": 57.80140170537712,
+        "illuminatedFraction": 0.7664277871625986
+      }
+    },
+    {
+      "jde": 2424873.6270627826,
+      "moon98": {
+        "longitude": 147.9989319978947,
+        "latitude": 4.1020715716741805,
+        "distanceKm": 401571.9160935268
+      },
+      "de440s": {
+        "longitude": 147.99870308824148,
+        "latitude": 4.1021789078982325,
+        "distanceKm": 401572.5233425424,
+        "rightAscension": 151.6467686519678,
+        "declination": 16.01933542504491,
+        "phaseAngle": 56.411576788146824,
+        "illuminatedFraction": 0.7766116218272674
+      }
+    },
+    {
+      "jde": 2428353.651922965,
+      "moon98": {
+        "longitude": 274.90653735779244,
+        "latitude": 0.12718104736342398,
+        "distanceKm": 386300.9226339271
+      },
+      "de440s": {
+        "longitude": 274.90731619484467,
+        "latitude": 0.12699113830533323,
+        "distanceKm": 386303.0350072986,
+        "rightAscension": 275.341433103032,
+        "declination": -23.229569236033004,
+        "phaseAngle": 7.05066884416971,
+        "illuminatedFraction": 0.9962189949161413
+      }
+    },
+    {
+      "jde": 2440911.950481709,
+      "moon98": {
+        "longitude": 153.91703280321892,
+        "latitude": -0.4996071828520421,
+        "distanceKm": 404239.6778820207
+      },
+      "de440s": {
+        "longitude": 153.9161567952603,
+        "latitude": -0.4998657632826516,
+        "distanceKm": 404240.04958049435,
+        "rightAscension": 155.62976226864603,
+        "declination": 9.609245178482475,
+        "phaseAngle": 95.04266719632105,
+        "illuminatedFraction": 0.45605121608630284
+      }
+    },
+    {
+      "jde": 2486885.820540137,
+      "moon98": {
+        "longitude": 43.247518102290044,
+        "latitude": -0.8114492495111113,
+        "distanceKm": 362249.67871908634
+      },
+      "de440s": {
+        "longitude": 43.246590040952256,
+        "latitude": -0.8111016243901641,
+        "distanceKm": 362249.8608491896,
+        "rightAscension": 41.04860224099477,
+        "declination": 15.034276683026858,
+        "phaseAngle": 31.050240959825633,
+        "illuminatedFraction": 0.9283576748490245
+      }
+    },
+    {
+      "jde": 2442394.375050634,
+      "moon98": {
+        "longitude": 250.98232610442676,
+        "latitude": 0.06275056712484985,
+        "distanceKm": 389731.15509404166
+      },
+      "de440s": {
+        "longitude": 250.9819237769141,
+        "latitude": 0.06252596895204078,
+        "distanceKm": 389727.1038214397,
+        "rightAscension": 249.4188791365929,
+        "declination": -22.030287402754894,
+        "phaseAngle": 170.49151961932455,
+        "illuminatedFraction": 0.006869419027676182
+      }
+    }
+  ]
+}

@@ -1,0 +1,1056 @@
+{
+  "generator": "python 3.14.0, astropy 8.0.1, pyerfa 2.0.1.5, scipy 1.18.1",
+  "source": "convertdate + erfa.cal2jd",
+  "cases": [
+    {
+      "calendar": "julian",
+      "year": 664,
+      "month": 5,
+      "day": 9.9107,
+      "jd": 1963713.4107
+    },
+    {
+      "calendar": "julian",
+      "year": -4663,
+      "month": 3,
+      "day": 28.6111,
+      "jd": 17984.1111
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1505,
+      "month": 9,
+      "day": 17.3421,
+      "jd": 2271008.8421
+    },
+    {
+      "calendar": "julian",
+      "year": 1933,
+      "month": 8,
+      "day": 22.6494,
+      "jd": 2427320.1494
+    },
+    {
+      "calendar": "julian",
+      "year": -1639,
+      "month": 12,
+      "day": 24.0686,
+      "jd": 1122770.5686
+    },
+    {
+      "calendar": "julian",
+      "year": 2093,
+      "month": 10,
+      "day": 25.2021,
+      "jd": 2485823.7021
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1802,
+      "month": 1,
+      "day": 16.002,
+      "jd": 2379241.502
+    },
+    {
+      "calendar": "gregorian",
+      "year": 409,
+      "month": 9,
+      "day": 6.5634,
+      "jd": 1870693.0634
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2899,
+      "month": 4,
+      "day": 14.765,
+      "jd": 662325.265
+    },
+    {
+      "calendar": "julian",
+      "year": -4356,
+      "month": 7,
+      "day": 17.3961,
+      "jd": 130226.8961
+    },
+    {
+      "calendar": "julian",
+      "year": -2124,
+      "month": 9,
+      "day": 10.1772,
+      "jd": 945519.6772
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4387,
+      "month": 2,
+      "day": 2.4571,
+      "jd": 118773.9571
+    },
+    {
+      "calendar": "julian",
+      "year": -198,
+      "month": 5,
+      "day": 4.9158,
+      "jd": 1648862.4158
+    },
+    {
+      "calendar": "julian",
+      "year": -1085,
+      "month": 8,
+      "day": 5.4575,
+      "jd": 1324977.9575
+    },
+    {
+      "calendar": "julian",
+      "year": -2234,
+      "month": 8,
+      "day": 4.1298,
+      "jd": 905304.6298
+    },
+    {
+      "calendar": "julian",
+      "year": -1576,
+      "month": 1,
+      "day": 4.8197,
+      "jd": 1145427.3197
+    },
+    {
+      "calendar": "julian",
+      "year": -3239,
+      "month": 4,
+      "day": 22.1663,
+      "jd": 538124.6663
+    },
+    {
+      "calendar": "gregorian",
+      "year": -188,
+      "month": 8,
+      "day": 25.9397,
+      "jd": 1652631.4397
+    },
+    {
+      "calendar": "julian",
+      "year": -168,
+      "month": 10,
+      "day": 2.8072,
+      "jd": 1659971.3072
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1066,
+      "month": 3,
+      "day": 13.4526,
+      "jd": 1331782.9526
+    },
+    {
+      "calendar": "julian",
+      "year": -862,
+      "month": 8,
+      "day": 5.6263,
+      "jd": 1406429.1263
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3523,
+      "month": 9,
+      "day": 12.5327,
+      "jd": 434566.0327
+    },
+    {
+      "calendar": "julian",
+      "year": -4584,
+      "month": 5,
+      "day": 23.9419,
+      "jd": 46895.4419
+    },
+    {
+      "calendar": "julian",
+      "year": 1859,
+      "month": 11,
+      "day": 9.41,
+      "jd": 2400369.91
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4031,
+      "month": 2,
+      "day": 19.6984,
+      "jd": 248817.1984
+    },
+    {
+      "calendar": "julian",
+      "year": 1145,
+      "month": 5,
+      "day": 19.8312,
+      "jd": 2139408.3312
+    },
+    {
+      "calendar": "julian",
+      "year": 876,
+      "month": 5,
+      "day": 21.5163,
+      "jd": 2041158.0163
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2330,
+      "month": 3,
+      "day": 13.7984,
+      "jd": 870117.2984
+    },
+    {
+      "calendar": "julian",
+      "year": 1859,
+      "month": 10,
+      "day": 17.1121,
+      "jd": 2400346.6121
+    },
+    {
+      "calendar": "julian",
+      "year": -3053,
+      "month": 7,
+      "day": 14.3735,
+      "jd": 606143.8735
+    },
+    {
+      "calendar": "julian",
+      "year": -3495,
+      "month": 12,
+      "day": 10.503,
+      "jd": 444853.003
+    },
+    {
+      "calendar": "julian",
+      "year": -3819,
+      "month": 8,
+      "day": 19.373,
+      "jd": 326398.873
+    },
+    {
+      "calendar": "gregorian",
+      "year": -331,
+      "month": 7,
+      "day": 9.2373,
+      "jd": 1600354.7373
+    },
+    {
+      "calendar": "julian",
+      "year": -1762,
+      "month": 1,
+      "day": 4.7093,
+      "jd": 1077491.2093
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4637,
+      "month": 3,
+      "day": 1.2697,
+      "jd": 27489.7697
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1545,
+      "month": 6,
+      "day": 18.0239,
+      "jd": 2285527.5239
+    },
+    {
+      "calendar": "julian",
+      "year": 1898,
+      "month": 9,
+      "day": 4.0596,
+      "jd": 2414548.5596
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4541,
+      "month": 4,
+      "day": 9.7949,
+      "jd": 62592.2949
+    },
+    {
+      "calendar": "julian",
+      "year": 1483,
+      "month": 10,
+      "day": 15.3076,
+      "jd": 2263010.8076
+    },
+    {
+      "calendar": "julian",
+      "year": -1813,
+      "month": 10,
+      "day": 17.6743,
+      "jd": 1059149.1743
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1294,
+      "month": 12,
+      "day": 15.9919,
+      "jd": 2194033.4919
+    },
+    {
+      "calendar": "julian",
+      "year": -364,
+      "month": 1,
+      "day": 27.723,
+      "jd": 1588133.223
+    },
+    {
+      "calendar": "julian",
+      "year": -1476,
+      "month": 9,
+      "day": 19.772,
+      "jd": 1182211.272
+    },
+    {
+      "calendar": "julian",
+      "year": -957,
+      "month": 6,
+      "day": 1.9153,
+      "jd": 1371665.4153
+    },
+    {
+      "calendar": "julian",
+      "year": -2759,
+      "month": 2,
+      "day": 19.3725,
+      "jd": 713382.8725
+    },
+    {
+      "calendar": "julian",
+      "year": 539,
+      "month": 1,
+      "day": 4.3831,
+      "jd": 1917930.8831
+    },
+    {
+      "calendar": "julian",
+      "year": -3247,
+      "month": 7,
+      "day": 11.6852,
+      "jd": 535283.1852
+    },
+    {
+      "calendar": "julian",
+      "year": -2873,
+      "month": 9,
+      "day": 20.4174,
+      "jd": 671956.9174
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2540,
+      "month": 7,
+      "day": 20.4753,
+      "jd": 2648976.9753
+    },
+    {
+      "calendar": "gregorian",
+      "year": -433,
+      "month": 9,
+      "day": 7.6853,
+      "jd": 1563159.1853
+    },
+    {
+      "calendar": "julian",
+      "year": -1335,
+      "month": 10,
+      "day": 25.8185,
+      "jd": 1233747.3185
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4405,
+      "month": 2,
+      "day": 4.7139,
+      "jd": 112201.2139
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2252,
+      "month": 7,
+      "day": 15.0419,
+      "jd": 898729.5419
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2321,
+      "month": 6,
+      "day": 12.3241,
+      "jd": 2568949.8241
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1020,
+      "month": 4,
+      "day": 12.3298,
+      "jd": 2093708.8298
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3654,
+      "month": 12,
+      "day": 22.9884,
+      "jd": 386819.4884
+    },
+    {
+      "calendar": "julian",
+      "year": -127,
+      "month": 4,
+      "day": 25.2237,
+      "jd": 1674785.7237
+    },
+    {
+      "calendar": "julian",
+      "year": -128,
+      "month": 1,
+      "day": 1.3115999999999999,
+      "jd": 1674305.8116
+    },
+    {
+      "calendar": "julian",
+      "year": -2495,
+      "month": 8,
+      "day": 17.1459,
+      "jd": 809987.6459
+    },
+    {
+      "calendar": "julian",
+      "year": -3963,
+      "month": 3,
+      "day": 18.8553,
+      "jd": 273649.3553
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2887,
+      "month": 9,
+      "day": 5.8065999999999995,
+      "jd": 2775763.3066
+    },
+    {
+      "calendar": "gregorian",
+      "year": -368,
+      "month": 7,
+      "day": 4.7484,
+      "jd": 1586836.2484
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2786,
+      "month": 7,
+      "day": 27.3567,
+      "jd": 703701.8567
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1904,
+      "month": 8,
+      "day": 1.0567,
+      "jd": 2416693.5567
+    },
+    {
+      "calendar": "julian",
+      "year": 2077,
+      "month": 12,
+      "day": 3.706,
+      "jd": 2480019.206
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2280,
+      "month": 7,
+      "day": 1.3918,
+      "jd": 888488.8918
+    },
+    {
+      "calendar": "julian",
+      "year": 1674,
+      "month": 2,
+      "day": 14.2096,
+      "jd": 2332530.7096
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1627,
+      "month": 6,
+      "day": 9.7992,
+      "jd": 1126970.2992
+    },
+    {
+      "calendar": "julian",
+      "year": 1593,
+      "month": 5,
+      "day": 3.3652,
+      "jd": 2303023.8652
+    },
+    {
+      "calendar": "julian",
+      "year": -2659,
+      "month": 6,
+      "day": 6.0424,
+      "jd": 750014.5424
+    },
+    {
+      "calendar": "julian",
+      "year": -1733,
+      "month": 4,
+      "day": 11.2424,
+      "jd": 1088179.7424
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2279,
+      "month": 2,
+      "day": 16.5791,
+      "jd": 888719.0791
+    },
+    {
+      "calendar": "gregorian",
+      "year": -537,
+      "month": 2,
+      "day": 5.2343,
+      "jd": 1524959.7343
+    },
+    {
+      "calendar": "julian",
+      "year": -4564,
+      "month": 10,
+      "day": 4.8761,
+      "jd": 54334.3761
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3763,
+      "month": 9,
+      "day": 7.3850999999999996,
+      "jd": 346901.8851
+    },
+    {
+      "calendar": "julian",
+      "year": 316,
+      "month": 6,
+      "day": 22.5112,
+      "jd": 1836650.0112
+    },
+    {
+      "calendar": "julian",
+      "year": -1489,
+      "month": 10,
+      "day": 9.925699999999999,
+      "jd": 1177482.4257
+    },
+    {
+      "calendar": "julian",
+      "year": -3179,
+      "month": 5,
+      "day": 19.6376,
+      "jd": 560067.1376
+    },
+    {
+      "calendar": "julian",
+      "year": -3241,
+      "month": 8,
+      "day": 26.595,
+      "jd": 537520.095
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3113,
+      "month": 12,
+      "day": 22.1547,
+      "jd": 584415.6547
+    },
+    {
+      "calendar": "gregorian",
+      "year": 698,
+      "month": 2,
+      "day": 27.7863,
+      "jd": 1976057.2863
+    },
+    {
+      "calendar": "gregorian",
+      "year": 558,
+      "month": 12,
+      "day": 21.2517,
+      "jd": 1925219.7517
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1053,
+      "month": 6,
+      "day": 1.4275,
+      "jd": 2105811.9275
+    },
+    {
+      "calendar": "julian",
+      "year": -591,
+      "month": 1,
+      "day": 27.9668,
+      "jd": 1505222.4668
+    },
+    {
+      "calendar": "julian",
+      "year": -1337,
+      "month": 2,
+      "day": 3.6534,
+      "jd": 1232752.1534
+    },
+    {
+      "calendar": "julian",
+      "year": -2121,
+      "month": 8,
+      "day": 22.1743,
+      "jd": 946595.6743
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1376,
+      "month": 3,
+      "day": 19.3398,
+      "jd": 1218563.8398
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1517,
+      "month": 12,
+      "day": 1.3658000000000001,
+      "jd": 2275466.8658
+    },
+    {
+      "calendar": "gregorian",
+      "year": 502,
+      "month": 12,
+      "day": 9.9743,
+      "jd": 1904754.4743
+    },
+    {
+      "calendar": "julian",
+      "year": 984,
+      "month": 4,
+      "day": 3.0185,
+      "jd": 2080556.5185
+    },
+    {
+      "calendar": "gregorian",
+      "year": -709,
+      "month": 5,
+      "day": 13.9748,
+      "jd": 1462236.4748
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2121,
+      "month": 2,
+      "day": 23.9903,
+      "jd": 2495793.4903
+    },
+    {
+      "calendar": "julian",
+      "year": -1145,
+      "month": 6,
+      "day": 14.2829,
+      "jd": 1303010.7829
+    },
+    {
+      "calendar": "julian",
+      "year": -4363,
+      "month": 6,
+      "day": 8.483,
+      "jd": 127630.983
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2560,
+      "month": 7,
+      "day": 27.9648,
+      "jd": 2656289.4648
+    },
+    {
+      "calendar": "julian",
+      "year": -3026,
+      "month": 5,
+      "day": 2.4949,
+      "jd": 615932.9949
+    },
+    {
+      "calendar": "julian",
+      "year": -517,
+      "month": 8,
+      "day": 3.6206,
+      "jd": 1532438.1206
+    },
+    {
+      "calendar": "julian",
+      "year": -257,
+      "month": 5,
+      "day": 2.7419000000000002,
+      "jd": 1627310.2419
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1071,
+      "month": 9,
+      "day": 4.5999,
+      "jd": 1330132.0999
+    },
+    {
+      "calendar": "julian",
+      "year": 1418,
+      "month": 4,
+      "day": 25.357,
+      "jd": 2239096.857
+    },
+    {
+      "calendar": "julian",
+      "year": 201,
+      "month": 10,
+      "day": 14.6548,
+      "jd": 1794760.1548
+    },
+    {
+      "calendar": "julian",
+      "year": 2003,
+      "month": 6,
+      "day": 9.0059,
+      "jd": 2452812.5059
+    },
+    {
+      "calendar": "gregorian",
+      "year": 810,
+      "month": 12,
+      "day": 2.7094,
+      "jd": 2017242.2094
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1865,
+      "month": 12,
+      "day": 8.3889,
+      "jd": 2402578.8889
+    },
+    {
+      "calendar": "julian",
+      "year": -2425,
+      "month": 10,
+      "day": 17.8934,
+      "jd": 835616.3934
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2679,
+      "month": 2,
+      "day": 5.773,
+      "jd": 742611.273
+    },
+    {
+      "calendar": "julian",
+      "year": -3329,
+      "month": 8,
+      "day": 28.7421,
+      "jd": 505380.2421
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1684,
+      "month": 2,
+      "day": 11.4717,
+      "jd": 2336169.9717
+    },
+    {
+      "calendar": "julian",
+      "year": -993,
+      "month": 7,
+      "day": 27.5764,
+      "jd": 1358572.0764
+    },
+    {
+      "calendar": "julian",
+      "year": 842,
+      "month": 9,
+      "day": 9.0018,
+      "jd": 2028849.5018
+    },
+    {
+      "calendar": "gregorian",
+      "year": 360,
+      "month": 9,
+      "day": 20.2444,
+      "jd": 1852809.7444
+    },
+    {
+      "calendar": "julian",
+      "year": -3856,
+      "month": 9,
+      "day": 25.5509,
+      "jd": 312922.0509
+    },
+    {
+      "calendar": "gregorian",
+      "year": 723,
+      "month": 4,
+      "day": 18.2048,
+      "jd": 1985236.7048
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1890,
+      "month": 12,
+      "day": 14.6516,
+      "jd": 2411716.1516
+    },
+    {
+      "calendar": "julian",
+      "year": 2389,
+      "month": 9,
+      "day": 22.1849,
+      "jd": 2593904.6849
+    },
+    {
+      "calendar": "julian",
+      "year": 800,
+      "month": 6,
+      "day": 23.4344,
+      "jd": 2013431.9344
+    },
+    {
+      "calendar": "julian",
+      "year": 739,
+      "month": 11,
+      "day": 23.3878,
+      "jd": 1991303.8878
+    },
+    {
+      "calendar": "gregorian",
+      "year": 672,
+      "month": 5,
+      "day": 21.5612,
+      "jd": 1966644.0612
+    },
+    {
+      "calendar": "gregorian",
+      "year": 338,
+      "month": 9,
+      "day": 13.5309,
+      "jd": 1844767.0309
+    },
+    {
+      "calendar": "julian",
+      "year": 2627,
+      "month": 4,
+      "day": 22.1392,
+      "jd": 2680680.6392
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3191,
+      "month": 4,
+      "day": 5.5389,
+      "jd": 555666.0389
+    },
+    {
+      "calendar": "julian",
+      "year": 1459,
+      "month": 1,
+      "day": 21.6886,
+      "jd": 2253978.1886
+    },
+    {
+      "calendar": "gregorian",
+      "year": 1673,
+      "month": 10,
+      "day": 2.7582,
+      "jd": 2332386.2582
+    },
+    {
+      "calendar": "julian",
+      "year": 45,
+      "month": 1,
+      "day": 21.2406,
+      "jd": 1737514.7406
+    },
+    {
+      "calendar": "julian",
+      "year": 1720,
+      "month": 9,
+      "day": 4.8537,
+      "jd": 2349535.3537
+    },
+    {
+      "calendar": "julian",
+      "year": -964,
+      "month": 9,
+      "day": 13.8316,
+      "jd": 1369213.3316
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4277,
+      "month": 10,
+      "day": 2.3055,
+      "jd": 159191.8055
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2115,
+      "month": 4,
+      "day": 10.2796,
+      "jd": 2493646.7796
+    },
+    {
+      "calendar": "gregorian",
+      "year": 113,
+      "month": 12,
+      "day": 21.7856,
+      "jd": 1762687.2856
+    },
+    {
+      "calendar": "gregorian",
+      "year": 183,
+      "month": 11,
+      "day": 3.2397,
+      "jd": 1788205.7397
+    },
+    {
+      "calendar": "julian",
+      "year": -1494,
+      "month": 11,
+      "day": 12.4363,
+      "jd": 1175689.9363
+    },
+    {
+      "calendar": "julian",
+      "year": -1717,
+      "month": 7,
+      "day": 27.4443,
+      "jd": 1094130.9443
+    },
+    {
+      "calendar": "gregorian",
+      "year": -87,
+      "month": 5,
+      "day": 18.0028,
+      "jd": 1689420.5028
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1664,
+      "month": 10,
+      "day": 19.9998,
+      "jd": 1113588.4998
+    },
+    {
+      "calendar": "julian",
+      "year": 2397,
+      "month": 12,
+      "day": 10.0923,
+      "jd": 2596905.5923
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2885,
+      "month": 2,
+      "day": 13.2383,
+      "jd": 667377.7383
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1217,
+      "month": 6,
+      "day": 24.8843,
+      "jd": 1276734.3843
+    },
+    {
+      "calendar": "gregorian",
+      "year": -746,
+      "month": 2,
+      "day": 9.9073,
+      "jd": 1448629.4073
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3421,
+      "month": 6,
+      "day": 20.4312,
+      "jd": 471735.9312
+    },
+    {
+      "calendar": "gregorian",
+      "year": -4468,
+      "month": 1,
+      "day": 3.843,
+      "jd": 89158.343
+    },
+    {
+      "calendar": "julian",
+      "year": -1706,
+      "month": 3,
+      "day": 7.6511,
+      "jd": 1098007.1511
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3111,
+      "month": 2,
+      "day": 8.676,
+      "jd": 584830.176
+    },
+    {
+      "calendar": "julian",
+      "year": -387,
+      "month": 3,
+      "day": 27.2531,
+      "jd": 1579791.7531
+    },
+    {
+      "calendar": "gregorian",
+      "year": -1925,
+      "month": 7,
+      "day": 6.6664,
+      "jd": 1018155.1664
+    },
+    {
+      "calendar": "julian",
+      "year": -2844,
+      "month": 3,
+      "day": 15.9009,
+      "jd": 682361.4009
+    },
+    {
+      "calendar": "gregorian",
+      "year": -2035,
+      "month": 12,
+      "day": 20.644,
+      "jd": 978145.144
+    },
+    {
+      "calendar": "julian",
+      "year": 1502,
+      "month": 8,
+      "day": 24.7698,
+      "jd": 2269899.2698
+    },
+    {
+      "calendar": "julian",
+      "year": 347,
+      "month": 2,
+      "day": 15.99,
+      "jd": 1847845.49
+    },
+    {
+      "calendar": "gregorian",
+      "year": -3230,
+      "month": 4,
+      "day": 20.6108,
+      "jd": 541436.1108
+    },
+    {
+      "calendar": "gregorian",
+      "year": 2035,
+      "month": 7,
+      "day": 10.9902,
+      "jd": 2464519.4902
+    }
+  ]
+}

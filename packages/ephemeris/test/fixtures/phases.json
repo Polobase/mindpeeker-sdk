@@ -1,0 +1,339 @@
+{
+  "generator": "python 3.14.0, astropy 8.0.1, pyerfa 2.0.1.5, scipy 1.18.1",
+  "source": "PyMeeus Moon.moon_phase; root of DE440s geometric Moon minus apparent Sun longitude (1950-2050)",
+  "cases": [
+    {
+      "k": -950.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2423488.271661359
+    },
+    {
+      "k": -543.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2435507.1724728695,
+      "de440sJde": 2435507.172444713
+    },
+    {
+      "k": -661.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2432007.719366914
+    },
+    {
+      "k": -459,
+      "phase": "new",
+      "pymeeusJde": 2437995.7709255973,
+      "de440sJde": 2437995.7708529877
+    },
+    {
+      "k": 412.5,
+      "phase": "full",
+      "pymeeusJde": 2463731.9472571122,
+      "de440sJde": 2463731.9471411724
+    },
+    {
+      "k": 1023.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2481782.482214437
+    },
+    {
+      "k": -614,
+      "phase": "new",
+      "pymeeusJde": 2433418.5380963287,
+      "de440sJde": 2433418.538075703
+    },
+    {
+      "k": -835.5,
+      "phase": "full",
+      "pymeeusJde": 2426877.0265780105
+    },
+    {
+      "k": -1024.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2421304.023036229
+    },
+    {
+      "k": -185.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2446064.728018882,
+      "de440sJde": 2446064.727915551
+    },
+    {
+      "k": 619.5,
+      "phase": "full",
+      "pymeeusJde": 2469844.367250575
+    },
+    {
+      "k": 1180,
+      "phase": "new",
+      "pymeeusJde": 2486395.9173726626
+    },
+    {
+      "k": 466,
+      "phase": "new",
+      "pymeeusJde": 2465311.268439201,
+      "de440sJde": 2465311.2685159813
+    },
+    {
+      "k": -524,
+      "phase": "new",
+      "pymeeusJde": 2436075.9812376723,
+      "de440sJde": 2436075.9812831595
+    },
+    {
+      "k": 854,
+      "phase": "new",
+      "pymeeusJde": 2476769.6516221715
+    },
+    {
+      "k": -100,
+      "phase": "new",
+      "pymeeusJde": 2448596.6647164286,
+      "de440sJde": 2448596.664752516
+    },
+    {
+      "k": 491,
+      "phase": "new",
+      "pymeeusJde": 2466049.850164772,
+      "de440sJde": 2466049.8501471905
+    },
+    {
+      "k": -390,
+      "phase": "new",
+      "pymeeusJde": 2440033.4340635953,
+      "de440sJde": 2440033.4340620735
+    },
+    {
+      "k": -1131,
+      "phase": "new",
+      "pymeeusJde": 2418150.803299548
+    },
+    {
+      "k": 231,
+      "phase": "new",
+      "pymeeusJde": 2458371.2518244386,
+      "de440sJde": 2458371.251802104
+    },
+    {
+      "k": -138.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2447453.04289873,
+      "de440sJde": 2447453.04291617
+    },
+    {
+      "k": -513,
+      "phase": "new",
+      "pymeeusJde": 2436401.2735136077,
+      "de440sJde": 2436401.273526436
+    },
+    {
+      "k": 760.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2474015.9341182676
+    },
+    {
+      "k": 294.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2460253.8596953778,
+      "de440sJde": 2460253.8596823337
+    },
+    {
+      "k": -652,
+      "phase": "new",
+      "pymeeusJde": 2432296.6802744134
+    },
+    {
+      "k": -817.5,
+      "phase": "full",
+      "pymeeusJde": 2427408.5633966196
+    },
+    {
+      "k": -180.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2446213.039291967,
+      "de440sJde": 2446213.039328167
+    },
+    {
+      "k": -870.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2425851.334624746
+    },
+    {
+      "k": -541,
+      "phase": "new",
+      "pymeeusJde": 2435574.610585622,
+      "de440sJde": 2435574.610626469
+    },
+    {
+      "k": 516,
+      "phase": "new",
+      "pymeeusJde": 2466787.8628323297,
+      "de440sJde": 2466787.8628225247
+    },
+    {
+      "k": -1163.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2417199.0060079317
+    },
+    {
+      "k": 176.5,
+      "phase": "full",
+      "pymeeusJde": 2456762.8218887155,
+      "de440sJde": 2456762.8218046697
+    },
+    {
+      "k": 940.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2479331.6804980063
+    },
+    {
+      "k": -1052,
+      "phase": "new",
+      "pymeeusJde": 2420483.607662613
+    },
+    {
+      "k": 387.25,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2462986.3060739324,
+      "de440sJde": 2462986.3059781836
+    },
+    {
+      "k": -483.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2437264.15438419,
+      "de440sJde": 2437264.1542741493
+    },
+    {
+      "k": -75.5,
+      "phase": "full",
+      "pymeeusJde": 2449320.772094113,
+      "de440sJde": 2449320.7720382237
+    },
+    {
+      "k": -1056.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2420358.5388587993
+    },
+    {
+      "k": -887.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2425349.839674486
+    },
+    {
+      "k": 477.25,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2465643.34915469,
+      "de440sJde": 2465643.349084843
+    },
+    {
+      "k": -958.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2423237.452819592
+    },
+    {
+      "k": -284.25,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2443156.3304331847,
+      "de440sJde": 2443156.330383853
+    },
+    {
+      "k": -297.5,
+      "phase": "full",
+      "pymeeusJde": 2442765.11122483,
+      "de440sJde": 2442765.111264368
+    },
+    {
+      "k": 1038.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2482225.581150126
+    },
+    {
+      "k": -332.5,
+      "phase": "full",
+      "pymeeusJde": 2441730.921981782,
+      "de440sJde": 2441730.921984543
+    },
+    {
+      "k": 588.25,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2468921.419531334,
+      "de440sJde": 2468921.419504304
+    },
+    {
+      "k": -565,
+      "phase": "new",
+      "pymeeusJde": 2434865.3491965705,
+      "de440sJde": 2434865.349121021
+    },
+    {
+      "k": 1187,
+      "phase": "new",
+      "pymeeusJde": 2486603.2690740996
+    },
+    {
+      "k": 498.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2466278.3341057952,
+      "de440sJde": 2466278.3339794413
+    },
+    {
+      "k": -666.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2431860.686173901
+    },
+    {
+      "k": -1115.5,
+      "phase": "full",
+      "pymeeusJde": 2418608.4215388824
+    },
+    {
+      "k": 791,
+      "phase": "new",
+      "pymeeusJde": 2474908.337180179
+    },
+    {
+      "k": 560,
+      "phase": "new",
+      "pymeeusJde": 2468087.8111221213,
+      "de440sJde": 2468087.8110483396
+    },
+    {
+      "k": -1032.75,
+      "phase": "firstQuarter",
+      "pymeeusJde": 2421052.996453878
+    },
+    {
+      "k": 1022.5,
+      "phase": "full",
+      "pymeeusJde": 2481744.6890995186
+    },
+    {
+      "k": 145,
+      "phase": "new",
+      "pymeeusJde": 2455831.9650799828,
+      "de440sJde": 2455831.965111692
+    },
+    {
+      "k": 123.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2455203.9449699754,
+      "de440sJde": 2455203.9448238495
+    },
+    {
+      "k": -289.5,
+      "phase": "full",
+      "pymeeusJde": 2443000.4890501625,
+      "de440sJde": 2443000.4890571055
+    },
+    {
+      "k": -516.5,
+      "phase": "full",
+      "pymeeusJde": 2436297.6564189233,
+      "de440sJde": 2436297.6564444522
+    },
+    {
+      "k": 763.75,
+      "phase": "lastQuarter",
+      "pymeeusJde": 2474103.624275273
+    }
+  ]
+}

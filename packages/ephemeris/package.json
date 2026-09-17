@@ -1,0 +1,53 @@
+{
+  "name": "@mindpeeker/ephemeris",
+  "version": "0.2.0",
+  "description": "Exact time and sky coordinates for testing time-of-day, sidereal and lunar hypotheses with honest nulls — Julian day, ΔT, GMST/GAST/LST, low-precision Sun and Moon (Meeus), moon illumination and phase times, and Spottiswoode's local-sidereal-time window scan with a seeded permutation null.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/ephemeris"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/ephemeris#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "ephemeris",
+    "julian-day",
+    "delta-t",
+    "sidereal-time",
+    "local-sidereal-time",
+    "meeus",
+    "sun-position",
+    "moon-position",
+    "moon-phase",
+    "permutation-test",
+    "spottiswoode",
+    "mind-matter-interaction"
+  ]
+}
