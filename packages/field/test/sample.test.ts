@@ -50,12 +50,14 @@ describe('sampleField', () => {
   })
 
   test('validation and entropy exhaustion', async () => {
-    expect(sampleField(prngBytes(100), 0, RECT)).rejects.toMatchObject({ code: 'invalid_config' })
-    expect(
+    await expect(sampleField(prngBytes(100), 0, RECT)).rejects.toMatchObject({
+      code: 'invalid_config',
+    })
+    await expect(
       sampleField(prngBytes(100), 5, { kind: 'rect', width: 0, height: 10 } as FieldRegion),
     ).rejects.toMatchObject({ code: 'invalid_config' })
     // a finite buffer too small for the field → insufficient_data (re-mapped from oracle)
-    expect(sampleField(prngBytes(8), 100, RECT)).rejects.toMatchObject({
+    await expect(sampleField(prngBytes(8), 100, RECT)).rejects.toMatchObject({
       code: 'insufficient_data',
     })
   })
@@ -64,7 +66,7 @@ describe('sampleField', () => {
     const controller = new AbortController()
     controller.abort()
     const points: Point[] = []
-    expect(
+    await expect(
       sampleField(prngSource('u', 9), 100, RECT, { signal: controller.signal }),
     ).rejects.toThrow(FieldError)
     expect(points.length).toBe(0)

@@ -5,12 +5,22 @@
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/visualizer"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/visualizer#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
   "engines": {
-    "node": ">=20.3",
     "bun": ">=1.2"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "bin": {
     "mindpeeker-viz": "./dist/cli.js"
@@ -23,7 +33,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && bun scripts/build-client.ts",
-    "typecheck": "tsc -p tsconfig.json && tsc -p client/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit && tsc -p client/tsconfig.json",
     "test": "bun test"
   },
   "dependencies": {

@@ -83,9 +83,9 @@ describe('scanTripolar', () => {
 
   test('rejects an empty catalog', async () => {
     const empty = { id: 'x', name: 'x', items: [] } as Catalog
-    expect(scanTripolar(empty, cyclingSource('u', prngBytes(64, 1)), PLAN)).rejects.toBeInstanceOf(
-      ScanError,
-    )
+    await expect(
+      scanTripolar(empty, cyclingSource('u', prngBytes(64, 1)), PLAN),
+    ).rejects.toBeInstanceOf(ScanError)
   })
 
   test('abort raises ScanError aborted', async () => {
@@ -95,6 +95,6 @@ describe('scanTripolar', () => {
       signal: ac.signal,
     })
     ac.abort()
-    expect(run).rejects.toMatchObject({ name: 'ScanError', code: 'aborted' })
+    await expect(run).rejects.toMatchObject({ name: 'ScanError', code: 'aborted' })
   })
 })

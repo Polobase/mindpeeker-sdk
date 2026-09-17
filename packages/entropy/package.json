@@ -5,11 +5,22 @@
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/entropy"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/entropy#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
   "engines": {
-    "node": ">=20.3"
+    "node": ">=20.19"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "exports": {
     ".": {
@@ -27,7 +38,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.node.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.build.node.json --noEmit",
     "test": "bun test",
     "bench": "bun scripts/bench.ts",
     "bench:stream": "bun scripts/stream-bench.ts",

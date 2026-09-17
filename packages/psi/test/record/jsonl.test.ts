@@ -105,20 +105,20 @@ describe('recordSession / readSession', () => {
       name: 'PsiError',
       code: 'bad_record',
     }) as unknown as Error
-    expect(readSession(['not json'])).rejects.toThrow(bad)
-    expect(readSession(['{"v":2,"t":0,"source":"a","sum":1,"bitsPerTrial":16}'])).rejects.toThrow(
-      bad,
-    )
-    expect(readSession(['{"v":1,"t":0,"source":"a","sum":1}'])).rejects.toThrow(bad)
-    expect(readSession(['{"v":1,"t":0,"source":"a","sum":1,"bitsPerTrial":4}'])).rejects.toThrow(
-      bad,
-    )
-    expect(readSession(['{"v":1,"t":0,"source":"","sum":1,"bitsPerTrial":16}'])).rejects.toThrow(
-      bad,
-    )
-    expect(readSession(['[1,2,3]'])).rejects.toThrow(bad)
+    await expect(readSession(['not json'])).rejects.toThrow(bad)
+    await expect(
+      readSession(['{"v":2,"t":0,"source":"a","sum":1,"bitsPerTrial":16}']),
+    ).rejects.toThrow(bad)
+    await expect(readSession(['{"v":1,"t":0,"source":"a","sum":1}'])).rejects.toThrow(bad)
+    await expect(
+      readSession(['{"v":1,"t":0,"source":"a","sum":1,"bitsPerTrial":4}']),
+    ).rejects.toThrow(bad)
+    await expect(
+      readSession(['{"v":1,"t":0,"source":"","sum":1,"bitsPerTrial":16}']),
+    ).rejects.toThrow(bad)
+    await expect(readSession(['[1,2,3]'])).rejects.toThrow(bad)
     // per-source bitsPerTrial must not change mid-recording
-    expect(
+    await expect(
       readSession([
         '{"v":1,"t":0,"source":"a","sum":1,"bitsPerTrial":16}',
         '{"v":1,"t":1,"source":"a","sum":2,"bitsPerTrial":32}',
@@ -144,7 +144,7 @@ describe('recordSession / readSession', () => {
     const first = await gen.next()
     expect(first.done).toBe(false)
     controller.abort()
-    expect(gen.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+    await expect(gen.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
   })
 
   test('invalid setups are rejected', async () => {
@@ -152,9 +152,13 @@ describe('recordSession / readSession', () => {
       name: 'PsiError',
       code: 'invalid_plan',
     }) as unknown as Error
-    expect(collect(recordSession([]))).rejects.toThrow(bad)
-    expect(collect(recordSession([countingSource('x'), countingSource('x')]))).rejects.toThrow(bad)
-    expect(collect(recordSession([countingSource('a')], { bitsPerTrial: 4 }))).rejects.toThrow(bad)
+    await expect(collect(recordSession([]))).rejects.toThrow(bad)
+    await expect(
+      collect(recordSession([countingSource('x'), countingSource('x')])),
+    ).rejects.toThrow(bad)
+    await expect(
+      collect(recordSession([countingSource('a')], { bitsPerTrial: 4 })),
+    ).rejects.toThrow(bad)
   })
 
   test('parseRecordLine rejects impossible sum values (regression)', () => {

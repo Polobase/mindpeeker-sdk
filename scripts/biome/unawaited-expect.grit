@@ -1,0 +1,14 @@
+language js
+
+or {
+  `expect($subject).rejects.$matcher($args)`,
+  `expect($subject).resolves.$matcher($args)`
+} as $assertion where {
+  not $assertion <: within `await $_`,
+  not $assertion <: within `return $_`,
+  register_diagnostic(
+    span = $assertion,
+    message = "Await (or return) this expect(...).rejects/resolves assertion: un-awaited, it can never fail the test.",
+    severity = "warn"
+  )
+}

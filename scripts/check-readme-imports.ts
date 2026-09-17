@@ -1,0 +1,274 @@
+/**
+ * README example checker: every `import … from '@mindpeeker/<pkg>[/sub]'` inside a
+ * fenced ts/js block of a README or docs page must name something the real entry
+ * point exports. Runtime values are checked by dynamically importing the package
+ * SOURCE entry (`packages/<pkg>/src/…`, derived from the package.json `exports`
+ * map); names that do not exist at runtime are accepted only if the entry exports a
+ * type of that name (resolved with the TypeScript checker).
+ *
+ * Opt a block out with an info string containing `no-check` (```ts no-check).
+ *
+ * Usage: bun scripts/check-readme-imports.ts [file.md …]   (exit 1 lists every failure;
+ * with no arguments it scans README.md, docs/, and every package README/docs page)
+ */
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const SCOPE = '@mindpeeker/'
+const FENCE_LANGS = new Set(['ts', 'typescript', 'js', 'javascript', 'mjs', 'mts', 'tsx', 'jsx'])
+const MARKDOWN_GLOBS = [
+  'README.md',
+  'docs/**/*.md',
+  'packages/*/README.md',
+  'packages/*/docs/**/*.md',
+]
+const SKIP_SEGMENT = /(^|\/)(node_modules|dist|\.[^/]+)\//
+
+/** One `import` statement found in a fenced block. */
+interface FoundImport {
+  readonly file: string
+  readonly line: number
+  readonly specifier: string
+  /** Imported (not local) names; `default` for a default import. */
+  readonly names: readonly string[]
+  /** Names written with `import type` / `type X`: only need a type export. */
+  readonly typeOnly: ReadonlySet<string>
+}
+
+interface Failure {
+  readonly where: string
+  readonly message: string
+}
+
+interface ExportsTarget {
+  readonly default?: string
+  readonly import?: string
+  readonly node?: string
+}
+
+interface PackageJson {
+  readonly name?: string
+  readonly exports?: Record<string, ExportsTarget | string>
+}
+
+/** Map every public specifier (`@mindpeeker/x`, `@mindpeeker/x/sub`) to its src entry. */
+function entryPoints(): Map<string, string> {
+  const entries = new Map<string, string>()
+  for (const pkgJsonPath of new Bun.Glob('packages/*/package.json').scanSync({ cwd: ROOT })) {
+    const dir = join(ROOT, dirname(pkgJsonPath))
+    const pkg = JSON.parse(readFileSync(join(ROOT, pkgJsonPath), 'utf8')) as PackageJson
+    if (!pkg.name?.startsWith(SCOPE) || !pkg.exports) continue
+    for (const [subpath, target] of Object.entries(pkg.exports)) {
+      const js =
+        typeof target === 'string' ? target : (target.default ?? target.import ?? target.node)
+      const match = js ? /^\.\/dist\/(.+)\.js$/.exec(js) : null
+      if (!match) continue
+      const src = join(dir, 'src', `${match[1]}.ts`)
+      if (!existsSync(src)) continue
+      const specifier = subpath === '.' ? pkg.name : `${pkg.name}/${subpath.replace(/^\.\//, '')}`
+      entries.set(specifier, src)
+    }
+  }
+  return entries
+}
+
+function markdownFiles(): string[] {
+  const files = new Set<string>()
+  for (const pattern of MARKDOWN_GLOBS) {
+    for (const file of new Bun.Glob(pattern).scanSync({ cwd: ROOT })) {
+      if (!SKIP_SEGMENT.test(`/${file}`)) files.add(file)
+    }
+  }
+  return [...files].sort()
+}
+
+/** Fenced ts/js blocks with the 1-based line number of their first code line. */
+function fencedBlocks(markdown: string): { line: number; code: string }[] {
+  const blocks: { line: number; code: string }[] = []
+  const lines = markdown.split('\n')
+  let open: { fence: string; line: number; body: string[]; check: boolean } | undefined
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i] ?? ''
+    const fence = /^ {0,3}(`{3,}|~{3,})\s*(.*)$/.exec(text)
+    if (open) {
+      if (fence?.[1]?.startsWith(open.fence) && (fence[2] ?? '').trim() === '') {
+        if (open.check) blocks.push({ line: open.line, code: open.body.join('\n') })
+        open = undefined
+      } else {
+        open.body.push(text)
+      }
+    } else if (fence?.[1]) {
+      const info = (fence[2] ?? '').trim().split(/\s+/)
+      const lang = (info[0] ?? '').toLowerCase()
+      open = {
+        fence: fence[1],
+        line: i + 2,
+        body: [],
+        check: FENCE_LANGS.has(lang) && !info.includes('no-check'),
+      }
+    }
+  }
+  return blocks
+}
+
+/**
+ * Replace `//` and `/* *\/` comments with spaces (newlines kept, so line numbers
+ * stay exact); string and template literals are skipped, not scanned.
+ */
+function stripComments(code: string): string {
+  let out = ''
+  let i = 0
+  while (i < code.length) {
+    const c = code[i] ?? ''
+    const next = code[i + 1] ?? ''
+    if (c === '/' && next === '/') {
+      while (i < code.length && code[i] !== '\n') {
+        out += ' '
+        i++
+      }
+    } else if (c === '/' && next === '*') {
+      const end = code.indexOf('*/', i + 2)
+      const stop = end === -1 ? code.length : end + 2
+      out += code.slice(i, stop).replace(/[^\n]/g, ' ')
+      i = stop
+    } else if (c === "'" || c === '"' || c === '`') {
+      let j = i + 1
+      while (j < code.length && code[j] !== c && !(c !== '`' && code[j] === '\n')) {
+        j += code[j] === '\\' ? 2 : 1
+      }
+      out += code.slice(i, j + 1)
+      i = j + 1
+    } else {
+      out += c
+      i++
+    }
+  }
+  return out
+}
+
+function parseImports(file: string, blockLine: number, code: string): FoundImport[] {
+  const found: FoundImport[] = []
+  const src = stripComments(code)
+  const lineOf = (index: number) => blockLine + src.slice(0, index).split('\n').length - 1
+  const statement = /\bimport\s+(type\s+)?([^;'"`]*?)\s*\bfrom\s*['"]([^'"]+)['"]/g
+  for (const m of src.matchAll(statement)) {
+    const specifier = m[3] ?? ''
+    if (!specifier.startsWith(SCOPE)) continue
+    const wholeType = Boolean(m[1])
+    const clause = (m[2] ?? '').trim()
+    const names: string[] = []
+    const typeOnly = new Set<string>()
+    const braces = /\{([^}]*)\}/.exec(clause)
+    for (const raw of (braces?.[1] ?? '').split(',')) {
+      const part = raw.trim()
+      if (!part) continue
+      const typed = /^type\s+/.test(part)
+      const imported = (part.replace(/^type\s+/, '').split(/\s+as\s+/)[0] ?? '').trim()
+      if (!imported) continue
+      names.push(imported)
+      if (wholeType || typed) typeOnly.add(imported)
+    }
+    const head = (braces ? clause.slice(0, braces.index) : clause).replace(/,\s*$/, '').trim()
+    const defaultName = head.split(',')[0]?.trim() ?? ''
+    if (defaultName && !defaultName.startsWith('*')) {
+      names.push('default')
+      if (wholeType) typeOnly.add('default')
+    }
+    found.push({ file, line: lineOf(m.index ?? 0), specifier, names, typeOnly })
+  }
+  const sideEffect = /\bimport\s*['"]([^'"]+)['"]/g
+  for (const m of src.matchAll(sideEffect)) {
+    const specifier = m[1] ?? ''
+    if (specifier.startsWith(SCOPE)) {
+      found.push({ file, line: lineOf(m.index ?? 0), specifier, names: [], typeOnly: new Set() })
+    }
+  }
+  return found
+}
+
+/** Type-level export names of each entry, via one TypeScript program over all entries. */
+async function typeExports(entries: readonly string[]): Promise<Map<string, Set<string>>> {
+  const { default: ts } = await import('typescript')
+  const program = ts.createProgram([...entries], {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    lib: ['lib.es2023.d.ts', 'lib.dom.d.ts'],
+    types: ['bun'],
+    noEmit: true,
+    skipLibCheck: true,
+  })
+  const checker = program.getTypeChecker()
+  const result = new Map<string, Set<string>>()
+  for (const entry of entries) {
+    const source = program.getSourceFile(entry)
+    const symbol = source ? checker.getSymbolAtLocation(source) : undefined
+    const names = new Set<string>()
+    if (symbol) for (const s of checker.getExportsOfModule(symbol)) names.add(s.getName())
+    result.set(entry, names)
+  }
+  return result
+}
+
+async function main(argv: readonly string[]): Promise<number> {
+  const entries = entryPoints()
+  const files =
+    argv.length > 0 ? argv.map((f) => resolve(f)) : markdownFiles().map((f) => join(ROOT, f))
+  const imports = files.flatMap((path) => {
+    const shown = relative(ROOT, path)
+    const file = shown.startsWith('..') ? path : shown
+    return fencedBlocks(readFileSync(path, 'utf8')).flatMap((b) =>
+      parseImports(file, b.line, b.code),
+    )
+  })
+  const failures: Failure[] = []
+  const runtime = new Map<string, Record<string, unknown>>()
+  const unresolved: { imp: FoundImport; entry: string; name: string }[] = []
+
+  for (const imp of imports) {
+    const where = `${imp.file}:${imp.line}`
+    const entry = entries.get(imp.specifier)
+    if (!entry) {
+      failures.push({ where, message: `'${imp.specifier}' is not a public entry point` })
+      continue
+    }
+    let mod = runtime.get(entry)
+    if (!mod) {
+      try {
+        mod = (await import(entry)) as Record<string, unknown>
+      } catch (error) {
+        failures.push({ where, message: `'${imp.specifier}' failed to load: ${String(error)}` })
+        continue
+      }
+      runtime.set(entry, mod)
+    }
+    for (const name of imp.names) {
+      if (!(name in mod)) unresolved.push({ imp, entry, name })
+    }
+  }
+
+  if (unresolved.length > 0) {
+    const types = await typeExports([...new Set(unresolved.map((u) => u.entry))])
+    for (const { imp, entry, name } of unresolved) {
+      if (types.get(entry)?.has(name)) continue
+      const kind = imp.typeOnly.has(name) ? 'type' : 'export'
+      failures.push({
+        where: `${imp.file}:${imp.line}`,
+        message: `${kind} '${name}' is not exported by '${imp.specifier}' (${relative(ROOT, entry)})`,
+      })
+    }
+  }
+
+  const checked = imports.reduce((n, imp) => n + imp.names.length, 0)
+  if (failures.length === 0) {
+    console.log(`README imports OK: ${imports.length} import statements, ${checked} names checked`)
+    return 0
+  }
+  console.error(`README import check failed (${failures.length}):`)
+  for (const f of failures) console.error(`  ${f.where}  ${f.message}`)
+  return 1
+}
+
+process.exit(await main(process.argv.slice(2)))

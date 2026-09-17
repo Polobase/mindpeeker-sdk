@@ -24,7 +24,7 @@ describe('sttyArgs', () => {
 describe('nodeSerialSource', () => {
   test('requires a device path', async () => {
     // @ts-expect-error missing path
-    expect(nodeSerialSource({})).rejects.toThrow(TypeError)
+    await expect(nodeSerialSource({})).rejects.toThrow(TypeError)
   })
 
   test('maps a failing stty exit to a network EntropyError', async () => {

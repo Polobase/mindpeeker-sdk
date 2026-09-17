@@ -4,7 +4,13 @@
 
 import type { EntropyProvider } from '@mindpeeker/entropy'
 import { fallback } from '@mindpeeker/entropy'
-import { anuLegacy, cryptoProvider, curby, drand, jitterEntropy } from '@mindpeeker/entropy/providers'
+import {
+  anuLegacy,
+  cryptoProvider,
+  curby,
+  drand,
+  jitterEntropy,
+} from '@mindpeeker/entropy/providers'
 import { currentSourceId } from '~/utils/sources'
 
 const MAKE: Record<string, () => EntropyProvider> = {

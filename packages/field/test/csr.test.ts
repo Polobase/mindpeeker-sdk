@@ -103,11 +103,11 @@ describe('csrEnvelope', () => {
     expect(above).toBeGreaterThan(3) // clustering exceeds the null band at most scales
   })
 
-  test('validation', () => {
-    expect(csrEnvelope(prngSource('u', 1), 1, region, radii)).rejects.toMatchObject({
+  test('validation', async () => {
+    await expect(csrEnvelope(prngSource('u', 1), 1, region, radii)).rejects.toMatchObject({
       code: 'invalid_config',
     })
-    expect(csrEnvelope(prngSource('u', 1), 10, region, radii, 0)).rejects.toMatchObject({
+    await expect(csrEnvelope(prngSource('u', 1), 10, region, radii, 0)).rejects.toMatchObject({
       code: 'invalid_config',
     })
   })

@@ -200,7 +200,7 @@ describe('createDashboard', () => {
     } catch (error) {
       expect((error as VisualizerError).code).toBe('server')
     }
-    expect(fetch(dashboard.url)).rejects.toThrow()
+    await expect(fetch(dashboard.url)).rejects.toThrow()
     await dashboard.stop() // idempotent
   })
 
@@ -211,7 +211,7 @@ describe('createDashboard', () => {
     expect(res.status).toBe(200)
     controller.abort()
     await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(fetch(dashboard.url)).rejects.toThrow()
+    await expect(fetch(dashboard.url)).rejects.toThrow()
   })
 
   test('a pre-aborted signal refuses to start', () => {

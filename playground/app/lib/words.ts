@@ -1,6 +1,7 @@
 // Client-only word library for the oracle: a bundled fallback plus a real
 // English + German library fetched at runtime (both CORS-enabled raw files).
 
+// biome-ignore format: compact word list
 export const WORDS: readonly string[] = [
   'light', 'shadow', 'water', 'fire', 'earth', 'wind', 'spirit', 'silence', 'wisdom', 'chaos',
   'order', 'love', 'truth', 'dream', 'vision', 'mirror', 'threshold', 'journey', 'origin', 'cipher',

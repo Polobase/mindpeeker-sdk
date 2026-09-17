@@ -20,7 +20,7 @@ Zero-runtime-dependency beyond the SDK, browser-safe. Depends on
 
 ```ts
 import { sampleField } from '@mindpeeker/field'
-import { anu } from '@mindpeeker/entropy' // any provider works structurally
+import { anu } from '@mindpeeker/entropy/providers' // any provider works structurally
 
 const { points, accounting } = await sampleField(anu(), 1000, { kind: 'disk', radius: 3000 })
 // points: area-uniform in the region; accounting: honest bytes/bits receipt

@@ -57,6 +57,31 @@ its own typed error class with a stable `code` union, and deterministic inputs a
 deterministic outputs. All packages except the visualizer's server are browser-safe (enforced
 by tests); the visualizer server is deliberately Bun-only.
 
+### Shared conventions
+
+**Byte sources and abort.** A live source is anything shaped like
+`{ name: string, stream(opts?: { signal?: AbortSignal, chunkBytes?: number }): AsyncIterable<Uint8Array> }`.
+`chunkBytes` is a hint a source may ignore; consumers must accept chunks of any length. When
+`signal` fires, a source may either **throw** (entropy providers throw
+`EntropyError('aborted')`) or simply **return** (end the iteration) — both are valid, so every
+consumer handles both: it checks `signal.aborted` when a stream ends and reports the abort as
+its own `aborted` error, never as "not enough data". **Whoever opens an iterator or reader closes
+it** (`iterator.return()` / `reader.close()` in a `finally`), so a finished or failed call never
+leaks a socket, serial port, camera track or child process; a reader you pass in stays open and
+remains yours to close.
+
+**Errors.** Each package throws exactly one error class of its own (`EntropyError`,
+`NegentropyError`, `FlowError`, `PsiError`, `OracleError`, …) with `name` set to the class name,
+a stable machine-readable `code` from an exported string-literal union (`FlowErrorCode`, …), and
+the underlying failure — a sibling package's error, a `DOMException`, a `RangeError` — attached as
+`cause`. Match on `code`, never on `message`. Caller mistakes are rejected at the public boundary
+before any entropy or I/O is spent.
+
+**Option names.** The same concept uses the same name in every package: `windowSize` /
+`hopSize` for sliding windows (in samples, trials or steps), `timeoutMs` for durations in
+milliseconds, `signal` for an `AbortSignal`, and `seed` for anything that makes a randomized
+procedure (surrogates, permutations, dithering) reproducible.
+
 ## Quick start
 
 ```sh

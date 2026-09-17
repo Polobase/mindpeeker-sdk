@@ -13,6 +13,25 @@
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@mindpeeker/entropy": ["./packages/entropy/src/index.ts"],
+      "@mindpeeker/entropy/providers": ["./packages/entropy/src/providers/index.ts"],
+      "@mindpeeker/entropy/node": ["./packages/entropy/src/node/index.ts"],
+      "@mindpeeker/negentropy": ["./packages/negentropy/src/index.ts"],
+      "@mindpeeker/negentropy/numerics": ["./packages/negentropy/src/numerics.ts"],
+      "@mindpeeker/flow": ["./packages/flow/src/index.ts"],
+      "@mindpeeker/psi": ["./packages/psi/src/index.ts"],
+      "@mindpeeker/rate": ["./packages/rate/src/index.ts"],
+      "@mindpeeker/oracle": ["./packages/oracle/src/index.ts"],
+      "@mindpeeker/vdf": ["./packages/vdf/src/index.ts"],
+      "@mindpeeker/scan": ["./packages/scan/src/index.ts"],
+      "@mindpeeker/field": ["./packages/field/src/index.ts"],
+      "@mindpeeker/field/geo": ["./packages/field/src/geo.ts"],
+      "@mindpeeker/gematria": ["./packages/gematria/src/index.ts"],
+      "@mindpeeker/gematria/oracle": ["./packages/gematria/src/oracle.ts"],
+      "@mindpeeker/gematria/lexicon": ["./packages/gematria/src/lexicon.ts"],
+      "@mindpeeker/visualizer": ["./packages/visualizer/src/index.ts"]
+    }
   }
 }

@@ -90,7 +90,7 @@ describe('scan', () => {
 
   test('rejects an empty catalog', async () => {
     const empty = { id: 'x', name: 'x', items: [] } as Catalog
-    expect(scan(empty, src(1))).rejects.toBeInstanceOf(ScanError)
+    await expect(scan(empty, src(1))).rejects.toBeInstanceOf(ScanError)
   })
 
   test('a starved source raises insufficient_entropy', async () => {
@@ -101,7 +101,7 @@ describe('scan', () => {
         yield new Uint8Array([1, 2, 3])
       },
     }
-    expect(scan(catalog(30), tiny)).rejects.toMatchObject({
+    await expect(scan(catalog(30), tiny)).rejects.toMatchObject({
       name: 'ScanError',
       code: 'insufficient_entropy',
     })

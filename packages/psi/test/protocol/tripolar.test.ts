@@ -95,7 +95,7 @@ describe('runTripolar', () => {
       bitsPerTrial: 16,
       runsPerIntention: 1,
     })
-    expect(collect(runs)).rejects.toMatchObject({
+    await expect(collect(runs)).rejects.toMatchObject({
       name: 'PsiError',
       code: 'insufficient_data',
       source: 'reg',
@@ -112,7 +112,7 @@ describe('runTripolar', () => {
     const first = await runs.next()
     expect(first.done).toBe(false)
     controller.abort()
-    expect(runs.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+    await expect(runs.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
   })
 
   test('invalid plans are rejected before any I/O', async () => {
@@ -126,7 +126,7 @@ describe('runTripolar', () => {
     ]
     for (const plan of bad) {
       // biome-ignore lint/suspicious/noExplicitAny: deliberately malformed plans
-      expect(collect(runTripolar(source, plan as any))).rejects.toMatchObject({
+      await expect(collect(runTripolar(source, plan as any))).rejects.toMatchObject({
         name: 'PsiError',
         code: 'invalid_plan',
       })

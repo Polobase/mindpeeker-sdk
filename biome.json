@@ -1,7 +1,19 @@
 {
   "files": {
-    "includes": ["packages/**", "site/**", "!**/dist", "!**/.claude-flow", "!**/.claude"]
+    "includes": [
+      "packages/**",
+      "site/**",
+      "playground/**/*.ts",
+      "scripts/**",
+      "!**/dist",
+      "!**/.claude-flow",
+      "!**/.claude",
+      "!playground/.nuxt",
+      "!playground/.output",
+      "!**/*.grit"
+    ]
   },
+  "plugins": ["./scripts/biome/unawaited-expect.grit"],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -15,6 +27,25 @@
     }
   },
   "linter": {
-    "enabled": true
-  }
+    "enabled": true,
+    "rules": {
+      "nursery": {
+        "noFloatingPromises": "warn",
+        "noMisusedPromises": "warn"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/*/test/**"],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noFloatingPromises": "error",
+            "noMisusedPromises": "error"
+          }
+        }
+      }
+    }
+  ]
 }

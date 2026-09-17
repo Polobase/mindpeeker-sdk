@@ -1,0 +1,62 @@
+name: CI
+
+# Lint, typecheck, build, test, and package-lint every workspace package.
+# Also callable (`workflow_call`) so the Pages deploys run it as a gate first.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# `github.workflow` is the CALLER's name under workflow_call, so the gate run
+# inside a Pages deploy never cancels (or is cancelled by) the push run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.1'
+      - run: bun install --frozen-lockfile
+
+      # Build BEFORE check: `typecheck` also runs `tsc -p tsconfig.build.json --noEmit`,
+      # which resolves sibling packages through their published `dist` types (exactly
+      # what consumers see), so those must exist. `bun run build` (scripts/build.ts)
+      # builds workspaces in dependency order. Tests themselves resolve siblings from
+      # `src` via the `paths` in tsconfig.base.json, so a stale `dist` cannot mask a regression.
+      - name: Build
+        run: bun run build
+
+      # biome check + typecheck (test and browser build configs) + README import checker
+      - name: Check
+        run: bun run check
+
+      - name: Test
+        run: bun test
+
+      # Publish-shape lint on the packed tarball of every package. Both tools need
+      # the npm registry once to download themselves (versions pinned); they then run
+      # fully offline against `dist`, so no continue-on-error is needed.
+      # attw's esm-only profile ignores node10/CJS resolution: every package is ESM-only.
+      - name: Package lint (publint + arethetypeswrong)
+        run: |
+          failed=0
+          for dir in packages/*/; do
+            dir="${dir%/}"
+            echo "::group::${dir}"
+            bunx publint@0.3.24 --strict "$dir" || failed=1
+            (cd "$dir" && bunx @arethetypeswrong/cli@0.18.5 --pack . --profile esm-only --format ascii) || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed

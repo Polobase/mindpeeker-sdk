@@ -83,7 +83,7 @@ describe('broadcast — target resolution + receipt', () => {
 
   test('an unresolvable target throws invalid_target', async () => {
     const gen = broadcast({} as never, cyclingSource('u', prngBytes(64, 1)), { rounds: 1 })
-    expect(gen.next()).rejects.toMatchObject({ name: 'ScanError', code: 'invalid_target' })
+    await expect(gen.next()).rejects.toMatchObject({ name: 'ScanError', code: 'invalid_target' })
   })
 
   test('receipt JSONL round-trips byte-exact', async () => {
@@ -147,7 +147,7 @@ describe('broadcast — control flow', () => {
     const first = await gen.next()
     expect(first.done).toBe(false)
     ac.abort()
-    expect(gen.next()).rejects.toMatchObject({ name: 'ScanError', code: 'aborted' })
+    await expect(gen.next()).rejects.toMatchObject({ name: 'ScanError', code: 'aborted' })
   })
 
   test('a source that ends stops the broadcast cleanly with a receipt', async () => {

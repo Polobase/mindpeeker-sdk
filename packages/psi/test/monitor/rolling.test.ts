@@ -78,7 +78,7 @@ describe('rollingStouffer', () => {
     const first = await monitor.next()
     expect(first.done).toBe(false)
     controller.abort()
-    expect(monitor.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
+    await expect(monitor.next()).rejects.toMatchObject({ name: 'PsiError', code: 'aborted' })
   })
 
   test('breaking out of the loop is clean (no hang, no further pulls)', async () => {
