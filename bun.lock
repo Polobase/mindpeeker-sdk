@@ -10,9 +10,17 @@
         "typescript": "^5.5.0",
       },
     },
+    "packages/coincidence": {
+      "name": "@mindpeeker/coincidence",
+      "version": "0.2.0",
+    },
     "packages/entropy": {
       "name": "@mindpeeker/entropy",
       "version": "0.1.0",
+    },
+    "packages/ephemeris": {
+      "name": "@mindpeeker/ephemeris",
+      "version": "0.2.0",
     },
     "packages/field": {
       "name": "@mindpeeker/field",
@@ -35,6 +43,17 @@
       "dependencies": {
         "@mindpeeker/oracle": "workspace:*",
       },
+    },
+    "packages/judging": {
+      "name": "@mindpeeker/judging",
+      "version": "0.2.0",
+      "dependencies": {
+        "@mindpeeker/negentropy": "workspace:*",
+      },
+    },
+    "packages/ledger": {
+      "name": "@mindpeeker/ledger",
+      "version": "0.2.0",
     },
     "packages/negentropy": {
       "name": "@mindpeeker/negentropy",
@@ -78,6 +97,7 @@
       "dependencies": {
         "@mindpeeker/entropy": "workspace:*",
         "@mindpeeker/negentropy": "workspace:*",
+        "@mindpeeker/psi": "workspace:*",
       },
     },
     "site": {
@@ -172,13 +192,21 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
+    "@mindpeeker/coincidence": ["@mindpeeker/coincidence@workspace:packages/coincidence"],
+
     "@mindpeeker/entropy": ["@mindpeeker/entropy@workspace:packages/entropy"],
+
+    "@mindpeeker/ephemeris": ["@mindpeeker/ephemeris@workspace:packages/ephemeris"],
 
     "@mindpeeker/field": ["@mindpeeker/field@workspace:packages/field"],
 
     "@mindpeeker/flow": ["@mindpeeker/flow@workspace:packages/flow"],
 
     "@mindpeeker/gematria": ["@mindpeeker/gematria@workspace:packages/gematria"],
+
+    "@mindpeeker/judging": ["@mindpeeker/judging@workspace:packages/judging"],
+
+    "@mindpeeker/ledger": ["@mindpeeker/ledger@workspace:packages/ledger"],
 
     "@mindpeeker/negentropy": ["@mindpeeker/negentropy@workspace:packages/negentropy"],
 

@@ -31,7 +31,11 @@
       "@mindpeeker/gematria": ["./packages/gematria/src/index.ts"],
       "@mindpeeker/gematria/oracle": ["./packages/gematria/src/oracle.ts"],
       "@mindpeeker/gematria/lexicon": ["./packages/gematria/src/lexicon.ts"],
-      "@mindpeeker/visualizer": ["./packages/visualizer/src/index.ts"]
+      "@mindpeeker/visualizer": ["./packages/visualizer/src/index.ts"],
+      "@mindpeeker/ledger": ["./packages/ledger/src/index.ts"],
+      "@mindpeeker/coincidence": ["./packages/coincidence/src/index.ts"],
+      "@mindpeeker/ephemeris": ["./packages/ephemeris/src/index.ts"],
+      "@mindpeeker/judging": ["./packages/judging/src/index.ts"]
     }
   }
 }
