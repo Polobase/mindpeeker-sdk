@@ -38,3 +38,38 @@ export function prngSource(name: string, seed = 0xabcdef01): ByteSource {
     },
   }
 }
+
+/** A {@link prngSource} that records how many bytes it delivered and whether its stream was released. */
+export interface TrackedSource extends ByteSource {
+  readonly delivered: number
+  readonly streams: number
+  readonly released: number
+}
+
+export function trackedSource(seed = 0x5eed): TrackedSource {
+  const inner = prngSource('tracked', seed)
+  const state = { delivered: 0, streams: 0, released: 0 }
+  return {
+    name: 'tracked',
+    get delivered() {
+      return state.delivered
+    },
+    get streams() {
+      return state.streams
+    },
+    get released() {
+      return state.released
+    },
+    async *stream() {
+      state.streams++
+      try {
+        for await (const chunk of inner.stream()) {
+          state.delivered += chunk.length
+          yield chunk
+        }
+      } finally {
+        state.released++
+      }
+    },
+  }
+}

@@ -2,17 +2,20 @@
 # requires-python = ">=3.11"
 # dependencies = ["numpy>=1.26"]
 # ///
-"""Generate authoritative cross-check fixtures for @mindpeeker/field.
+"""Generate the 0.1 arithmetic cross-check fixture for @mindpeeker/field.
 
 Run manually (never at test time):
 
     uv run packages/field/scripts/fixtures/generate.py
 
-Writes JSON into packages/field/test/fixtures/. Every fixture embeds its own
+Writes packages/field/test/fixtures/field.json. Every fixture embeds its own
 points — bun tests never reproduce a Python PRNG. The reference values are
-plain numpy implementations of the same estimator formulas the TS uses
-(Clark–Evans nearest-neighbour, Besag's centered L(r) − r), so the fixtures
-cross-check the TS across a language boundary.
+plain numpy ports of the same estimator formulas the TS uses (Clark–Evans
+nearest-neighbour, Besag's centered L(r) − r with A/n² and no edge
+correction): they check the arithmetic across a language boundary, not the
+estimators. Independent references (scipy numerics, spatstat definitions)
+live in generate_stats.py and generate_density.py, which also read the
+points stored here.
 """
 
 import json
