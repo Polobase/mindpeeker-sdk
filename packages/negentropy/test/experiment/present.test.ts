@@ -2,11 +2,13 @@ import { describe, expect, test } from 'bun:test'
 import {
   presentCorrelation,
   presentCounts,
+  presentCovar,
   presentCumulative,
   presentDevvar,
   presentNetvar,
   stepStouffer,
 } from '../../src/experiment/present.js'
+import { covar } from '../../src/stats/covar.js'
 import { cumulativeDeviation } from '../../src/stats/cumdev.js'
 import { devvar, interSourceCorrelation, netvar } from '../../src/stats/network.js'
 import { chiSquareP, normalP } from '../../src/stats/pvalues.js'
@@ -41,6 +43,15 @@ describe('presence-aware statistics', () => {
     expect(corr?.statistic).toBe(strictCorr.statistic)
     expect(corr?.df).toBe(strictCorr.df)
     expect(corr?.pValue).toBe(strictCorr.pValue)
+    for (const bitsPerTrial of [8, 200]) {
+      const strictCovar = covar(slices, SOURCES, { bitsPerTrial })
+      expect(presentCovar(zs, 100, 400, bitsPerTrial)).toEqual({
+        statistic: strictCovar.statistic,
+        df: strictCovar.df,
+        pValue: strictCovar.pValue,
+        n: 300,
+      })
+    }
     const stouffers = Float64Array.from({ length: 300 }, (_, t) =>
       stoufferZ(slices.map((s) => s[t] as number)),
     )
@@ -76,6 +87,25 @@ describe('presence-aware statistics', () => {
         Number(v.toFixed(12)),
       ),
     )
+  })
+
+  test('covar drops absent sources per step: hand-computed 3-step example', () => {
+    // u = z² − 1. step 0: a, b, c present → u = (0, 3, 0) → pairs 0·3 + 0·0 + 3·0 = 0;
+    // step 1: a, c → u = (3, 8) → 24; step 2: only b → no pair
+    const nan = Number.NaN
+    const zs = [
+      Float64Array.from([1, 2, nan]),
+      Float64Array.from([2, nan, 3]),
+      Float64Array.from([1, 3, nan]),
+    ]
+    const k = 8
+    const v = 2 - 2 / k
+    const result = presentCovar(zs, 0, 3, k)
+    expect(result?.df).toBe(4) // 3 pairs + 1 pair
+    expect(result?.n).toBe(3)
+    expect(result?.statistic).toBeCloseTo(24 / Math.sqrt(4 * v * v), 14)
+    expect(result?.pValue).toBe(normalP(result?.statistic as number, 'upper'))
+    expect(presentCovar(zs, 2, 3, k)).toBeNull() // a single present source has no pair
   })
 
   test('steps with nobody present add nothing; no data → null', () => {

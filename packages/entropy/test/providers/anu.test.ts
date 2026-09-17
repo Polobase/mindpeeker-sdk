@@ -26,10 +26,24 @@ providerContract('anu', () => anu({ apiKey: 'k', fetch: anuMock().fetch }), {
 })
 
 describe('anu', () => {
-  test('requires an apiKey', () => {
-    thrownEntropyError(() => anu({ apiKey: '' }), 'invalid_request')
-    // @ts-expect-error missing options entirely
-    thrownEntropyError(() => anu(), 'invalid_request')
+  test('requires a valid apiKey: missing, non-string, blank, control or non-ASCII values throw invalid_request', () => {
+    const invalid: unknown[] = [
+      undefined,
+      '',
+      42,
+      '   ',
+      'SECRET-TOKEN\n',
+      'SECRET TOKEN',
+      `SECRET${String.fromCodePoint(0x43a, 0x43b)}`,
+      `SECRET${String.fromCodePoint(0)}`,
+    ]
+    for (const apiKey of invalid) {
+      const error = thrownEntropyError(() => anu({ apiKey } as never), 'invalid_request')
+      expect(error.message).not.toContain('SECRET')
+    }
+    thrownEntropyError(() => anu(undefined as never), 'invalid_request')
+    // any printable-ASCII token is accepted
+    expect(anu({ apiKey: 'Ab-3_x.Z~9+/=' }).name).toBe('anu')
   })
 
   test('is named anu', () => {

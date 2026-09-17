@@ -58,6 +58,13 @@ const envelope = significanceEnvelope(Math.max(cumdevs.length, 1))
 console.log(`\ncumdev  ${sparkline}`)
 console.log(`p=0.05 envelope at final step: +${envelope[cumdevs.length - 1]?.toFixed(1)}`)
 for (const event of result.events) {
+  if (event.status === 'incomplete') {
+    // stop() is total: a window that has not elapsed comes back incomplete with NaN value/p/z
+    console.log(
+      `event "${event.id}" (${event.statistic}): ${event.status} after ${event.steps} of ${expectedTicks} steps — ${event.reason ?? 'no reason given'}`,
+    )
+    continue
+  }
   console.log(
     `event "${event.id}" (${event.statistic}): χ²=${event.value.toFixed(1)} on ${event.df} df → p=${event.pValue.toFixed(4)} (z=${event.z.toFixed(2)})`,
   )

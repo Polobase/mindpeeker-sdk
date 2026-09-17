@@ -39,6 +39,26 @@ export function replace(parent: Node, ...children: Child[]): void {
   append(parent, children)
 }
 
+/**
+ * Wrap an async page action so a failure is shown in `target` (as
+ * "<what> failed: <message>") instead of becoming an unhandled rejection. The
+ * returned function never rejects, so callers may fire it with `void`.
+ */
+export function guarded(
+  target: Node,
+  what: string,
+  action: () => Promise<void>,
+): () => Promise<void> {
+  return async () => {
+    try {
+      await action()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      replace(target, el('p', { class: 'note' }, `${what} failed: ${message}`))
+    }
+  }
+}
+
 /** Format a number with a fixed number of significant-ish decimals, trimmed. */
 export function fmt(n: number, digits = 3): string {
   if (!Number.isFinite(n)) return '—'

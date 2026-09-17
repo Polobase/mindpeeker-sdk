@@ -68,6 +68,39 @@ function validate(sources: readonly TrialSource[], opts: RollingOptions): void {
   }
 }
 
+type LiveSession = ReturnType<typeof session>
+
+/**
+ * Construct the negentropy lock-step session eagerly (it does no source I/O
+ * until the first tick is pulled), so every configuration error it detects —
+ * a source without a name or `stream()`, a non-function `now`, a signal that
+ * is not an AbortSignal — surfaces as `PsiError('invalid_plan')` when the
+ * monitor is created, not as a `NegentropyError` on the first pull.
+ */
+function openSession(sources: readonly TrialSource[], opts: RollingOptions): LiveSession {
+  try {
+    return session({
+      sources: [...sources],
+      missing: 'skip',
+      ...(opts.bitsPerTrial !== undefined && { trial: { bitsPerTrial: opts.bitsPerTrial } }),
+      ...(opts.signal && { signal: opts.signal }),
+      ...(opts.now && { now: opts.now }),
+      ...(opts.stepTimeoutMs !== undefined && { stepTimeoutMs: opts.stepTimeoutMs }),
+    })
+  } catch (error) {
+    if (
+      error instanceof NegentropyError &&
+      (error.code === 'invalid_config' || error.code === 'calibration_required')
+    ) {
+      throw new PsiError('invalid_plan', `rolling monitor: ${error.message}`, {
+        cause: error,
+        ...(error.source !== undefined && { source: error.source }),
+      })
+    }
+    throw error
+  }
+}
+
 /** A window handed to a statistic: chronological Stouffers plus per-step source counts. */
 interface Window {
   readonly stouffers: Float64Array
@@ -84,20 +117,12 @@ interface Window {
  * exactly equal to a batch recomputation over the same recorded trials.
  */
 async function* rollingCore(
-  sources: readonly TrialSource[],
+  live: LiveSession,
   opts: RollingOptions,
   windowStat: (window: Window) => number,
 ): AsyncGenerator<RollingPoint> {
   const size = opts.windowSize
   const hop = opts.hopSize ?? 1
-  const live = session({
-    sources: [...sources],
-    missing: 'skip',
-    ...(opts.bitsPerTrial !== undefined && { trial: { bitsPerTrial: opts.bitsPerTrial } }),
-    ...(opts.signal && { signal: opts.signal }),
-    ...(opts.now && { now: opts.now }),
-    ...(opts.stepTimeoutMs !== undefined && { stepTimeoutMs: opts.stepTimeoutMs }),
-  })
   const ring = new Float64Array(size)
   const counts = new Int32Array(size)
   let head = 0 // next write position
@@ -153,7 +178,7 @@ export function rollingStouffer(
   opts: RollingOptions,
 ): AsyncGenerator<RollingPoint> {
   validate(sources, opts)
-  return rollingCore(sources, opts, (window) => stoufferZ(window.stouffers))
+  return rollingCore(openSession(sources, opts), opts, (window) => stoufferZ(window.stouffers))
 }
 
 /** Φ⁻¹(exp(lnP)) without underflow: exact probit above e⁻⁷⁰⁰, Mills-ratio inversion below. */
@@ -214,7 +239,7 @@ export function rollingNetvar(
     }
     return entry
   }
-  return rollingCore(sources, opts, ({ stouffers, sourceCounts }) => {
+  return rollingCore(openSession(sources, opts), opts, ({ stouffers, sourceCounts }) => {
     let statistic = 0
     let lnFloor = 0
     let minimum = 0

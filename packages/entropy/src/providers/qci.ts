@@ -37,16 +37,35 @@ interface Exchange {
 }
 
 /**
+ * The credential must be a printable-ASCII token (U+0021–U+007E): whitespace
+ * (e.g. a trailing newline read from a file), control and non-ASCII
+ * characters are rejected at construction instead of failing later as a
+ * network, auth or bad_response error. The value never enters the message.
+ */
+function requireCredential(value: unknown, name: string): string {
+  const credential = requireNonEmptyString(value, name, INFO.name)
+  if (!/^[!-~]+$/.test(credential)) {
+    throw new EntropyError(
+      'invalid_request',
+      `${name} must be printable ASCII without whitespace or control characters`,
+      { provider: INFO.name },
+    )
+  }
+  return credential
+}
+
+/**
  * Quantum Computing Inc. uQRNG (photonic). OAuth2-style flow: the long-lived
  * API token is exchanged for a bearer token, cached until expiry, and
  * refreshed once automatically when a request comes back 401. Concurrent
  * callers share one token exchange, which runs under its own abort domain:
  * each caller only stops waiting when its own signal fires, and the exchange
  * is cancelled only once no caller waits for it. Throws
- * `EntropyError('invalid_request')` at construction without an `apiToken`.
+ * `EntropyError('invalid_request')` at construction without a valid
+ * `apiToken` (a non-empty printable-ASCII token).
  */
 export function qci(opts: QciOptions): EntropyProvider {
-  const apiToken = requireNonEmptyString(opts?.apiToken, 'qci({ apiToken })', INFO.name)
+  const apiToken = requireCredential(opts?.apiToken, 'qci({ apiToken })')
   const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
   const { fetch: fetchImpl } = opts
   const secrets = [apiToken]

@@ -32,8 +32,24 @@ providerContract('outshift', () => outshift({ apiKey: 'k', fetch: outshiftMock()
 })
 
 describe('outshift', () => {
-  test('requires an apiKey', () => {
-    thrownEntropyError(() => outshift({ apiKey: '' }), 'invalid_request')
+  test('requires a valid apiKey: missing, non-string, blank, control or non-ASCII values throw invalid_request', () => {
+    const invalid: unknown[] = [
+      undefined,
+      '',
+      42,
+      '   ',
+      'SECRET-TOKEN\n',
+      'SECRET TOKEN',
+      `SECRET${String.fromCodePoint(0x43a, 0x43b)}`,
+      `SECRET${String.fromCodePoint(0)}`,
+    ]
+    for (const apiKey of invalid) {
+      const error = thrownEntropyError(() => outshift({ apiKey } as never), 'invalid_request')
+      expect(error.message).not.toContain('SECRET')
+    }
+    thrownEntropyError(() => outshift(undefined as never), 'invalid_request')
+    // any printable-ASCII token is accepted
+    expect(outshift({ apiKey: 'Ab-3_x.Z~9+/=' }).name).toBe('outshift')
   })
 
   test('is named outshift', () => {

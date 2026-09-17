@@ -7,7 +7,8 @@ import { chiSquareP, normalP } from '../stats/pvalues.js'
  * the sources present there — exactly what a live session does per round.
  * With every source present they perform the SAME floating-point operations
  * in the same order as `netvar`/`devvar`/`interSourceCorrelation`/
- * `cumulativeDeviation`, so results are bit-identical. The public stats
+ * `covar(…, { bitsPerTrial })`/`cumulativeDeviation`, so results are
+ * bit-identical. The public stats
  * functions stay strict (they reject NaN); these are internal to the
  * experiment layer.
  */
@@ -115,6 +116,46 @@ export function presentCorrelation(
   }
   if (pairs === 0) return null
   const statistic = total.value / Math.sqrt(pairs)
+  return { statistic, df: pairs, pValue: normalP(statistic, 'upper'), n }
+}
+
+/**
+ * Correlation of variances (GCP's C2, see `covar`): Σₜ S₂(t) / √(Σₜ Pₜ · v²)
+ * with uᵢ = zᵢ² − 1, S₂(t) = ((Σu)² − Σu²)/2 over the nₜ present sources,
+ * Pₜ = nₜ(nₜ − 1)/2 present pairs and v = Var z² = 2 − 2/k for Binomial(k, ½)
+ * trials (exact under theoretical calibration), so Var S₂(t) = Pₜ·v² under
+ * H0; one-sided normal tail (CLT — the products are skewed), df = Σₜ Pₜ.
+ * Null when no step has two present sources.
+ */
+export function presentCovar(
+  zBySource: readonly Float64Array[],
+  start: number,
+  end: number,
+  bitsPerTrial: number,
+): WindowStat | null {
+  const v = 2 - 2 / bitsPerTrial
+  const total = new KahanSum()
+  let pairs = 0
+  let n = 0
+  for (let t = start; t < end; t++) {
+    let sum = 0
+    let sumSq = 0
+    let count = 0
+    for (let i = 0; i < zBySource.length; i++) {
+      const z = (zBySource[i] as Float64Array)[t] as number
+      if (Number.isNaN(z)) continue
+      const u = z * z - 1
+      sum += u
+      sumSq += u * u
+      count++
+    }
+    if (count === 0) continue
+    n++
+    total.add((sum * sum - sumSq) / 2)
+    pairs += (count * (count - 1)) / 2
+  }
+  if (pairs === 0) return null
+  const statistic = total.value / Math.sqrt(pairs * v * v)
   return { statistic, df: pairs, pValue: normalP(statistic, 'upper'), n }
 }
 

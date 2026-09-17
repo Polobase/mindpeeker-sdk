@@ -188,7 +188,9 @@ const summary = computed(() => {
               <h3 class="mt-2 font-semibold">
                 {{ d.rune.name }}{{ d.merkstave ? ' (merkstave)' : '' }}
               </h3>
-              <p class="mt-1 text-sm text-muted">{{ d.rune.aettName }}’s ætt</p>
+              <p class="mt-1 text-sm text-muted">
+                {{ d.rune.aettName === null ? 'no ætt' : `${d.rune.aettName}’s ætt` }}
+              </p>
             </div>
           </div>
 

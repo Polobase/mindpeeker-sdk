@@ -45,8 +45,24 @@ providerContract('qci', () => qci({ apiToken: 't', fetch: qciMock().fetch }), {
 })
 
 describe('qci', () => {
-  test('requires an apiToken', () => {
-    thrownEntropyError(() => qci({ apiToken: '' }), 'invalid_request')
+  test('requires a valid apiToken: missing, non-string, blank, control or non-ASCII values throw invalid_request', () => {
+    const invalid: unknown[] = [
+      undefined,
+      '',
+      42,
+      '   ',
+      'SECRET-TOKEN\n',
+      'SECRET TOKEN',
+      `SECRET${String.fromCodePoint(0x43a, 0x43b)}`,
+      `SECRET${String.fromCodePoint(0)}`,
+    ]
+    for (const apiToken of invalid) {
+      const error = thrownEntropyError(() => qci({ apiToken } as never), 'invalid_request')
+      expect(error.message).not.toContain('SECRET')
+    }
+    thrownEntropyError(() => qci(undefined as never), 'invalid_request')
+    // any printable-ASCII token is accepted
+    expect(qci({ apiToken: 'Ab-3_x.Z~9+/=' }).name).toBe('qci')
   })
 
   test('is named qci', () => {

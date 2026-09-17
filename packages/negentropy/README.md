@@ -255,6 +255,7 @@ const live = session({
 })
 for await (const tick of live) {
   render(tick.stouffer, tick.netvar, tick.cumdev, tick.activeEvents)
+  if (tick.eValue >= 20) console.log('anytime-valid variance excess at α = 0.05')
 }
 const result = live.stop() // never throws: analysis + composite + full archive
 
@@ -299,6 +300,24 @@ handed to every `source.stream()`; `stop()`, your abort, and leaving the loop
 all abort it, and listeners added to your signal are removed when the run
 ends. `stepTimeoutMs` must be finite in (0, 2³¹ − 1] or `Infinity`.
 
+**Live e-value.** Every tick carries `logEValue` = `netvarLogM(step + 1, cumdev,
+{ sided: 'upper' })` — the variance-excess Gamma-mixture test martingale
+(prior a = b = 1) on the running cumulative deviation — and `eValue` =
+exp(`logEValue`). Unlike the pointwise χ² envelope, it may be watched every
+tick: an H0 run ever reaches `eValue ≥ 1/α` with probability ≤ α (Ville's
+inequality), so stopping there keeps level α. It is an exact test
+supermartingale for fair-bit trials under theoretical calibration and an
+approximation under empirical calibration; feed the `logEValue` sequence to
+`anytimeP`/`villeCrossing` for running p-values.
+
+**Event statistics.** `netvar` (Σ Stouffer Z², χ²), `devvar` (Σ z², χ²),
+`correlation` (Σ pairwise zᵢzⱼ, normal) and `covar` (GCP's correlation of
+variances C2: Σ pairwise (zᵢ² − 1)(zⱼ² − 1) / √(Σₜ Pₜ·v²) with Pₜ present pairs
+and v = 2 − 2/k for k-bit trials, normal upper tail) — each combining over the
+sources present at every step. The two pairwise statistics need ≥ 2 sources
+(`session()` throws `invalid_config`; a batch analysis with one series returns
+the event incomplete).
+
 **Batch.** `analyzeTrials(series, config | registration | { registration,
 calibration })` and `analyzeBytes(recordings, …)` (count clock only — raw bytes
 carry no timing, so an interval clock throws `invalid_config`). Duplicate
@@ -316,8 +335,10 @@ Var ≈ 1.93), so the composite switches to Brown's covariance correction in
 Stouffer form, Z = Σzₑ/√(Σᵢⱼ ρᵢⱼ) (`independent: false`, `method: 'brown'`,
 `reason` names the overlaps). ρ comes from the exact H0 per-step moments of
 the statistics over their shared steps (netvar pairs: O/√(AB); netvar–devvar on
-one window of N sources ≈ 1/√N; devvar–correlation 0), checked against Monte
-Carlo. `brownCompositeZ(events, R)` takes your own correlation matrix;
+one window of N sources ≈ 1/√N; devvar–correlation 0; covar is uncorrelated with
+the other three and correlates only with overlapping covar events), checked
+against Monte Carlo and, for covar, against the exactly enumerated moments of
+Binomial(8, ½) sources (`test/fixtures/covar-dependence.json`). `brownCompositeZ(events, R)` takes your own correlation matrix;
 `bonferroni` covers individual-event claims.
 
 ## Extraction: manufacture order from noise
@@ -401,6 +422,7 @@ import { chi2Sf, betaInc, binomialSf, aptCutoff } from '@mindpeeker/negentropy/n
 | `normCdf(z)` / `normSf(z)` / `normPpf(p)` | Φ(z), 1 − Φ(z), Φ⁻¹(p) | Wichura AS 241 for the quantile |
 | `chi2Cdf(x, k)` / `chi2Sf(x, k)` | P(k/2, x/2), Q(k/2, x/2) | any finite df > 0 (df = 10⁹ is fine) |
 | `chi2Ppf(p, k)` | χ² quantile | Newton in ln x, relative stopping rule: `chi2Ppf(1e-12, 1)` = 1.5708e-24 |
+| `chi2Isf(q, k)` | x with Q(k/2, x/2) = q | inverse survival function: full precision for q below 2⁻⁵³, where `chi2Ppf(1 − q, k)` rounds |
 | `lnBeta(a, b)` | ln B(a, b) | Stirling form when an argument is ≥ 10 |
 | `betaInc(a, b, x)` | I_x(a, b), the Beta(a, b) CDF | Lentz CF (NR §6.4) with a cancellation-free prefactor; ~1e-13 for shapes ≲ 10⁴, ~1e-11 at 10⁸ |
 | `betaPpf(q, a, b)` | x with I_x(a, b) = q | bracketed Newton in ln x |
@@ -511,6 +533,12 @@ Experiment layer and extraction streams:
   `insufficient_data` when no output bit is possible (it returned 0, negative
   or NaN lengths).
 - New: `debiasStream`, `createDebiaser`, `brownCompositeZ`, `EXPERIMENT_SCHEMA`.
+- `EventStatistic` gains `'covar'` (registrations, sessions and `analyzeTrials`
+  accept it; Brown composites use its exact H0 moments). Exhaustive switches over
+  `EventStatistic` must add the case. A covar event needs ≥ 2 sources.
+- `SessionTick` gains `logEValue` and `eValue` (the live anytime-valid
+  variance-excess monitor).
+- `chi2Isf` is exported from `@mindpeeker/negentropy/numerics`.
 
 Sequential and GCP statistics (additive — no existing output changes):
 
@@ -538,5 +566,6 @@ bun test                      # fixtures are checked in — no Python needed
 uv run scripts/fixtures/generate.py   # regenerate fixtures (scipy/mpmath)
 uv run scripts/fixtures/numerics.py   # Temme coefficients + numerics.json (mpmath, then biome format)
 uv run --python 3.12 scripts/fixtures/sequential.py   # sequential.json (mpmath, numpy/scipy, arch; then biome format)
+python3 scripts/fixtures/covar_dependence.py   # covar-dependence.json (exact enumeration; then biome format)
 cd ../entropy && bun run demo:negentropy   # live session demo over real providers
 ```

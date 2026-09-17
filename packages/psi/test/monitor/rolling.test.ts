@@ -129,6 +129,36 @@ describe('rollingStouffer', () => {
     expect(a.streamCalls).toBe(0)
   })
 
+  test("negentropy's session configuration errors surface eagerly as PsiError invalid_plan", () => {
+    const a = countingSource('a')
+    const cases: [string, () => unknown][] = [
+      [
+        'source without stream()',
+        () => rollingStouffer([{ name: 'x' } as TrialSource], { windowSize: 4 }),
+      ],
+      ['empty source name', () => rollingNetvar([{ ...a, name: '' }], { windowSize: 4 })],
+      ['now is not a function', () => rollingStouffer([a], { windowSize: 4, now: 5 as never })],
+      [
+        'signal is not an AbortSignal',
+        () => rollingNetvar([a], { windowSize: 4, signal: {} as never }),
+      ],
+    ]
+    for (const [what, create] of cases) {
+      let thrown: unknown
+      try {
+        create()
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown, what).toMatchObject({ name: 'PsiError', code: 'invalid_plan' })
+      expect((thrown as Error).cause, what).toMatchObject({
+        name: 'NegentropyError',
+        code: 'invalid_config',
+      })
+    }
+    expect(a.streamCalls).toBe(0)
+  })
+
   test('sourceCount tracks the roster when a source ends', async () => {
     const points = await collect(
       rollingStouffer([finiteSource('a', 3, SEED_A), finiteSource('b', 6, SEED_B)], {

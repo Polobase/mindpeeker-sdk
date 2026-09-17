@@ -71,7 +71,7 @@ export const PACKAGES: readonly PackageEntry[] = [
     pkg: '@mindpeeker/flow',
     title: 'Flow',
     tagline:
-      'Transfer entropy and directed information flow for symbol streams, with surrogate significance testing.',
+      'Transfer entropy and information dynamics (information transfer and storage) for symbol streams, with surrogate significance testing.',
     group: 'randomness',
   },
   {

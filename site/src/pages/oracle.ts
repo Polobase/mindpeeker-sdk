@@ -109,7 +109,7 @@ async function runes(): Promise<void> {
             { style: { marginTop: '8px' } },
             `${d.rune.name}${d.merkstave ? ' (merkstave)' : ''}`,
           ),
-          el('p', {}, `${d.rune.aettName}’s ætt`),
+          el('p', {}, d.rune.aettName === null ? 'no ætt' : `${d.rune.aettName}’s ætt`),
         ),
       ),
     ),

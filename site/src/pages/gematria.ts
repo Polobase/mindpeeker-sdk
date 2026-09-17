@@ -6,6 +6,7 @@ import {
   analyze,
   atbash,
   CIPHERS,
+  type CipherId,
   lookup,
   matches,
   profile,
@@ -32,7 +33,11 @@ const content = shell({
     'Number Cross. Computation is exact; what equal values mean is a contested tradition.',
 })
 
-const state = { text: 'wisdom', focus: 'en-ordinal', reverse: false }
+const state: { text: string; focus: CipherId; reverse: boolean } = {
+  text: 'wisdom',
+  focus: 'en-ordinal',
+  reverse: false,
+}
 
 const input = el('input', {
   type: 'text',
@@ -46,7 +51,8 @@ const input = el('input', {
 
 const focusSelect = el('select', {
   onchange: (e: Event) => {
-    state.focus = (e.target as HTMLSelectElement).value
+    // the options are built from CIPHERS ids
+    state.focus = (e.target as HTMLSelectElement).value as CipherId
     render()
   },
 })

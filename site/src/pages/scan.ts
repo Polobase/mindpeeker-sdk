@@ -4,7 +4,7 @@
 // look strong by luck. That caveat is the whole point.
 
 import { defineCatalog, scan } from '@mindpeeker/scan'
-import { el, fmt, replace } from '../shared/dom'
+import { el, fmt, guarded, replace } from '../shared/dom'
 import { provider } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
@@ -56,7 +56,7 @@ function bar(pct: number): HTMLElement {
   )
 }
 
-async function run(): Promise<void> {
+async function scanCatalog(): Promise<void> {
   const items = textarea.value
     .split('\n')
     .map((s) => s.trim())
@@ -122,6 +122,8 @@ async function run(): Promise<void> {
   }
 }
 
+const run = guarded(out, 'scan', scanCatalog)
+
 btn.addEventListener('click', run)
 
 content.append(
@@ -139,4 +141,4 @@ content.append(
   ),
 )
 
-run()
+void run()

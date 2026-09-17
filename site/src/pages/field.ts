@@ -3,7 +3,7 @@
 // and score departure from complete spatial randomness with Clark–Evans.
 
 import { attractors, clarkEvans, type Point, sampleField } from '@mindpeeker/field'
-import { el, fmt, replace } from '../shared/dom'
+import { el, fmt, guarded, replace } from '../shared/dom'
 import { getBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
@@ -63,7 +63,7 @@ function stat(k: string, v: string, note: string): HTMLElement {
   )
 }
 
-async function reseed(): Promise<void> {
+async function drawField(): Promise<void> {
   const bytes = await getBytes(COUNT * 8 + 32)
   const { points } = await sampleField(bytes, COUNT, REGION)
   const res = attractors(points, REGION, { expectedNeighbours: 5 })
@@ -94,6 +94,8 @@ async function reseed(): Promise<void> {
   )
 }
 
+const reseed = guarded(statsBox, 'field sampling', drawField)
+
 content.append(
   el(
     'div',
@@ -109,4 +111,4 @@ content.append(
   ),
 )
 
-reseed()
+void reseed()

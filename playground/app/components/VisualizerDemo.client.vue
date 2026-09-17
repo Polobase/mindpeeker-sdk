@@ -36,6 +36,8 @@ function bytesToBits(bytes: Uint8Array): Uint8Array {
 async function tick() {
   if (!running.value || !handle) return
   const chunk = await localBytes(256)
+  // monobit and chiSquareBytes throw insufficient_data on empty input
+  if (chunk.length === 0) return
   handle.pushFrame({ kind: 'bytes', channelId: 0, bytes: chunk })
 
   const h = shannonEntropy(chunk)

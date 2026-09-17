@@ -26,14 +26,33 @@ interface OutshiftResponse {
 }
 
 /**
+ * The credential must be a printable-ASCII token (U+0021–U+007E): whitespace
+ * (e.g. a trailing newline read from a file), control and non-ASCII
+ * characters are rejected at construction instead of failing later as a
+ * network, auth or bad_response error. The value never enters the message.
+ */
+function requireCredential(value: unknown, name: string): string {
+  const credential = requireNonEmptyString(value, name, INFO.name)
+  if (!/^[!-~]+$/.test(credential)) {
+    throw new EntropyError(
+      'invalid_request',
+      `${name} must be printable ASCII without whitespace or control characters`,
+      { provider: INFO.name },
+    )
+  }
+  return credential
+}
+
+/**
  * Outshift by Cisco QRNG (photonic hardware). Free tier: 100k bits/day.
  * Blocks are requested in `format: 'all'` and read from the string-valued
  * `decimal` field — the one response shape verified in the wild — which must
  * be a plain decimal integer (`'12abc'` is `bad_response`, not 12). Throws
- * `EntropyError('invalid_request')` at construction without an `apiKey`.
+ * `EntropyError('invalid_request')` at construction without a valid
+ * `apiKey` (a non-empty printable-ASCII token).
  */
 export function outshift(opts: OutshiftOptions): EntropyProvider {
-  const apiKey = requireNonEmptyString(opts?.apiKey, 'outshift({ apiKey })', INFO.name)
+  const apiKey = requireCredential(opts?.apiKey, 'outshift({ apiKey })')
   const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
   const { fetch: fetchImpl } = opts
 

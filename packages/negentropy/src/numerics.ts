@@ -19,7 +19,9 @@
  *   $\mathrm{erfc}(x)=Q(\tfrac12,x^2)$; the standard normal CDF $\Phi(z)$, survival
  *   $1-\Phi(z)$, and quantile $\Phi^{-1}(p)$ (Wichura's AS 241 / PPND16); chi-square
  *   CDF/SF via $P(k/2, x/2)$, $Q(k/2, x/2)$ and a quantile by Newton in $\ln x$
- *   (relative accuracy in both tails, e.g. `chi2Ppf(1e-12, 1)` = 1.5708e-24).
+ *   (relative accuracy in both tails, e.g. `chi2Ppf(1e-12, 1)` = 1.5708e-24);
+ *   `chi2Isf(q, k)` is the inverse survival function, which keeps relative
+ *   precision for q below $2^{-53}$, where `chi2Ppf(1 - q, k)` would round.
  * - Beta family (internal/beta.ts): $\ln B(a,b)$, the regularized incomplete beta
  *   $I_x(a,b)$ (Lentz continued fraction, NR §6.4) and its quantile `betaPpf`.
  * - Binomial (internal/binomial.ts): pmf (Loader's saddle-point algorithm), CDF
@@ -49,6 +51,7 @@ export { aptCutoff, rctCutoff } from './internal/health-cutoffs.js'
 export { KahanSum } from './internal/kahan.js'
 export {
   chi2Cdf,
+  chi2Isf,
   chi2Ppf,
   chi2Sf,
   erfc,

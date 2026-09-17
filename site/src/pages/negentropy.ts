@@ -9,7 +9,7 @@ import {
   shannonEntropy,
   spectralTest,
 } from '@mindpeeker/negentropy'
-import { el, fmt, replace } from '../shared/dom'
+import { el, fmt, guarded, replace } from '../shared/dom'
 import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
@@ -78,7 +78,7 @@ function row(name: string, value: string, note: string): HTMLElement {
   )
 }
 
-async function run(): Promise<void> {
+async function battery(): Promise<void> {
   const bytes = await localBytes(N)
   const bits = bytesToBits(bytes)
   const chi = chiSquareBytes(bytes)
@@ -115,6 +115,8 @@ async function run(): Promise<void> {
   drawHistogram(bytes)
 }
 
+const run = guarded(table, 'test battery', battery)
+
 content.append(
   el(
     'div',
@@ -130,4 +132,4 @@ content.append(
   ),
 )
 
-run()
+void run()

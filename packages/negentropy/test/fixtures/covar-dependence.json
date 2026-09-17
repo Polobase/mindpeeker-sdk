@@ -1,0 +1,134 @@
+{
+  "generator": "python 3.14.4, fractions (exact enumeration)",
+  "bitsPerTrial": 8,
+  "moments": [
+    {
+      "n": 1,
+      "covariance": {
+        "netvar|netvar": [7, 4],
+        "netvar|devvar": [7, 4],
+        "netvar|correlation": [0, 1],
+        "netvar|covar": [0, 1],
+        "devvar|netvar": [7, 4],
+        "devvar|devvar": [7, 4],
+        "devvar|correlation": [0, 1],
+        "devvar|covar": [0, 1],
+        "correlation|netvar": [0, 1],
+        "correlation|devvar": [0, 1],
+        "correlation|correlation": [0, 1],
+        "correlation|covar": [0, 1],
+        "covar|netvar": [0, 1],
+        "covar|devvar": [0, 1],
+        "covar|correlation": [0, 1],
+        "covar|covar": [0, 1]
+      }
+    },
+    {
+      "n": 2,
+      "covariance": {
+        "netvar|netvar": [15, 8],
+        "netvar|devvar": [7, 4],
+        "netvar|correlation": [1, 1],
+        "netvar|covar": [0, 1],
+        "devvar|netvar": [7, 4],
+        "devvar|devvar": [7, 2],
+        "devvar|correlation": [0, 1],
+        "devvar|covar": [0, 1],
+        "correlation|netvar": [1, 1],
+        "correlation|devvar": [0, 1],
+        "correlation|correlation": [1, 1],
+        "correlation|covar": [0, 1],
+        "covar|netvar": [0, 1],
+        "covar|devvar": [0, 1],
+        "covar|correlation": [0, 1],
+        "covar|covar": [49, 16]
+      }
+    },
+    {
+      "n": 3,
+      "covariance": {
+        "netvar|netvar": [23, 12],
+        "netvar|devvar": [7, 4],
+        "netvar|correlation": [2, 1],
+        "netvar|covar": [0, 1],
+        "devvar|netvar": [7, 4],
+        "devvar|devvar": [21, 4],
+        "devvar|correlation": [0, 1],
+        "devvar|covar": [0, 1],
+        "correlation|netvar": [2, 1],
+        "correlation|devvar": [0, 1],
+        "correlation|correlation": [3, 1],
+        "correlation|covar": [0, 1],
+        "covar|netvar": [0, 1],
+        "covar|devvar": [0, 1],
+        "covar|correlation": [0, 1],
+        "covar|covar": [147, 16]
+      }
+    },
+    {
+      "n": 4,
+      "covariance": {
+        "netvar|netvar": [31, 16],
+        "netvar|devvar": [7, 4],
+        "netvar|correlation": [3, 1],
+        "netvar|covar": [0, 1],
+        "devvar|netvar": [7, 4],
+        "devvar|devvar": [7, 1],
+        "devvar|correlation": [0, 1],
+        "devvar|covar": [0, 1],
+        "correlation|netvar": [3, 1],
+        "correlation|devvar": [0, 1],
+        "correlation|correlation": [6, 1],
+        "correlation|covar": [0, 1],
+        "covar|netvar": [0, 1],
+        "covar|devvar": [0, 1],
+        "covar|correlation": [0, 1],
+        "covar|covar": [147, 8]
+      }
+    }
+  ],
+  "counts": [
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+  ],
+  "events": [
+    {
+      "statistic": "covar",
+      "start": 0,
+      "end": 40
+    },
+    {
+      "statistic": "covar",
+      "start": 20,
+      "end": 60
+    },
+    {
+      "statistic": "netvar",
+      "start": 0,
+      "end": 60
+    },
+    {
+      "statistic": "devvar",
+      "start": 10,
+      "end": 50
+    },
+    {
+      "statistic": "correlation",
+      "start": 0,
+      "end": 30
+    },
+    {
+      "statistic": "covar",
+      "start": 35,
+      "end": 50
+    }
+  ],
+  "correlation": [
+    [1.0, 0.2773500981126146, 0.0, 0.0, 0.0, 0.0668153104781061],
+    [0.2773500981126146, 1.0, 0.0, 0.0, 0.0, 0.5188745216627708],
+    [0.0, 0.0, 1.0, 0.46117617803135236, 0.6104936173121631, 0.0],
+    [0.0, 0.0, 0.46117617803135236, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.6104936173121631, 0.0, 1.0, 0.0],
+    [0.0668153104781061, 0.5188745216627708, 0.0, 0.0, 0.0, 1.0]
+  ]
+}

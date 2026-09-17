@@ -15,7 +15,7 @@ import type {
  * throw `invalid_window`; everything else `invalid_config`.
  */
 
-const STATISTICS: ReadonlySet<string> = new Set(['netvar', 'devvar', 'correlation'])
+const STATISTICS: ReadonlySet<string> = new Set(['netvar', 'devvar', 'correlation', 'covar'])
 const HEX = /^(?:[0-9a-fA-F]{2})+$/
 
 function fail(message: string): never {
@@ -95,7 +95,7 @@ function validateEvent(event: unknown, index: number, ids: Set<string>): void {
     fail(`event ${id}: label must be a string`)
   }
   if (typeof event.statistic !== 'string' || !STATISTICS.has(event.statistic)) {
-    fail(`event ${id}: statistic must be netvar|devvar|correlation, got ${event.statistic}`)
+    fail(`event ${id}: statistic must be netvar|devvar|correlation|covar, got ${event.statistic}`)
   }
   const { start, end } = event
   if (start instanceof Date || end instanceof Date) {

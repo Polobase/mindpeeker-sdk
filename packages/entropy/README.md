@@ -728,11 +728,16 @@ Local providers, health tests and the core contract:
 
 Online providers and beacons:
 
-- **Factory errors** *(breaking)*: a missing `apiKey`/`apiToken` (anu, outshift, qbck, qci,
-  randomOrg, superRand) throws `EntropyError('invalid_request')` instead of `TypeError`; so do an
-  empty `baseUrls`, `baseUrl` together with `baseUrls`, and a `pollIntervalMs`, `retryDelayMs`,
-  `maxStalenessMs`, `connectTimeoutMs` or `minIntervalMs` outside its range (`pollIntervalMs: 0`
-  busy-looped `solanaBeacon`; `baseUrls: []` threw `undefined`).
+- **Factory errors** *(breaking)*: a missing or invalid `apiKey`/`apiToken` (anu, outshift, qbck,
+  qci, randomOrg, superRand) throws `EntropyError('invalid_request')` at construction instead of a
+  `TypeError`. A credential must be a non-empty printable-ASCII token (U+0021–U+007E); a
+  non-string, a blank key, or one containing whitespace (e.g. a trailing newline read from a file),
+  control or non-ASCII characters is rejected. Such keys used to be accepted and failed on the
+  first request as `network` (an invalid header value), `auth` or `bad_response`. The key never
+  appears in the message. An empty `baseUrls`, `baseUrl` together with `baseUrls`, and a
+  `pollIntervalMs`, `retryDelayMs`, `maxStalenessMs`, `connectTimeoutMs` or `minIntervalMs` outside
+  its range also throw `invalid_request` (`pollIntervalMs: 0` busy-looped `solanaBeacon`;
+  `baseUrls: []` threw `undefined`).
 - **Base URLs**: every network provider accepts `baseUrl` or `baseUrls` (mirror failover);
   `solanaBeacon({ url })` still works as a deprecated alias.
 - **Stream errors and aborts**: beacon poll timeouts throw `timeout` (a raw `DOMException`

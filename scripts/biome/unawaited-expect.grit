@@ -9,6 +9,6 @@ or {
   register_diagnostic(
     span = $assertion,
     message = "Await (or return) this expect(...).rejects/resolves assertion: un-awaited, it can never fail the test.",
-    severity = "warn"
+    severity = "error"
   )
 }

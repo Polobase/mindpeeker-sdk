@@ -3,6 +3,7 @@ import { analyzeTrials } from '../../src/experiment/batch.js'
 import { registerExperiment } from '../../src/experiment/registration.js'
 import type { EventSpec } from '../../src/experiment/types.js'
 import { theoreticalCalibration } from '../../src/stats/calibration.js'
+import { covar } from '../../src/stats/covar.js'
 import { netvar } from '../../src/stats/network.js'
 import { trialsFromBytes } from '../../src/stats/trials.js'
 import { zScores } from '../../src/stats/zscores.js'
@@ -155,6 +156,71 @@ describe('analyzeTrials — re-analysis without re-burning', () => {
     expect(() => analyzeTrials(nullSeries(10, 0xc20), registration)).toThrow(
       /modified after hashing/,
     )
+  })
+})
+
+describe('analyzeTrials — covar events', () => {
+  test('a covar event is the presence-aware covar over its window, at the series trial width', async () => {
+    for (const bitsPerTrial of [8, 200]) {
+      const series = SOURCES.map((source, i) =>
+        trialsFromBytes(prngBytes(50 * bitsPerTrial, 0xd00 + i), source, { bitsPerTrial }),
+      )
+      const registration = await registerExperiment({
+        trial: { bitsPerTrial },
+        events: [{ id: 'c2', statistic: 'covar', start: 50, end: 350 }],
+      })
+      const event = analyzeTrials(series, registration).events[0]
+      const zs = series.map((s) => zScores(s, theoreticalCalibration(s.source, bitsPerTrial)))
+      const direct = covar(
+        zs.map((z) => z.slice(50, 350)),
+        SOURCES,
+        { bitsPerTrial },
+      )
+      expect(event).toMatchObject({ statistic: 'covar', status: 'complete', steps: 300 })
+      expect(event?.value).toBe(direct.statistic)
+      expect(event?.df).toBe(900)
+      expect(event?.pValue).toBe(direct.pValue)
+      expect(event?.z as number).toBeCloseTo(direct.statistic, 9) // one-sided normal: z = statistic
+    }
+    const single = analyzeTrials(nullSeries(50, 0xd10).slice(0, 1), {
+      events: [{ id: 'c2', statistic: 'covar', start: 0, end: 50 }],
+    })
+    expect(single.events[0]).toMatchObject({
+      status: 'incomplete',
+      reason: 'covar needs at least 2 sources',
+    })
+  })
+
+  test('covar under Brown: overlapping covar events stay unit-variance; covar ⟂ netvar', () => {
+    const reps = 400
+    const overlapping: number[] = []
+    for (let rep = 0; rep < reps; rep++) {
+      const series = nullSeries(300, 0x20000 + rep * 7)
+      const result = analyzeTrials(series, {
+        events: [
+          { id: 'x', statistic: 'covar', start: 0, end: 200 },
+          { id: 'y', statistic: 'covar', start: 100, end: 300 },
+        ],
+      })
+      expect(result.composite).toMatchObject({ method: 'brown', independent: false })
+      // ρ = shared/√(A·B) = 100/200 with every source present
+      expect(result.composite.variance).toBeCloseTo(3, 12)
+      overlapping.push(result.composite.z)
+    }
+    const mean = overlapping.reduce((x, y) => x + y, 0) / reps
+    const variance = overlapping.reduce((x, y) => x + (y - mean) ** 2, 0) / (reps - 1)
+    expect(Math.abs(variance - 1)).toBeLessThan(4 * Math.sqrt(2 / reps))
+
+    const mixed = analyzeTrials(nullSeries(300, 0x30000), {
+      events: [
+        { id: 'n', statistic: 'netvar', start: 0, end: 300 },
+        { id: 'c', statistic: 'covar', start: 0, end: 300 },
+      ],
+    })
+    // same window, but the covar and netvar statistics are uncorrelated under H0
+    expect(mixed.composite).toMatchObject({ method: 'brown', variance: 2 })
+    const [n, c] = mixed.events.map((e) => e.z) as [number, number]
+    expect(mixed.composite.z).toBeCloseTo((n + c) / Math.SQRT2, 14)
   })
 })
 

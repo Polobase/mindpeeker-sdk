@@ -23,13 +23,32 @@ interface AnuResponse {
 }
 
 /**
+ * The credential must be a printable-ASCII token (U+0021–U+007E): whitespace
+ * (e.g. a trailing newline read from a file), control and non-ASCII
+ * characters are rejected at construction instead of failing later as a
+ * network, auth or bad_response error. The value never enters the message.
+ */
+function requireCredential(value: unknown, name: string): string {
+  const credential = requireNonEmptyString(value, name, INFO.name)
+  if (!/^[!-~]+$/.test(credential)) {
+    throw new EntropyError(
+      'invalid_request',
+      `${name} must be printable ASCII without whitespace or control characters`,
+      { provider: INFO.name },
+    )
+  }
+  return credential
+}
+
+/**
  * ANU Quantum Numbers (quantum-vacuum fluctuations), keyed API.
  * https://quantumnumbers.anu.edu.au — up to 1024 numbers per request.
  * `baseUrl` points it at a server-side proxy that hides the key. Throws
- * `EntropyError('invalid_request')` at construction without an `apiKey`.
+ * `EntropyError('invalid_request')` at construction without a valid
+ * `apiKey` (a non-empty printable-ASCII token).
  */
 export function anu(opts: AnuOptions): EntropyProvider {
-  const apiKey = requireNonEmptyString(opts?.apiKey, 'anu({ apiKey })', INFO.name)
+  const apiKey = requireCredential(opts?.apiKey, 'anu({ apiKey })')
   const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
   const { fetch: fetchImpl } = opts
 

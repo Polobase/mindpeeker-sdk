@@ -62,6 +62,24 @@ function retryable(error: unknown): boolean {
 }
 
 /**
+ * The credential must be a printable-ASCII token (U+0021–U+007E): whitespace
+ * (e.g. a trailing newline read from a file), control and non-ASCII
+ * characters are rejected at construction instead of failing later as a
+ * network, auth or bad_response error. The value never enters the message.
+ */
+function requireCredential(value: unknown, name: string): string {
+  const credential = requireNonEmptyString(value, name, INFO.name)
+  if (!/^[!-~]+$/.test(credential)) {
+    throw new EntropyError(
+      'invalid_request',
+      `${name} must be printable ASCII without whitespace or control characters`,
+      { provider: INFO.name },
+    )
+  }
+  return credential
+}
+
+/**
  * SuperRand (Spence Technologies) — electromagnetic background-noise TRNG.
  * REST for `getBytes`; the only public entropy API with WebSocket delivery,
  * used for `stream()`. The stream keeps exactly one request in flight per
@@ -70,10 +88,11 @@ function retryable(error: unknown): boolean {
  * only, honours the caller's signal while connecting and backing off, and maps
  * SuperRand error codes to `rate_limited` / `auth` / `bad_response` on both
  * transports. Throws `EntropyError('invalid_request')` at construction without
- * an `apiKey`, and on the first pull when no WebSocket implementation exists.
+ * a valid `apiKey` (a non-empty printable-ASCII token), and on the first pull
+ * when no WebSocket implementation exists.
  */
 export function superRand(opts: SuperRandOptions): EntropyProvider {
-  const apiKey = requireNonEmptyString(opts?.apiKey, 'superRand({ apiKey })', INFO.name)
+  const apiKey = requireCredential(opts?.apiKey, 'superRand({ apiKey })')
   const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
   const wsUrl = requireNonEmptyString(opts.wsUrl ?? DEFAULT_WS_URL, 'wsUrl', INFO.name)
   const reconnectBaseDelayMs = requireFinite(

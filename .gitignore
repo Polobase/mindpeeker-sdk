@@ -7,6 +7,7 @@ dist/
 # Local agent tooling (not part of the SDK)
 .claude/
 .claude-flow/
+.swarm/
 .mcp.json
 CLAUDE.md
 .npmrc

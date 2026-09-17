@@ -66,7 +66,7 @@ export const PACKAGES: readonly PackageEntry[] = [
     id: 'flow',
     pkg: '@mindpeeker/flow',
     title: 'Flow',
-    tagline: 'Transfer entropy and directed information flow.',
+    tagline: 'Transfer entropy and information dynamics.',
     group: 'randomness',
   },
   {

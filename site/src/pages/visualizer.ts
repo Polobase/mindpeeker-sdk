@@ -96,6 +96,8 @@ const hist = new Float32Array(256)
 async function tick(): Promise<void> {
   if (!running) return
   const chunk = await localBytes(256)
+  // monobit and chiSquareBytes throw insufficient_data on empty input
+  if (chunk.length === 0) return
   dashboard.pushFrame({ kind: 'bytes', channelId: 0, bytes: chunk })
 
   const h = shannonEntropy(chunk)

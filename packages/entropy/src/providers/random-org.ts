@@ -59,14 +59,33 @@ function rpcError(error: { code?: number; message?: string }, apiKey: string): E
 }
 
 /**
+ * The credential must be a printable-ASCII token (U+0021–U+007E): whitespace
+ * (e.g. a trailing newline read from a file), control and non-ASCII
+ * characters are rejected at construction instead of failing later as a
+ * network, auth or bad_response error. The value never enters the message.
+ */
+function requireCredential(value: unknown, name: string): string {
+  const credential = requireNonEmptyString(value, name, INFO.name)
+  if (!/^[!-~]+$/.test(credential)) {
+    throw new EntropyError(
+      'invalid_request',
+      `${name} must be printable ASCII without whitespace or control characters`,
+      { provider: INFO.name },
+    )
+  }
+  return credential
+}
+
+/**
  * RANDOM.ORG (atmospheric radio noise) via the JSON-RPC 4.0 Basic API's
  * `generateBlobs`. Honors the server's `advisoryDelay` between requests. An
  * exhausted daily allowance (RPC error 402/403) throws `rate_limited` with
  * `retryAfterMs` estimated as the time to the next 00:00 UTC. Throws
- * `EntropyError('invalid_request')` at construction without an `apiKey`.
+ * `EntropyError('invalid_request')` at construction without a valid
+ * `apiKey` (a non-empty printable-ASCII token).
  */
 export function randomOrg(opts: RandomOrgOptions): EntropyProvider {
-  const apiKey = requireNonEmptyString(opts?.apiKey, 'randomOrg({ apiKey })', INFO.name)
+  const apiKey = requireCredential(opts?.apiKey, 'randomOrg({ apiKey })')
   const bases = resolveBaseUrls(opts, [DEFAULT_BASE_URL], INFO.name)
   const { fetch: fetchImpl } = opts
   const gate = new MinIntervalGate(0)

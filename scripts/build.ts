@@ -8,10 +8,17 @@
  * Workspaces are built in waves: every workspace whose dependencies are already
  * built runs in parallel; the output of each build is printed when it finishes.
  *
+ * Each workspace's `dist` is deleted right before its build. `tsc` only adds and
+ * overwrites files, so without the clean a deleted or renamed source left its
+ * stale `.js`/`.d.ts` in `dist`, and `files: ["dist", …]` published it. Every
+ * workspace build writes to `<workspace>/dist` (tsc `outDir`, the visualizer
+ * client bundle, Vite's `build.outDir`). Workspaces in one wave never depend on
+ * each other, so cleaning inside a wave cannot remove a dependency's output.
+ *
  * Usage: bun scripts/build.ts
  */
-import { readFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { readFileSync, rmSync } from 'node:fs'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -58,8 +65,18 @@ function workspaces(): Workspace[] {
   })
 }
 
+/** Delete `<workspace>/dist`; refuses any path that does not resolve inside the repository. */
+function cleanDist(ws: Workspace): void {
+  const dist = resolve(ws.dir, 'dist')
+  if (!dist.startsWith(ROOT + sep) || dirname(dist) !== resolve(ws.dir)) {
+    throw new Error(`refusing to clean ${dist}: not a workspace dist inside ${ROOT}`)
+  }
+  rmSync(dist, { recursive: true, force: true })
+}
+
 async function build(ws: Workspace): Promise<boolean> {
   const started = performance.now()
+  cleanDist(ws)
   const proc = Bun.spawn(['bun', 'run', 'build'], { cwd: ws.dir, stdout: 'pipe', stderr: 'pipe' })
   const [out, err, code] = await Promise.all([
     new Response(proc.stdout).text(),

@@ -10,6 +10,7 @@ import { eventCorrelations, sharedSteps } from './dependence.js'
 import {
   presentCorrelation,
   presentCounts,
+  presentCovar,
   presentCumulative,
   presentDevvar,
   presentNetvar,
@@ -229,6 +230,7 @@ function windowStatistic(
   zBySource: readonly Float64Array[],
   start: number,
   end: number,
+  bitsPerTrial: number,
 ): WindowStat | null {
   switch (spec.statistic) {
     case 'netvar':
@@ -237,7 +239,14 @@ function windowStatistic(
       return presentDevvar(zBySource, start, end)
     case 'correlation':
       return zBySource.length < 2 ? null : presentCorrelation(zBySource, start, end)
+    case 'covar':
+      return zBySource.length < 2 ? null : presentCovar(zBySource, start, end, bitsPerTrial)
   }
+}
+
+/** The pairwise statistics (correlation, covar) need at least two sources. */
+function isPairwise(statistic: EventSpec['statistic']): boolean {
+  return statistic === 'correlation' || statistic === 'covar'
 }
 
 /**
@@ -334,13 +343,13 @@ export function analyzeTrials(
     const cumulative = presentCumulative(zBySource, window.start, window.end)
     const stat =
       window.closed && window.end > window.start
-        ? windowStatistic(eventSpec, zBySource, window.start, window.end)
+        ? windowStatistic(eventSpec, zBySource, window.start, window.end, bitsPerTrial)
         : null
     if (!window.closed || stat === null) {
       const reason =
         window.reason ??
-        (eventSpec.statistic === 'correlation' && sources.length < 2
-          ? 'correlation needs at least 2 sources'
+        (isPairwise(eventSpec.statistic) && sources.length < 2
+          ? `${eventSpec.statistic} needs at least 2 sources`
           : `no usable ${eventSpec.statistic} data inside the window`)
       events.push(incompleteEvent(eventSpec, sources, reason, cumulative))
       continue

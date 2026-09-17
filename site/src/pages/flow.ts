@@ -1,9 +1,9 @@
-// Directed information flow: build two coupled bit streams (y copies x's past
-// with probability `coupling`) and measure transfer entropy each way. The
-// asymmetry TE(X→Y) ≫ TE(Y→X) recovers the true driving direction.
+// Information transfer: build two coupled bit streams (y copies x's past with
+// probability `coupling`) and measure transfer entropy each way. The asymmetry
+// TE(X→Y) ≫ TE(Y→X) recovers the true driving direction.
 
 import { transferEntropy } from '@mindpeeker/flow'
-import { el, fmt, replace } from '../shared/dom'
+import { el, fmt, guarded, replace } from '../shared/dom'
 import { localBytes } from '../shared/entropy'
 import { shell } from '../shared/layout'
 
@@ -55,7 +55,7 @@ function bar(label: string, te: number, teMax: number, color: string): HTMLEleme
   )
 }
 
-async function run(): Promise<void> {
+async function measure(): Promise<void> {
   const c = Number(coupling.value) / 100
   couplingLabel.textContent = c.toFixed(2)
   const xBytes = await localBytes(Math.ceil(N / 8))
@@ -84,6 +84,8 @@ async function run(): Promise<void> {
   )
 }
 
+const run = guarded(bars, 'transfer entropy', measure)
+
 coupling.addEventListener('input', run)
 
 content.append(
@@ -106,4 +108,4 @@ content.append(
   ),
 )
 
-run()
+void run()

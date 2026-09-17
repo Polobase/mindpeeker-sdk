@@ -1,6 +1,7 @@
 import { NegentropyError } from '../errors.js'
 import { KahanSum } from '../internal/kahan.js'
 import { calibrate, theoreticalCalibration } from '../stats/calibration.js'
+import { netvarLogM } from '../stats/netvar-martingale.js'
 import { trialStream, validateBitsPerTrial } from '../stats/trials.js'
 import { stoufferZ } from '../stats/zscores.js'
 import type { Calibration, Trial, TrialSeries, TrialSource } from '../types.js'
@@ -50,6 +51,22 @@ export interface SessionTick {
   netvar: number
   /** Running Σ (Z² − 1) — the live cumulative-deviation value. */
   cumdev: number
+  /**
+   * ln Mₜ of the anytime-valid variance-excess monitor on this run:
+   * `netvarLogM(step + 1, cumdev, { sided: 'upper' })`, the Gamma-mixture test
+   * martingale with its default prior a = b = 1 restricted to τ < 1 (see
+   * `netvarMartingale`). Feed the sequence to `anytimeP`/`villeCrossing`.
+   */
+  logEValue: number
+  /**
+   * The e-value Mₜ = exp(logEValue) (Infinity past ln Mₜ ≈ 709). By Ville's
+   * inequality an H0 run ever reaches Mₜ ≥ 1/α with probability ≤ α, so
+   * stopping the first time `eValue ≥ 1/α` keeps level α however long the
+   * session is watched — unlike reading the pointwise χ² envelope every tick.
+   * An exact test supermartingale for fair-bit trials under theoretical
+   * calibration; under empirical calibration it is an approximation.
+   */
+  eValue: number
   /** Events whose window contains this step (index windows) or this instant (Date windows). */
   activeEvents: readonly string[]
 }
@@ -70,6 +87,9 @@ export interface Session extends AsyncIterable<SessionTick> {
 
 type Outcome = IteratorResult<Trial> | typeof STEP_TIMEOUT
 
+/** The live e-value's alternative: variance excess only (the GCP hypothesis). */
+const UPPER = { sided: 'upper' } as const
+
 /**
  * Live experiment over N sources in lock-step rounds: each tick awaits one
  * trial from every source still in the roster, so z vectors are step-aligned
@@ -89,7 +109,7 @@ type Outcome = IteratorResult<Trial> | typeof STEP_TIMEOUT
  * Validation happens here, not later: sources, config (events, windows,
  * calibrations), `stepTimeoutMs`, and provided calibrations
  * (`calibration_required` when a source has none at the trial width). A
- * correlation event needs ≥ 2 sources.
+ * correlation or covar event needs ≥ 2 sources.
  *
  * Abort: the session owns an AbortController linked to `signal` and passes
  * it to every `source.stream()`; `stop()`, the caller's abort, and leaving
@@ -119,8 +139,12 @@ export function session(opts: SessionOptions): Session {
   const bitsPerTrial = validateBitsPerTrial(config.trial?.bitsPerTrial)
   const missing = config.missing ?? 'error'
   const events: readonly EventSpec[] = config.events ?? []
-  if (sources.length < 2 && events.some((event) => event.statistic === 'correlation')) {
-    throw new NegentropyError('invalid_config', 'a correlation event needs at least 2 sources')
+  const pairwise = events.find((e) => e.statistic === 'correlation' || e.statistic === 'covar')
+  if (sources.length < 2 && pairwise !== undefined) {
+    throw new NegentropyError(
+      'invalid_config',
+      `a ${pairwise.statistic} event needs at least 2 sources`,
+    )
   }
   const stepTimeoutMs = validateStepTimeout(opts.stepTimeoutMs ?? 30_000)
   if (opts.now !== undefined && typeof opts.now !== 'function') {
@@ -310,6 +334,7 @@ export function session(opts: SessionOptions): Session {
         const stouffer = stoufferZ(presentZ)
         netvar.add(stouffer * stouffer)
         cumdev.add(stouffer * stouffer - 1)
+        const logEValue = netvarLogM(step + 1, cumdev.value, UPPER)
         yield {
           step,
           at,
@@ -318,6 +343,8 @@ export function session(opts: SessionOptions): Session {
           stouffer,
           netvar: netvar.value,
           cumdev: cumdev.value,
+          logEValue,
+          eValue: Math.exp(logEValue),
           activeEvents: events.filter((e) => windowContains(e, step, at)).map((e) => e.id),
         }
         step++

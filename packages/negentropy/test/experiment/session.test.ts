@@ -5,6 +5,8 @@ import { registerExperiment } from '../../src/experiment/registration.js'
 import type { SessionTick } from '../../src/experiment/session.js'
 import { session } from '../../src/experiment/session.js'
 import { theoreticalCalibration } from '../../src/stats/calibration.js'
+import { villeCrossing } from '../../src/stats/eprocess.js'
+import { netvarLogM, netvarMartingale } from '../../src/stats/netvar-martingale.js'
 import { stoufferZ } from '../../src/stats/zscores.js'
 import type { TrialSource } from '../../src/types.js'
 import { countingSource, prngBytes, prngUniforms } from '../helpers/byte-sources.js'
@@ -89,6 +91,35 @@ describe('session (live)', () => {
     }
     expect(ticks[0]?.activeEvents).toEqual(['window'])
     expect(ticks[6]?.activeEvents).toEqual([])
+  })
+
+  test('eValue: the live anytime-valid monitor is the upper Gamma-mixture martingale on cumdev', async () => {
+    const run = async (a: TrialSource, b: TrialSource) => {
+      const live = session({ sources: [a, b] })
+      const ticks = await takeTicks(live, 300)
+      live.stop()
+      return ticks
+    }
+    const independent = await run(instantSource('a', 1), instantSource('b', 5000))
+    const reference = netvarMartingale(
+      independent.map((tick) => tick.stouffer),
+      { sided: 'upper' },
+    )
+    for (const tick of independent) {
+      expect(tick.logEValue).toBe(netvarLogM(tick.step + 1, tick.cumdev, { sided: 'upper' }))
+      expect(tick.eValue).toBe(Math.exp(tick.logEValue))
+      // the batch path sums ΣZ² directly only while ΣZ² < t/2; elsewhere bit for bit
+      if (tick.netvar >= (tick.step + 1) / 2)
+        expect(tick.logEValue).toBe(reference[tick.step] as number)
+      else expect(tick.logEValue).toBeCloseTo(reference[tick.step] as number, 12)
+    }
+    const logs = (ticks: SessionTick[]) => Float64Array.from(ticks, (tick) => tick.logEValue)
+    expect(villeCrossing(logs(independent), 0.05)).toBe(-1)
+    // two sources fed identical bytes: Var Z = 2, the variance excess the monitor targets
+    const common = await run(instantSource('a', 7), instantSource('b', 7))
+    const crossing = villeCrossing(logs(common), 0.05)
+    expect(crossing).toBeGreaterThanOrEqual(0)
+    expect(common[crossing]?.eValue as number).toBeGreaterThanOrEqual(20)
   })
 
   test('is lazy: no source I/O before the first tick is pulled', async () => {
@@ -288,6 +319,11 @@ describe('session (live)', () => {
     code(() => session({ sources: [a], events: [{ ...e, start: 5 }] }), 'invalid_window')
     code(
       () => session({ sources: [a], events: [{ ...e, statistic: 'correlation' }] }),
+      'invalid_config',
+    )
+    code(() => session({ sources: [a], events: [{ ...e, statistic: 'covar' }] }), 'invalid_config')
+    code(
+      () => session({ sources: [a], events: [{ ...e, statistic: 'variance' as never }] }),
       'invalid_config',
     )
     code(() => session({ sources: [a], calibration: { trials: 1 } }), 'invalid_config')

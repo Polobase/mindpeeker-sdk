@@ -1,7 +1,13 @@
 import type { Calibration, TrialClock, TrialConfig, TrialSeries } from '../types.js'
 import type { RegisteredExperiment } from './registration.js'
 
-export type EventStatistic = 'netvar' | 'devvar' | 'correlation'
+/**
+ * The event statistic: 'netvar' (Σ Stouffer Z², χ²), 'devvar' (Σ z², χ²),
+ * 'correlation' (Σ pairwise products zᵢzⱼ, normal) or 'covar' (Σ pairwise
+ * products of (zᵢ² − 1), GCP's correlation of variances C2, normal). The
+ * two pairwise statistics need ≥ 2 sources.
+ */
+export type EventStatistic = 'netvar' | 'devvar' | 'correlation' | 'covar'
 
 /**
  * A pre-registered event window. Registering the statistic and window BEFORE
@@ -115,7 +121,7 @@ export interface EventResult {
   reason?: string
   /** The statistic (NaN when incomplete). */
   value: number
-  /** Degrees of freedom — for netvar steps with ≥ 1 present source, for devvar present cells, for correlation present pairs (NaN when incomplete). */
+  /** Degrees of freedom — for netvar steps with ≥ 1 present source, for devvar present cells, for correlation and covar present pairs (NaN when incomplete). */
   df: number
   /** One-sided p-value (NaN when incomplete). */
   pValue: number

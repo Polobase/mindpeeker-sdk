@@ -8,6 +8,7 @@ import {
   binomialPmf,
   binomialSf,
   chi2Cdf,
+  chi2Isf,
   chi2Ppf,
   chi2Sf,
   concatBytes,
@@ -43,6 +44,7 @@ describe('numerics barrel surface', () => {
       binomialPmf,
       binomialSf,
       chi2Cdf,
+      chi2Isf,
       chi2Ppf,
       chi2Sf,
       concatBytes,
@@ -74,6 +76,7 @@ describe('numerics barrel surface', () => {
         'binomialPmf',
         'binomialSf',
         'chi2Cdf',
+        'chi2Isf',
         'chi2Ppf',
         'chi2Sf',
         'concatBytes',
@@ -136,6 +139,13 @@ describe('special functions spot checks', () => {
   test('chi2Cdf + chi2Sf = 1 and chi2Ppf round-trips', () => {
     expect(chi2Cdf(3.5, 4) + chi2Sf(3.5, 4)).toBeCloseTo(1, 14)
     expect(chi2Ppf(chi2Cdf(3.5, 4), 4)).toBeCloseTo(3.5, 10)
+  })
+
+  test('chi2Isf inverts chi2Sf, including q below 2⁻⁵³ where 1 − q rounds to 1', () => {
+    // mpmath (40 digits): the x with Q(k/2, x/2) = q
+    expect(chi2Isf(0.05, 1)).toBeCloseTo(3.841458820694126, 12)
+    expect(chi2Isf(0.3, 12)).toBeCloseTo(14.01110016842193, 11)
+    expect(chi2Sf(chi2Isf(1e-20, 7), 7) / 1e-20).toBeCloseTo(1, 10)
   })
 
   test('gammaP + gammaQ = 1 and Q(1, x) = exp(−x)', () => {

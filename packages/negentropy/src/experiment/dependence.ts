@@ -3,12 +3,20 @@ import type { EventStatistic } from './types.js'
 /**
  * H0 correlation between event statistics that share analysed steps — the
  * input to Brown's composite. Per step t with nₜ present, standardized,
- * independent source z's of excess kurtosis κ (κ = −2/k exactly for
- * Binomial(k, ½) trials), the per-step terms of the three statistics are
- *   netvar  Xₜ = Zₛ(t)²,   devvar  Yₜ = Σᵢ zᵢ²,   correlation  Sₜ = Σᵢ<ⱼ zᵢzⱼ
+ * independent, symmetric source z's of excess kurtosis κ (κ = −2/k exactly
+ * for Binomial(k, ½) trials; E z³ = 0), the per-step terms of the four
+ * statistics are
+ *   netvar  Xₜ = Zₛ(t)²,   devvar  Yₜ = Σᵢ zᵢ²,   correlation  Sₜ = Σᵢ<ⱼ zᵢzⱼ,
+ *   covar   Cₜ = Σᵢ<ⱼ uᵢuⱼ with uᵢ = zᵢ² − 1 and v = Var u = 2 + κ,
  * with exact moments (all odd cross-moments vanish):
  *   Var X = 2 + κ/n,  Var Y = n(2 + κ),  Var S = n(n − 1)/2,
- *   Cov(X, Y) = 2 + κ,  Cov(X, S) = n − 1,  Cov(Y, S) = 0.
+ *   Var C = v²·n(n − 1)/2,
+ *   Cov(X, Y) = 2 + κ,  Cov(X, S) = n − 1,  Cov(Y, S) = 0,
+ *   Cov(C, X) = Cov(C, Y) = Cov(C, S) = 0.
+ * (Every product of C with another term leaves some uᵢ or zᵢ of its own in an
+ * expectation: E[uᵢuⱼ] = 0 for i ≠ j, and E[zᵢzⱼuᵢuⱼ] = (E z³)² = 0.) A covar
+ * event is therefore uncorrelated with every other statistic; it correlates
+ * only with covar events it overlaps.
  * Steps are independent, so for events A, B with step sets 𝒜, ℬ:
  *   ρ_AB = Σ_{t∈𝒜∩ℬ} Cov_ab(nₜ) / √(Σ_{t∈𝒜} Var_a(nₜ) · Σ_{t∈ℬ} Var_b(nₜ)).
  * Two netvar events over windows of lengths A, B sharing O fully-present
@@ -31,11 +39,14 @@ function variance(statistic: EventStatistic, n: number, kappa: number): number {
       return n * (2 + kappa)
     case 'correlation':
       return (n * (n - 1)) / 2
+    case 'covar':
+      return ((n * (n - 1)) / 2) * (2 + kappa) ** 2
   }
 }
 
 function covariance(a: EventStatistic, b: EventStatistic, n: number, kappa: number): number {
   if (a === b) return variance(a, n, kappa)
+  if (a === 'covar' || b === 'covar') return 0
   const pair = new Set([a, b])
   if (pair.has('netvar') && pair.has('devvar')) return 2 + kappa
   if (pair.has('netvar')) return n - 1 // netvar × correlation
