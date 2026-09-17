@@ -117,6 +117,69 @@
       "numerator": "0",
       "denominator": "1",
       "value": 0.0
+    },
+    {
+      "name": "celticCrossWaite+significator",
+      "n": 77,
+      "count": 10,
+      "reversals": false,
+      "numerator": "124702015624352",
+      "denominator": "10578150685575",
+      "value": 11.788640503524226
+    },
+    {
+      "name": "celticCrossWaite+significator+reversals",
+      "n": 77,
+      "count": 10,
+      "reversals": true,
+      "numerator": "145858316995502",
+      "denominator": "10578150685575",
+      "value": 13.788640503524226
+    },
+    {
+      "name": "threeCard+reversed1-upright3",
+      "n": 78,
+      "count": 3,
+      "reversals": [3, 1],
+      "numerator": "740323",
+      "denominator": "171171",
+      "value": 4.325049219786062
+    },
+    {
+      "name": "celticCross+reversed5-upright3",
+      "n": 78,
+      "count": 10,
+      "reversals": [3, 5],
+      "numerator": "126415635414028",
+      "denominator": "8089174053675",
+      "value": 15.627755636757007
+    },
+    {
+      "name": "celticCross+reversed1-upright2",
+      "n": 78,
+      "count": 10,
+      "reversals": [2, 1],
+      "numerator": "2979554338215776",
+      "denominator": "137515958912475",
+      "value": 21.666971323031515
+    },
+    {
+      "name": "single+reversed3-upright7",
+      "n": 78,
+      "count": 1,
+      "reversals": [7, 3],
+      "numerator": "30976",
+      "denominator": "14625",
+      "value": 2.118017094017094
+    },
+    {
+      "name": "single+reversed0-upright1",
+      "n": 78,
+      "count": 1,
+      "reversals": [1, 0],
+      "numerator": "128",
+      "denominator": "117",
+      "value": 1.0940170940170941
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import * as oracle from '../src/index.js'
 import {
   byteReader,
   castHexagram,
@@ -24,7 +25,7 @@ describe('public surface', () => {
     expect(TAROT_DECK.length).toBe(78)
     expect(ELDER_FUTHARK.length).toBe(24)
     expect(GEOMANTIC_FIGURES.length).toBe(16)
-    expect(Object.keys(SPREADS)).toEqual(['single', 'threeCard', 'celticCross'])
+    expect(Object.keys(SPREADS)).toEqual(['single', 'threeCard', 'celticCross', 'celticCrossWaite'])
   })
 
   test('every cast works straight off a live ByteSource', async () => {
@@ -105,6 +106,46 @@ describe('public surface', () => {
     expect(typeof expectedBytes).toBe('function')
     expect(typeof weightedIndexRational).toBe('function')
     expect(DEFAULT_CAST_CHUNK_BYTES).toBe(32)
+  })
+
+  test('0.2 systems and helpers are exported from the root', () => {
+    const fns = [
+      oracle.castOdu,
+      oracle.castCowries,
+      oracle.castLot,
+      oracle.castMo,
+      oracle.castAstragaloi,
+      oracle.castHomeromanteion,
+      oracle.castRuneSets,
+      oracle.reconciler,
+      oracle.partOfFortune,
+      oracle.houses,
+      oracle.figureElement,
+      oracle.nuclearHexagram,
+      oracle.inverseHexagram,
+      oracle.oppositeHexagram,
+      oracle.fuXiNumber,
+      oracle.hexagramFromFuXi,
+      oracle.oduFromBinary,
+    ]
+    for (const fn of fns) expect(typeof fn).toBe('function')
+    expect(oracle.ODU_FIGURES.length).toBe(16)
+    expect(oracle.COWRIE_ODU.length).toBe(17)
+    expect(oracle.MO_SYLLABLES.length).toBe(6)
+    expect(oracle.YOUNGER_FUTHARK.length).toBe(16)
+    expect(Object.keys(oracle.FUTHARKS)).toEqual([
+      'elder',
+      'younger',
+      'futhorc28',
+      'futhorc29',
+      'futhorc33',
+    ])
+    expect(Object.keys(oracle.HOUSE_SYSTEMS)).toEqual(['sequential', 'goldenDawn'])
+    expect(Object.keys(oracle.RUNE_LAYOUTS)).toEqual(['norns'])
+    expect(oracle.JIAOBEI_WEIGHTS).toEqual([2, 1, 1])
+    expect(oracle.ASTRAGALUS_WEIGHTS.hagstrom).toEqual([1, 4, 4, 1])
+    expect(oracle.LEGGE_NAMES[1]).toBe('Khien')
+    expect(oracle.FUTHORC_28.length + oracle.FUTHORC_29.length + oracle.FUTHORC_33.length).toBe(90)
   })
 
   test('README usage: one-off casts release the source; a shared reader is closed by await using', async () => {

@@ -24,8 +24,19 @@ export interface ShieldCast extends EntropyAccounting {
   readonly mothers: FigureQuartet
   /** Daughter $k$ row $m$ = Mother $m$ row $k$ (transposition). */
   readonly daughters: FigureQuartet
-  /** Row-wise "addition" of adjacent pairs: $M_1{+}M_2$, $M_3{+}M_4$, $D_1{+}D_2$, $D_3{+}D_4$. */
+  /**
+   * Row-wise "addition" of adjacent pairs: $M_1{+}M_2$, $M_3{+}M_4$,
+   * $D_1{+}D_2$, $D_3{+}D_4$ (figures IX–XII). The sources call them
+   * **Nephews** (*Nepotes*; Liber XCVI ch. II, Skinner 1980 p. 216) — see
+   * the {@link ShieldCast.nephews} alias; the field keeps its 0.1 name.
+   */
   readonly nieces: FigureQuartet
+  /**
+   * Alias of {@link ShieldCast.nieces} under the sources' name (the same
+   * frozen array). Non-enumerable, so JSON output and deep equality are
+   * unchanged.
+   */
+  readonly nephews: FigureQuartet
   /** Right Witness ($N_1{+}N_2$), Left Witness ($N_3{+}N_4$). */
   readonly witnesses: readonly [GeomanticFigure, GeomanticFigure]
   /** Right + Left Witness. Always one of the eight even-point figures. */
@@ -39,12 +50,6 @@ export interface ShieldCast extends EntropyAccounting {
  */
 export interface CastShieldOptions extends CastReaderOptions {}
 
-/**
- * Geomantic addition: rows combine independently, and a row is active in
- * the sum iff the two parent rows' total point count is odd — with
- * active $= 1$ that is exactly $$r = a \oplus b,$$ the XOR of the parents'
- * activity bits (Greer, *The Art and Practice of Geomancy*, 2009, ch. 1).
- */
 const add = (a: Rows, b: Rows): Rows =>
   a.map((row, i) => (row ^ (b[i] as number)) as FigureRow) as unknown as Rows
 
@@ -55,14 +60,14 @@ const toFigure = (rows: Rows): GeomanticFigure => figureFromBinary(rows.join('')
  * bit $4m + r$ is Mother $m{+}1$'s row $r$ (Fire, Air, Water, Earth), so
  * each of the $2^{16}$ mother combinations is exactly equiprobable.
  *
- * The derived chart follows the classical construction: Daughters by
- * transposing the Mothers' rows, then Nieces, Witnesses, and Judge by
- * pairwise geomantic addition. Because addition is XOR and every one of
- * the 16 mother/daughter rows enters the Judge an even number of times…
- * more precisely, the Judge equals the XOR of all four Mothers *and* all
- * four Daughters, and each original bit appears exactly twice in that sum —
- * the Judge always has an **even** point total (the classical validity
- * check: only the 8 even figures can judge).
+ * The derived chart follows the classical construction (Liber XCVI ch. II;
+ * Skinner 1980 pp. 215–216): Daughters by transposing the Mothers' rows,
+ * then Nephews (`nieces`), Witnesses, and Judge by pairwise geomantic
+ * addition — row-wise XOR, $r = a \oplus b$, since a row of the sum is
+ * active iff the parents' point total is odd. The Judge equals the XOR of
+ * all four Mothers *and* all four Daughters, in which each original bit
+ * appears exactly twice — so the Judge always has an **even** point total
+ * (the classical validity check: only the 8 even figures can judge).
  *
  * Entropy accounting is exact: `bytesConsumed: 2, bitsUsed: 16`, always.
  *
@@ -105,10 +110,11 @@ async function shieldFrom(reader: ByteReader): Promise<ShieldCast> {
   const quartet = (rows: Rows[]): FigureQuartet =>
     Object.freeze(rows.map(toFigure)) as unknown as FigureQuartet
 
-  return Object.freeze({
+  const nieces = quartet(nieceRows)
+  const shield = {
     mothers: quartet(motherRows),
     daughters: quartet(daughterRows),
-    nieces: quartet(nieceRows),
+    nieces,
     witnesses: Object.freeze([
       toFigure(right),
       toFigure(left),
@@ -116,14 +122,7 @@ async function shieldFrom(reader: ByteReader): Promise<ShieldCast> {
     judge: toFigure(add(right, left)),
     ...accounting(),
     bitsUsed: bits.bitsUsed,
-  })
-}
-
-/**
- * Project a shield chart onto the twelve astrological houses in the
- * traditional order: houses 1–4 are the Mothers, 5–8 the Daughters, 9–12
- * the Nieces (Greer 2009, ch. 6). A pure projection — no entropy involved.
- */
-export function houses(shield: ShieldCast): readonly GeomanticFigure[] {
-  return Object.freeze([...shield.mothers, ...shield.daughters, ...shield.nieces])
+  }
+  Object.defineProperty(shield, 'nephews', { value: nieces, enumerable: false })
+  return Object.freeze(shield) as ShieldCast
 }

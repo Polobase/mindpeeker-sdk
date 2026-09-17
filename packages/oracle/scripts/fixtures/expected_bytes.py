@@ -31,11 +31,25 @@ def uniform_bytes(m: int) -> Fraction:
     return Fraction(k) / (1 - rejected)
 
 
-def deal_bytes(n: int, count: int, reversals: bool) -> Fraction:
+def is_power_of_two(w: int) -> bool:
+    return w >= 1 and (w & (w - 1)) == 0
+
+
+def reversal_bytes(count: int, reversals) -> Fraction:
+    """Orientation phase: None/False, True (1 bit), or (upright, reversed) weights."""
+    if reversals is None or reversals is False:
+        return Fraction(0)
+    upright, reversed_ = (1, 1) if reversals is True else reversals
+    w = upright + reversed_
+    if is_power_of_two(w):
+        k = w.bit_length() - 1
+        return Fraction((count * k + 7) // 8)  # k bits per card from one bit reader
+    return count * uniform_bytes(w)  # one rejection-sampled draw per card
+
+
+def deal_bytes(n: int, count: int, reversals) -> Fraction:
     total = sum((uniform_bytes(n - i) for i in range(count)), Fraction(0))
-    if reversals:
-        total += (count + 7) // 8
-    return total
+    return total + reversal_bytes(count, reversals)
 
 
 CASES = [
@@ -52,6 +66,13 @@ CASES = [
     ("deal-3-of-2^32", 2**32, 3, False),
     ("deal-5-of-100000", 100000, 5, True),
     ("empty", 78, 0, True),
+    ("celticCrossWaite+significator", 77, 10, False),
+    ("celticCrossWaite+significator+reversals", 77, 10, True),
+    ("threeCard+reversed1-upright3", 78, 3, (3, 1)),
+    ("celticCross+reversed5-upright3", 78, 10, (3, 5)),
+    ("celticCross+reversed1-upright2", 78, 10, (2, 1)),
+    ("single+reversed3-upright7", 78, 1, (7, 3)),
+    ("single+reversed0-upright1", 78, 1, (1, 0)),
 ]
 
 
@@ -64,7 +85,8 @@ def main() -> None:
                 "name": name,
                 "n": n,
                 "count": count,
-                "reversals": reversals,
+                # a boolean, or [upright, reversed] integer weights
+                "reversals": list(reversals) if isinstance(reversals, tuple) else reversals,
                 "numerator": str(value.numerator),
                 "denominator": str(value.denominator),
                 "value": float(value),

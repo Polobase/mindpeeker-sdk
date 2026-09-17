@@ -73,6 +73,92 @@ describe('castRunes determinism fixtures (hand-computed)', () => {
   })
 })
 
+describe('castRunes rows, blank rune, layouts', () => {
+  test('defaults report futhark elder, no blank, no layout', async () => {
+    const cast = await castRunes(new Uint8Array([0]), 1)
+    expect(cast.futhark).toBe('elder')
+    expect(cast.blank).toBe(false)
+    expect('layout' in cast).toBe(false)
+    expect('position' in (cast.runes[0] ?? {})).toBe(false)
+  })
+
+  test('younger: bytes [0, 0] → Fé, Úr (uniformInt(16) never rejects)', async () => {
+    const cast = await castRunes(new Uint8Array([0, 0]), 2, { futhark: 'younger' })
+    expect(cast.runes.map((r) => r.rune.id)).toEqual(['fe', 'ur'])
+    expect(cast.futhark).toBe('younger')
+    expect(cast.bytesConsumed).toBe(2)
+  })
+
+  test('every row can be drawn in full without repeats', async () => {
+    for (const [futhark, size] of [
+      ['younger', 16],
+      ['futhorc28', 28],
+      ['futhorc29', 29],
+      ['futhorc33', 33],
+    ] as const) {
+      const cast = await castRunes(prngBytes(128, size), size, { futhark })
+      expect(new Set(cast.runes.map((r) => r.rune.id)).size).toBe(size)
+    }
+  })
+
+  test('blank: byte 24 draws the blank from 25; it spends no merkstave bit', async () => {
+    // uniformInt(25): threshold floor(256/25)*25 = 250; 24 → index 24 = blank.
+    const cast = await castRunes(new Uint8Array([24]), 1, { blank: true, merkstave: true })
+    expect(cast.runes[0]?.rune).toMatchObject({ id: 'blank', modern: true })
+    expect(cast.runes[0]?.merkstave).toBe(false)
+    expect(cast.blank).toBe(true)
+    expect(cast.bytesConsumed).toBe(1)
+    expect(cast.bitsUsed).toBe(8)
+  })
+
+  test('exhaustive single draw from Elder + blank: each of 25 runes exactly 10 of 250 accepted bytes', async () => {
+    const counts = new Array<number>(25).fill(0)
+    for (let v = 0; v < 250; v++) {
+      const cast = await castRunes(new Uint8Array([v]), 1, { blank: true })
+      bump(counts, cast.runes[0]?.rune.index as number)
+    }
+    expect(counts).toEqual(new Array<number>(25).fill(10))
+    await expect(castRunes(new Uint8Array([250]), 1, { blank: true })).rejects.toMatchObject({
+      code: 'insufficient_entropy',
+    })
+  })
+
+  test("'norns' layout draws three runes into Urðr, Verðandi, Skuld", async () => {
+    const cast = await castRunes(new Uint8Array([0, 0, 0]), 'norns', { futhark: 'younger' })
+    expect(cast.runes.map((r) => r.rune.id)).toEqual(['fe', 'ur', 'thurs'])
+    expect(cast.runes.map((r) => r.position?.name)).toEqual(['Urðr', 'Verðandi', 'Skuld'])
+    expect(cast.layout?.id).toBe('norns')
+  })
+
+  test('invalid rows, layouts, flags, and merkstave outside the Elder Futhark throw invalid_input', async () => {
+    const bad: [unknown, unknown][] = [
+      [1, { futhark: 'armanen' }],
+      [1, { futhark: 'constructor' }],
+      [1, { futhark: null }],
+      [1, { blank: 'yes' }],
+      [1, { futhark: 'younger', merkstave: true }],
+      [17, { futhark: 'younger' }],
+      [26, { blank: true }],
+      ['horseshoe', {}],
+      ['constructor', {}],
+      [null, {}],
+    ]
+    for (const [count, opts] of bad) {
+      try {
+        await castRunes(prngBytes(64), count as never, opts as never)
+        expect.unreachable()
+      } catch (err) {
+        expect((err as OracleError).code).toBe('invalid_input')
+      }
+    }
+    const withFalse = await castRunes(new Uint8Array([0]), 1, {
+      futhark: 'futhorc33',
+      merkstave: false,
+    })
+    expect(withFalse.runes[0]?.rune.id).toBe('feoh')
+  })
+})
+
 describe('castRunes distribution (seeded PRNG)', () => {
   const fixture = JSON.parse(
     readFileSync(join(import.meta.dir, '..', '..', 'fixtures', 'chi2-critical.json'), 'utf8'),

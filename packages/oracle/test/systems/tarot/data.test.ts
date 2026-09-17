@@ -32,6 +32,27 @@ describe('tarot data', () => {
     expect(TAROT_DECK[77]).toMatchObject({ id: 'p14', name: 'King of Pentacles' })
   })
 
+  test("celticCrossWaite: Waite's deal order (Pictorial Key 1911, Part III §7)", () => {
+    const names = SPREADS.celticCrossWaite.positions.map((p) => p.name)
+    expect(names).toEqual([
+      'Covers',
+      'Crosses',
+      'Crowns',
+      'Beneath',
+      'Behind',
+      'Before',
+      'Himself',
+      'His House',
+      'Hopes or Fears',
+      'What Will Come',
+    ])
+    // The modern celticCross permutes positions 3–5: Waite's crowns/beneath/behind
+    // are its Crown (5), Foundation (3), Recent Past (4).
+    const modern = SPREADS.celticCross.positions.map((p) => p.name)
+    expect([modern[4], modern[2], modern[3]]).toEqual(['Crown', 'Foundation', 'Recent Past'])
+    expect(Object.isFrozen(SPREADS.celticCrossWaite.positions[0])).toBe(true)
+  })
+
   test('spreads have the documented position counts and are frozen', () => {
     expect(SPREADS.single.positions.length).toBe(1)
     expect(SPREADS.threeCard.positions.length).toBe(3)

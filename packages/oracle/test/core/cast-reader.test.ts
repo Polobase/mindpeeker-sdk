@@ -2,9 +2,16 @@ import { describe, expect, test } from 'bun:test'
 import { DEFAULT_CAST_CHUNK_BYTES } from '../../src/core/cast-reader.js'
 import { type ByteReader, byteReader } from '../../src/core/reader.js'
 import { OracleError } from '../../src/errors.js'
+import { castAstragaloi } from '../../src/systems/astragaloi/cast.js'
+import { castCowries } from '../../src/systems/cowries/cast.js'
 import { castShield } from '../../src/systems/geomancy/cast.js'
+import { castHomeromanteion } from '../../src/systems/homeromanteion/cast.js'
 import { castHexagram } from '../../src/systems/iching/cast.js'
+import { castOdu } from '../../src/systems/ifa/cast.js'
+import { castLot } from '../../src/systems/lots/cast.js'
+import { castMo } from '../../src/systems/mo/cast.js'
 import { castRunes } from '../../src/systems/runes/cast.js'
+import { castRuneSets } from '../../src/systems/runes/sets.js'
 import { castSpread } from '../../src/systems/tarot/cast.js'
 import type { OracleInput } from '../../src/types.js'
 import { liveSource, prngBytes, stalledIterable } from '../helpers/byte-sources.js'
@@ -19,6 +26,26 @@ const casts: readonly (readonly [string, AnyCast])[] = [
   ['castSpread', (input, opts) => castSpread(input, 'celticCross', { ...opts, reversals: true })],
   ['castRunes', (input, opts) => castRunes(input, 5, { ...opts, merkstave: true })],
   ['castShield', (input, opts) => castShield(input, opts)],
+  [
+    'castHexagram singleLine',
+    (input, opts) => castHexagram(input, { ...opts, method: 'singleLine' }),
+  ],
+  [
+    'castSpread celticCrossWaite',
+    (input, opts) =>
+      castSpread(input, 'celticCrossWaite', {
+        ...opts,
+        significator: 'm00',
+        reversals: { reversed: 1, upright: 2 },
+      }),
+  ],
+  ['castRuneSets', (input, opts) => castRuneSets(input, [3, 3, 1], { ...opts, blank: true })],
+  ['castOdu', (input, opts) => castOdu(input, { ...opts, method: 'ikin' })],
+  ['castCowries', (input, opts) => castCowries(input, opts)],
+  ['castLot', (input, opts) => castLot(input, { ...opts, confirm: 3 })],
+  ['castMo', (input, opts) => castMo(input, opts)],
+  ['castAstragaloi', (input, opts) => castAstragaloi(input, 5, opts)],
+  ['castHomeromanteion', (input, opts) => castHomeromanteion(input, opts)],
 ]
 
 const codeOf = async (p: Promise<unknown>): Promise<string> => {
@@ -112,6 +139,13 @@ describe('cast option bags', () => {
     expect(await codeOf(castSpread(bytes, 'single', null as never))).toBe('invalid_input')
     expect(await codeOf(castRunes(bytes, 1, null as never))).toBe('invalid_input')
     expect(await codeOf(castShield(bytes, null as never))).toBe('invalid_input')
+    expect(await codeOf(castRuneSets(bytes, [1], null as never))).toBe('invalid_input')
+    expect(await codeOf(castOdu(bytes, null as never))).toBe('invalid_input')
+    expect(await codeOf(castCowries(bytes, null as never))).toBe('invalid_input')
+    expect(await codeOf(castLot(bytes, null as never))).toBe('invalid_input')
+    expect(await codeOf(castMo(bytes, null as never))).toBe('invalid_input')
+    expect(await codeOf(castAstragaloi(bytes, 5, null as never))).toBe('invalid_input')
+    expect(await codeOf(castHomeromanteion(bytes, null as never))).toBe('invalid_input')
   })
 })
 

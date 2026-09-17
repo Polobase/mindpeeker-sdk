@@ -6,13 +6,21 @@ import {
   withCastReader,
 } from '../../core/cast-reader.js'
 import type { ByteReader } from '../../core/reader.js'
+import { uniformInt } from '../../core/uniform.js'
 import { weightedIndex } from '../../core/weighted.js'
 import { OracleError } from '../../errors.js'
 import type { EntropyAccounting, OracleInput } from '../../types.js'
 import { type Hexagram, hexagramFromBinary } from './data.js'
 
-/** How the six lines are generated — two traditional probability models. */
-export type CastMethod = 'coins' | 'yarrow'
+/** The two line-by-line probability models, each with a {@link LINE_WEIGHTS} entry. */
+export type LineMethod = 'coins' | 'yarrow'
+
+/**
+ * How the six lines are generated: the line-by-line models `'coins'` and
+ * `'yarrow'`, or `'singleLine'` — six independent yang/yin lines plus
+ * exactly one moving line (Crowley, *Liber CCXVI*).
+ */
+export type CastMethod = LineMethod | 'singleLine'
 
 /**
  * Exact line-value distributions, as integer weights over a power-of-two
@@ -23,12 +31,19 @@ export type CastMethod = 'coins' | 'yarrow'
  * - `yarrow` — traditional yarrow-stalk method, $2^4$ outcomes:
  *   $$P(6,7,8,9) = \tfrac{1}{16}, \tfrac{5}{16}, \tfrac{7}{16}, \tfrac{3}{16}$$
  *
- * Probabilities per the standard analyses of both procedures (Hacker,
- * *The I Ching Handbook*, 1993; Wilhelm & Baynes, 1950). Both are dyadic,
- * so {@link weightedIndex} realizes them exactly: 3 bits per coin line,
- * 4 bits per yarrow line, no rejection.
+ * The counts 1/3/3/1 of 8 and 4/20/28/12 of 64 are stated by Hellmut
+ * Wilhelm ("The Concept of Time in the Book of Changes", *Man and Time*,
+ * 1957); the 49-stalk, count-by-fours procedure is Legge's Great Appendix
+ * I.9 (1899). Both are dyadic, so {@link weightedIndex} realizes them
+ * exactly: 3 bits per coin line, 4 bits per yarrow line, no rejection.
+ *
+ * Physical methods built to reproduce the yarrow odds from 16 equiprobable
+ * outcomes — the 16-token method, two coins thrown twice, four coins —
+ * realize this same $1/16, 5/16, 7/16, 3/16$ table, so they are
+ * probability-identical to `'yarrow'`. `'singleLine'` has no per-line
+ * table (see {@link castHexagram}).
  */
-export const LINE_WEIGHTS: Readonly<Record<CastMethod, readonly number[]>> = Object.freeze({
+export const LINE_WEIGHTS: Readonly<Record<LineMethod, readonly number[]>> = Object.freeze({
   coins: Object.freeze([1, 3, 3, 1]),
   yarrow: Object.freeze([1, 5, 7, 3]),
 })
@@ -67,19 +82,29 @@ export interface HexagramCast extends EntropyAccounting {
  * cast opens. See {@link CastReaderOptions}.
  */
 export interface CastHexagramOptions extends CastReaderOptions {
-  /** Probability model for each line. Default `'coins'`. */
+  /** Probability model. Default `'coins'`. */
   method?: CastMethod
 }
 
 /**
- * Cast a full hexagram: six lines bottom-up, each drawn with the exact
- * distribution of the chosen method, then resolved against the King Wen
- * table. When any line is old (6 or 9) the changed lines yield the
- * `relating` hexagram, $\text{relating}_i = \text{primary}_i \oplus
- * \text{changing}_i$.
+ * Cast a full hexagram, resolved against the King Wen table. When any line
+ * is old (6 or 9) the changed lines yield the `relating` hexagram,
+ * $\text{relating}_i = \text{primary}_i \oplus \text{changing}_i$.
  *
- * Consumption is exact and deterministic: 18 bits (3 bytes) for `coins`,
- * 24 bits (3 bytes) for `yarrow`.
+ * - `'coins'` / `'yarrow'` — six lines bottom-up, each drawn with the exact
+ *   distribution of {@link LINE_WEIGHTS}. Consumption is exact and
+ *   deterministic: 18 bits (3 bytes) for `coins`, 24 bits (3 bytes) for
+ *   `yarrow`.
+ * - `'singleLine'` — Crowley's six coins or sticks, one of them "especial"
+ *   (*Liber CCXVI*, "The Apparatus" and "The Method"): six independent fair
+ *   yang/yin bits (lines 1–6, MSB-first), then the moving line
+ *   $1 + $ {@link uniformInt}`(6)`. Each of the $2^6 \cdot 6 = 384$
+ *   (primary, moving line) outcomes has probability exactly $1/384$ and
+ *   exactly one line moves (value 9 if yang, 6 if yin; the others are 7/8),
+ *   whereas the traditional methods move anywhere from zero to six lines.
+ *   Consumption: 6 bits from one byte (2 buffered bits discarded), then one
+ *   rejection-sampled byte per attempt (accepted with probability
+ *   $252/256$) — `bytesConsumed` $\ge 2$, `bitsUsed` $= 6 + 8 \cdot$ attempts.
  *
  * Lifecycle: a reader the cast opens (e.g. a `ByteSource` stream) is closed
  * before the promise settles; a `ByteReader` you pass in stays open.
@@ -94,35 +119,46 @@ export async function castHexagram(
 ): Promise<HexagramCast> {
   checkCastOptions(opts, 'castHexagram')
   const method: unknown = opts.method === undefined ? 'coins' : opts.method
-  if (typeof method !== 'string' || !Object.hasOwn(LINE_WEIGHTS, method)) {
+  if (
+    typeof method !== 'string' ||
+    (method !== 'singleLine' && !Object.hasOwn(LINE_WEIGHTS, method))
+  ) {
     throw new OracleError('invalid_input', `unknown cast method '${String(opts.method)}'`)
   }
-  const weights = LINE_WEIGHTS[method as CastMethod]
-  return withCastReader(input, opts, (reader) =>
-    hexagramFrom(reader, method as CastMethod, weights),
-  )
+  return withCastReader(input, opts, (reader) => hexagramFrom(reader, method as CastMethod))
 }
 
-async function hexagramFrom(
+const line = (position: number, value: LineValue): CastLine =>
+  Object.freeze({ position, value, yang: value % 2 === 1, changing: value === 6 || value === 9 })
+
+/** Draw the six line values; returns them with the bits the draw used. */
+async function drawLines(
   reader: ByteReader,
   method: CastMethod,
-  weights: readonly number[],
-): Promise<HexagramCast> {
-  const accounting = accountingFrom(reader)
+): Promise<{ lines: CastLine[]; bitsUsed: number }> {
   const bits = bitReader(reader)
-
   const lines: CastLine[] = []
-  for (let position = 1; position <= 6; position++) {
-    const value = (6 + (await weightedIndex(bits, weights))) as LineValue
-    lines.push(
-      Object.freeze({
-        position,
-        value,
-        yang: value % 2 === 1,
-        changing: value === 6 || value === 9,
-      }),
-    )
+  if (method === 'singleLine') {
+    const yang: boolean[] = []
+    for (let i = 0; i < 6; i++) yang.push((await bits.nextBit()) === 1)
+    const before = reader.bytesConsumed
+    const moving = 1 + (await uniformInt(reader, 6))
+    yang.forEach((isYang, i) => {
+      const value = i + 1 === moving ? (isYang ? 9 : 6) : isYang ? 7 : 8
+      lines.push(line(i + 1, value))
+    })
+    return { lines, bitsUsed: bits.bitsUsed + 8 * (reader.bytesConsumed - before) }
   }
+  const weights = LINE_WEIGHTS[method]
+  for (let position = 1; position <= 6; position++) {
+    lines.push(line(position, (6 + (await weightedIndex(bits, weights))) as LineValue))
+  }
+  return { lines, bitsUsed: bits.bitsUsed }
+}
+
+async function hexagramFrom(reader: ByteReader, method: CastMethod): Promise<HexagramCast> {
+  const accounting = accountingFrom(reader)
+  const { lines, bitsUsed } = await drawLines(reader, method)
 
   const primaryBinary = lines.map((l) => (l.yang ? '1' : '0')).join('')
   const primary = hexagramFromBinary(primaryBinary) as Hexagram
@@ -140,6 +176,6 @@ async function hexagramFrom(
     ...(relating !== undefined ? { relating } : {}),
     changing: Object.freeze(changing),
     ...accounting(),
-    bitsUsed: bits.bitsUsed,
+    bitsUsed,
   })
 }

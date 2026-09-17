@@ -105,6 +105,57 @@ describe('castHexagram determinism fixtures (hand-computed)', () => {
   })
 })
 
+describe("castHexagram method 'singleLine' (Crowley, Liber CCXVI)", () => {
+  test('fixture: bits 101100 → #55 Feng, moving line 6 (yin) → relating #30 Li', async () => {
+    // Byte 0b1011_0000: lines 1..6 = yang, yin, yang, yang, yin, yin = '101100'
+    // (Li below, Zhen above = #55). Byte 5 < 252 → uniformInt(6) = 5 → line 6.
+    const cast = await castHexagram(new Uint8Array([0b1011_0000, 5]), { method: 'singleLine' })
+    expect(cast.method).toBe('singleLine')
+    expect(cast.lines.map((l) => l.value)).toEqual([7, 8, 7, 7, 8, 6])
+    expect(cast.primary.kingWen).toBe(55)
+    expect(cast.changing).toEqual([6])
+    expect(cast.relating?.kingWen).toBe(30)
+    expect(cast.bytesConsumed).toBe(2)
+    expect(cast.bitsUsed).toBe(14)
+  })
+
+  test('fixture with rejection: [0xff, 252, 0] → #1, byte 252 rejected, line 1 moves → #44', async () => {
+    const cast = await castHexagram(new Uint8Array([0xff, 252, 0]), { method: 'singleLine' })
+    expect(cast.lines.map((l) => l.value)).toEqual([9, 7, 7, 7, 7, 7])
+    expect(cast.primary.kingWen).toBe(1)
+    expect(cast.relating?.kingWen).toBe(44)
+    expect(cast.bytesConsumed).toBe(3)
+    expect(cast.bitsUsed).toBe(6 + 16) // the rejected byte spent entropy too
+  })
+
+  test('exhaustive over all accepted byte pairs: 384 outcomes, each exactly 168 of 64 512', async () => {
+    const counts = new Map<string, number>()
+    for (let b0 = 0; b0 < 256; b0++) {
+      for (let b1 = 0; b1 < 252; b1++) {
+        const cast = await castHexagram(new Uint8Array([b0, b1]), { method: 'singleLine' })
+        expect(cast.changing.length).toBe(1)
+        expect(cast.bytesConsumed).toBe(2)
+        const key = `${cast.primary.binary}:${cast.changing[0]}`
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
+    }
+    expect(counts.size).toBe(384)
+    for (const count of counts.values()) expect(count).toBe(168)
+  })
+
+  test("yang lines are fair: P(yang) = 1/2, so the primary is uniform like 'coins'", async () => {
+    const casts = 4_000
+    const reader = byteReader(prngBytes(3 * casts, 0x51e))
+    let yang = 0
+    for (let i = 0; i < casts; i++) {
+      const cast = await castHexagram(reader, { method: 'singleLine' })
+      yang += cast.lines.filter((l) => l.yang).length
+    }
+    const n = 6 * casts
+    expect(Math.abs(yang - n / 2)).toBeLessThan(4 * Math.sqrt(n / 4))
+  })
+})
+
 describe('castHexagram distributions (seeded PRNG)', () => {
   const fixture = JSON.parse(
     readFileSync(join(import.meta.dir, '..', '..', 'fixtures', 'chi2-critical.json'), 'utf8'),

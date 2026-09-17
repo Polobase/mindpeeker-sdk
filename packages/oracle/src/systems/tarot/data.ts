@@ -124,7 +124,7 @@ export interface Spread {
   readonly positions: readonly SpreadPosition[]
 }
 
-export type SpreadName = 'single' | 'threeCard' | 'celticCross'
+export type SpreadName = 'single' | 'threeCard' | 'celticCross' | 'celticCrossWaite'
 
 const position = (name: string, meaning: string): SpreadPosition => Object.freeze({ name, meaning })
 
@@ -132,9 +132,22 @@ const spread = (id: string, name: string, positions: readonly SpreadPosition[]):
   Object.freeze({ id, name, positions: Object.freeze(positions) })
 
 /**
- * Built-in spreads. Position names for the Celtic Cross follow Waite (1911)
- * as popularized; the three-card names match the mindpeeker frontend's
+ * Built-in spreads. The three-card names match the mindpeeker frontend's
  * 'Past · Present · Future' variant.
+ *
+ * Two Celtic Crosses, both dealt in position order:
+ *
+ * - `celticCross` — the popular modern labels, matching the mindpeeker
+ *   frontend (unchanged since 0.1).
+ * - `celticCrossWaite` — Waite's own procedure (*The Pictorial Key to the
+ *   Tarot*, 1911, Part III §7 "An Ancient Celtic Method of Divination"):
+ *   positions in his **deal order** — 1 covers, 2 crosses, 3 crowns,
+ *   4 beneath, 5 behind, 6 before, 7 himself, 8 his house, 9 hopes or fears,
+ *   10 what will come — with meanings paraphrased from his text. Relative
+ *   to `celticCross`, positions 3–5 are permuted (Waite's crowns/beneath/
+ *   behind sit at `celticCross` 5/3/4). Waite first withdraws a Significator
+ *   and deals the ten from the remaining 77 cards — pass `{ significator }`
+ *   to `castSpread` to reproduce that.
  */
 export const SPREADS: Readonly<Record<SpreadName, Spread>> = Object.freeze({
   single: spread('single', 'Single card', [
@@ -156,5 +169,17 @@ export const SPREADS: Readonly<Record<SpreadName, Spread>> = Object.freeze({
     position('Environment', 'Outside influences and others'),
     position('Hopes & Fears', 'What you hope for or fear'),
     position('Outcome', 'The likely resolution'),
+  ]),
+  celticCrossWaite: spread('celticCrossWaite', 'Celtic Cross (Waite, 1911)', [
+    position('Covers', 'This covers him: the influence affecting the matter generally'),
+    position('Crosses', 'This crosses him: the nature of the obstacles in the matter'),
+    position('Crowns', "This crowns him: the querent's aim; the best achievable, not yet actual"),
+    position('Beneath', 'This is beneath him: the foundation, already passed into actuality'),
+    position('Behind', 'This is behind him: the influence just passed or now passing away'),
+    position('Before', 'This is before him: the influence coming into action in the near future'),
+    position('Himself', 'The Significator: its position or attitude in the circumstances'),
+    position('His House', 'His environment and the tendencies at work therein'),
+    position('Hopes or Fears', 'His hopes or fears in the matter'),
+    position('What Will Come', 'The final result, the culmination of the other influences'),
   ]),
 })

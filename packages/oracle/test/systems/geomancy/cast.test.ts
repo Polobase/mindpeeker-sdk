@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { byteReader } from '../../../src/core/reader.js'
-import { castShield, houses } from '../../../src/systems/geomancy/cast.js'
+import { castShield } from '../../../src/systems/geomancy/cast.js'
 import { chiSquare, prngBytes } from '../../helpers/byte-sources.js'
 
 /** Bytes whose 16 MSB-first bits produce the given four mother binaries. */
@@ -62,14 +62,11 @@ describe('castShield structure', () => {
     }
   })
 
-  test('houses projection: Mothers 1-4, Daughters 5-8, Nieces 9-12', async () => {
+  test('nephews is a non-enumerable alias of nieces', async () => {
     const cast = await castShield(prngBytes(2, 0x40e))
-    const chart = houses(cast)
-    expect(chart.length).toBe(12)
-    expect(chart.slice(0, 4)).toEqual([...cast.mothers])
-    expect(chart.slice(4, 8)).toEqual([...cast.daughters])
-    expect(chart.slice(8, 12)).toEqual([...cast.nieces])
-    expect(Object.isFrozen(chart)).toBe(true)
+    expect(cast.nephews).toBe(cast.nieces)
+    expect(Object.keys(cast)).not.toContain('nephews')
+    expect(JSON.parse(JSON.stringify(cast)).nephews).toBeUndefined()
   })
 
   test('insufficient bytes throw insufficient_entropy', async () => {

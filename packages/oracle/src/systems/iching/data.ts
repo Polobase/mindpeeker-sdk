@@ -51,6 +51,15 @@ export interface Hexagram {
     readonly pinyin: string
     /** English translation (Wilhelm–Baynes), e.g. 'The Creative'. */
     readonly en: string
+    /**
+     * James Legge's romanization (*The Yî King*, Sacred Books of the East
+     * XVI, 1882; 2nd ed. 1899 — public domain), ASCII-folded: Legge's
+     * italic letters, circumflexes, and special glyph are not reproduced.
+     * Present only for the 11 hexagrams checked against the 1899 contents
+     * pages and a second transcription (#1–6, 11, 12, 29–31); `undefined`
+     * elsewhere. See {@link LEGGE_NAMES}.
+     */
+    readonly legge?: string
   }
   /** Six line bits bottom → top, yang = 1 (e.g. '111111' for #1). */
   readonly binary: string
@@ -128,15 +137,40 @@ const ROWS: readonly (readonly [number, string, string, string, TrigramKey, Trig
   [64, '未濟', 'Wèi Jì', 'Before Completion', 'Kan', 'Li'],
 ]
 
+/**
+ * Legge's romanized titles, keyed by King Wen number — only the entries
+ * verified against two independent copies of Legge's translation: the 1899
+ * facsimile contents (ark-db 10264, pp. viii–ix) and the Blackmask e-text
+ * contents (ark-db 8027); Crowley's *Liber CCXVI*, which "employs the
+ * transliterations … used by Legge", agrees except for #3 (Crowley: Chun).
+ * #63 and #64 are omitted: Legge spells them with a special letter that
+ * later copies render as "Zi" (Crowley) or "Chi" (Blackmask), so no single
+ * ASCII form is verified.
+ */
+export const LEGGE_NAMES: Readonly<Partial<Record<number, string>>> = Object.freeze({
+  1: 'Khien',
+  2: 'Khwan',
+  3: 'Kun',
+  4: 'Mang',
+  5: 'Hsu',
+  6: 'Sung',
+  11: 'Thai',
+  12: 'Phi',
+  29: 'Khan',
+  30: 'Li',
+  31: 'Hsien',
+})
+
 /** All 64 hexagrams in King Wen order (`HEXAGRAMS[0]` is #1, The Creative). */
 export const HEXAGRAMS: readonly Hexagram[] = Object.freeze(
   ROWS.map(([kingWen, zh, pinyin, en, lowerKey, upperKey]) => {
     const lower = TRIGRAMS[lowerKey]
     const upper = TRIGRAMS[upperKey]
+    const legge = LEGGE_NAMES[kingWen]
     return Object.freeze({
       kingWen,
       character: String.fromCodePoint(0x4dc0 + kingWen - 1),
-      name: Object.freeze({ zh, pinyin, en }),
+      name: Object.freeze(legge === undefined ? { zh, pinyin, en } : { zh, pinyin, en, legge }),
       binary: lower.bits + upper.bits,
       lower,
       upper,
