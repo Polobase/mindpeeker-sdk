@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { FlowError } from '../src/errors.js'
 import { pairStreams, windowedTransferEntropy } from '../src/streaming.js'
-import { transferEntropy } from '../src/transfer.js'
+import { localTransferEntropy, transferEntropy } from '../src/transfer.js'
 import { asyncValues, collect, countingByteSource, prngSymbols } from './helpers/streams.js'
 
 function toPairs(x: ArrayLike<number>, y: ArrayLike<number>): Array<readonly [number, number]> {
@@ -60,6 +60,35 @@ describe('pairStreams', () => {
     const bad = asyncValues(['nope'] as unknown as number[])
     const good = asyncValues<number | Uint8Array>([1])
     await expect(collect(pairStreams(bad, good))).rejects.toThrow(FlowError)
+  })
+
+  test('rejects non-symbol numbers and non-iterable inputs before pulling', async () => {
+    for (const value of [-1, 1.5, Number.NaN]) {
+      const error = await collect(pairStreams([value], [1])).catch((e: unknown) => e)
+      expect((error as FlowError).code).toBe('invalid_input')
+    }
+    const source = countingByteSource('a')
+    const error = await pairStreams(source, 42 as never)
+      .next()
+      .catch((e: unknown) => e)
+    expect((error as FlowError).code).toBe('invalid_input')
+    expect(source.pulls).toBe(0)
+  })
+
+  test('sync iterables work and are closed when the other side ends', async () => {
+    let closed = false
+    function* endless(): Generator<number> {
+      try {
+        while (true) yield 1
+      } finally {
+        closed = true
+      }
+    }
+    expect(await collect(pairStreams(endless(), [5, 6]))).toEqual([
+      [1, 5],
+      [1, 6],
+    ])
+    expect(closed).toBe(true)
   })
 })
 
@@ -155,6 +184,77 @@ describe('windowedTransferEntropy', () => {
     await expect(
       windowedTransferEntropy(toPairs(x, y), { windowSize: 64, hopSize: 0 }).next(),
     ).rejects.toThrow(FlowError)
+  })
+
+  test('validates every option before pulling a single pair', async () => {
+    let pulled = 0
+    function* counting(): Generator<readonly [number, number]> {
+      while (true) {
+        pulled++
+        yield [0, 1] as const
+      }
+    }
+    const bad: Array<Parameters<typeof windowedTransferEntropy>[1]> = [
+      { windowSize: 32, k: 0 },
+      { windowSize: 32, l: 1.5 },
+      { windowSize: 32, lag: 0 },
+      { windowSize: 32, alphabet: 0 },
+      { windowSize: 2 ** 40 },
+      { windowSize: 32, hopSize: 0 },
+    ]
+    for (const opts of bad) {
+      const error = await windowedTransferEntropy(counting(), opts)
+        .next()
+        .catch((e: unknown) => e)
+      expect((error as FlowError).code).toBe('invalid_input')
+    }
+    expect(pulled).toBe(0)
+  })
+
+  test('malformed pairs throw invalid_input on arrival', async () => {
+    for (const item of [null, undefined, ['a', 1], [1.5, 0], [-1, 0], [3, 0]]) {
+      const error = await windowedTransferEntropy([item] as never, { windowSize: 8, alphabet: 2 })
+        .next()
+        .catch((e: unknown) => e)
+      expect((error as FlowError).code).toBe('invalid_input')
+    }
+  })
+
+  test('hopSize larger than windowSize skips pairs and stays batch-exact', async () => {
+    const points = await collect(
+      windowedTransferEntropy(toPairs(x, y), { windowSize: 50, hopSize: 120 }),
+    )
+    expect(points.map((p) => p.startSample)).toEqual([0, 120, 240])
+    for (const p of points) {
+      const sx = x.slice(p.startSample, p.startSample + 50)
+      const sy = y.slice(p.startSample, p.startSample + 50)
+      expect(p.te).toBe(transferEntropy(sx, sy))
+    }
+  })
+
+  test("locals option emits the window's local TE exactly", async () => {
+    const opts = { k: 2, l: 2, lag: 2 } as const
+    const points = await collect(
+      windowedTransferEntropy(toPairs(x, y), {
+        windowSize: 100,
+        hopSize: 150,
+        locals: true,
+        ...opts,
+      }),
+    )
+    expect(points.length).toBe(3)
+    for (const p of points) {
+      const sx = x.slice(p.startSample, p.startSample + 100)
+      const sy = y.slice(p.startSample, p.startSample + 100)
+      const reference = localTransferEntropy(sx, sy, opts)
+      expect(p.locals?.start).toBe(reference.start)
+      expect(p.locals?.count).toBe(reference.count)
+      expect(p.locals?.mean).toBe(reference.mean)
+      expect(Array.from(p.locals?.values ?? [])).toEqual(Array.from(reference.values))
+      expect(p.te).toBe(transferEntropy(sx, sy, opts))
+    }
+    const plain = await collect(windowedTransferEntropy(toPairs(x, y), { windowSize: 100 }))
+    expect(plain[0]?.locals).toBeUndefined()
   })
 
   test('works end-to-end over pairStreams of live byte sources', async () => {

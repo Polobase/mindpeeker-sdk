@@ -15,6 +15,15 @@ describe('FlowError', () => {
     const cause = new Error('inner')
     const err = new FlowError('aborted', 'outer', { cause })
     expect(err.cause).toBe(cause)
+    expect(err.source).toBeUndefined()
+  })
+
+  test('source_error carries the upstream name', () => {
+    const cause = new Error('socket closed')
+    const err = new FlowError('source_error', 'anu failed', { cause, source: 'anu' })
+    expect(err.source).toBe('anu')
+    expect(err.cause).toBe(cause)
+    expect('source' in new FlowError('invalid_input', 'x')).toBe(false)
   })
 
   test('every code constructs', () => {
@@ -23,6 +32,7 @@ describe('FlowError', () => {
       'insufficient_data',
       'alphabet_overflow',
       'aborted',
+      'source_error',
     ] as const) {
       expect(new FlowError(code, code).code).toBe(code)
     }

@@ -1,7 +1,7 @@
 {
   "name": "@mindpeeker/flow",
   "version": "0.1.0",
-  "description": "Transfer entropy and directed information flow for discrete symbol streams — Schreiber TE, local/net/effective variants, surrogate significance, and streaming windows over any byte source.",
+  "description": "Transfer entropy and information dynamics for discrete symbol streams — Schreiber, conditional and collective TE, active information storage, chi-square and surrogate significance, lag scans, and streaming windows over any byte source.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -33,6 +33,9 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
     "test": "bun test"
   },
+  "dependencies": {
+    "@mindpeeker/negentropy": "workspace:*"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -41,7 +44,9 @@
     "information-flow",
     "mutual-information",
     "conditional-mutual-information",
-    "directed-information",
+    "conditional-transfer-entropy",
+    "active-information-storage",
+    "information-dynamics",
     "schreiber",
     "surrogate-data",
     "permutation-test",

@@ -27,6 +27,31 @@ describe('symbolsFromBytes', () => {
     symbols[0] = 9
     expect(bytes[0]).toBe(3)
   })
+
+  test('a Buffer (whose slice is a view) is copied into a plain Uint8Array (regression)', () => {
+    const buf = Buffer.from([3, 255, 0])
+    const symbols = symbolsFromBytes(buf)
+    expect(symbols.constructor).toBe(Uint8Array)
+    symbols[0] = 9
+    expect(buf[0]).toBe(3)
+    buf[1] = 7
+    expect(symbols[1]).toBe(255)
+    // a Buffer view into a larger pool copies only its own bytes
+    const pooled = Buffer.from([1, 2, 3, 4, 5]).subarray(1, 3)
+    expect(Array.from(symbolsFromBytes(pooled))).toEqual([2, 3])
+  })
+
+  test('rejects anything that is not a byte view', () => {
+    for (const input of [[1, 2, 300], new Int16Array(2), new Float64Array(1), null, 'ab']) {
+      try {
+        symbolsFromBytes(input as never)
+        expect.unreachable()
+      } catch (error) {
+        expect((error as FlowError).code).toBe('invalid_input')
+      }
+    }
+    expect(Array.from(symbolsFromBytes(Uint8ClampedArray.of(1, 2)))).toEqual([1, 2])
+  })
 })
 
 describe('quantileBins', () => {
@@ -76,6 +101,12 @@ describe('equalWidthBins', () => {
 
   test('rejects non-finite values', () => {
     expect(() => equalWidthBins([0, Number.POSITIVE_INFINITY], 2)).toThrow(FlowError)
+  })
+
+  test('extreme magnitudes: overflowing and subnormal ranges bin correctly (regression)', () => {
+    expect(Array.from(equalWidthBins([-1.7e308, 0, 1.7e308], 3))).toEqual([0, 1, 2])
+    expect(Array.from(equalWidthBins([0, 5e-324, 1e-323], 3))).toEqual([0, 1, 2])
+    expect(Array.from(equalWidthBins([-Number.MAX_VALUE, Number.MAX_VALUE], 4))).toEqual([0, 3])
   })
 })
 

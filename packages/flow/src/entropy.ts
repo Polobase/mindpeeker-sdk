@@ -62,7 +62,7 @@ export function shannonEntropy(x: ArrayLike<number>, opts: EntropyOptions = {}):
 /**
  * Plug-in joint Shannon entropy of two or more aligned symbol sequences:
  * $$\hat H(X_1, \dots, X_m) = -\sum \hat p(x_1, \dots, x_m) \log_2 \hat p(x_1, \dots, x_m)$$
- * Tuples are counted with packed integer keys when $A^m < 2^{31}$ and string
+ * Tuples are counted with packed integer keys when $A^m \le 2^{53}$ and string
  * keys otherwise (see `makeEncoder`).
  */
 export function jointEntropy(

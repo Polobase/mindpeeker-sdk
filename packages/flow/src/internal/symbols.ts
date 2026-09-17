@@ -1,4 +1,5 @@
 import { FlowError } from '../errors.js'
+import { MAX_EXACT_KEY_SPACE } from './keys.js'
 
 /**
  * Largest supported alphabet: symbols are stored in Int32Array, so every
@@ -78,8 +79,8 @@ export interface StateEncoder {
 
 /**
  * Build a joint-state encoder for tuples of `length` symbols drawn from
- * `[0, alphabet)`. When the state space $A^m$ fits safely in a signed 32-bit
- * integer ($A^m < 2^{31}$) tuples are packed into exact integer keys
+ * `[0, alphabet)`. While the state space fits in exact double integers
+ * ($A^m \le 2^{53}$) tuples are packed into exact integer keys
  * $\sum_i s_i A^i$ — fast and allocation-free. Otherwise the encoder falls
  * back to comma-joined string keys in the same `Map`, which is slower but
  * correct for any representable symbols. The switch never changes results,
@@ -90,7 +91,7 @@ export function makeEncoder(alphabet: number, length: number): StateEncoder {
   let integer = true
   for (let i = 0; i < length; i++) {
     capacity *= alphabet
-    if (capacity >= 2 ** 31) {
+    if (capacity > MAX_EXACT_KEY_SPACE) {
       integer = false
       break
     }

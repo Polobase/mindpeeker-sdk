@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { conditionalMutualInformation } from '../src/entropy.js'
 import { FlowError } from '../src/errors.js'
 import { localTransferEntropy, netTransferEntropy, transferEntropy } from '../src/transfer.js'
 import { balancedShiftPair, prngBits, prngSymbols, prngUniforms } from './helpers/streams.js'
@@ -142,8 +143,49 @@ describe('transferEntropy properties', () => {
     const y = prngSymbols(500, 3, 0x888)
     const te = transferEntropy(x, y, { k: 2, l: 1 })
     expect(transferEntropy(x, y, { k: 2, l: 1, alphabet: 3 })).toBe(te)
-    // alphabet 1500 forces the string-key fallback for the k+l+1 tuple space
-    expect(transferEntropy(x, y, { k: 2, l: 1, alphabet: 1500 })).toBeCloseTo(te, 12)
+    // alphabet 10^6 makes the joint (y+, y^2, x) state space 10^24 > 2^53 → string keys
+    expect(transferEntropy(x, y, { k: 2, l: 1, alphabet: 1_000_000 })).toBe(te)
+    // 1500^4 ≈ 5e12 ≤ 2^53 now stays on exact integer keys — same value
+    expect(transferEntropy(x, y, { k: 2, l: 1, alphabet: 1500 })).toBe(te)
+  })
+
+  test('local TE start is max(k − 1, lag + l − 2) + 1 for longer embeddings', () => {
+    const x = prngSymbols(300, 3, 0x91)
+    const y = prngSymbols(300, 3, 0x92)
+    for (const [k, l, lag] of [
+      [1, 2, 3],
+      [4, 1, 2],
+      [2, 3, 1],
+    ] as const) {
+      const local = localTransferEntropy(x, y, { k, l, lag })
+      const start = Math.max(k - 1, lag + l - 2) + 1
+      expect(local.start).toBe(start)
+      expect(local.count).toBe(300 - start)
+      expect(Number.isNaN(local.values[start - 1] as number)).toBe(true)
+      expect(Number.isFinite(local.values[start] as number)).toBe(true)
+      expect(local.mean).toBe(transferEntropy(x, y, { k, l, lag }))
+    }
+  })
+
+  test('TE equals conditionalMutualInformation on hand-embedded columns (lag 2, l 2, k 2)', () => {
+    const x = prngSymbols(1500, 2, 0x71)
+    const y = prngSymbols(1500, 2, 0x72)
+    const k = 2
+    const l = 2
+    const lag = 2
+    const first = Math.max(k - 1, lag + l - 2)
+    const src: number[] = []
+    const fut: number[] = []
+    const past: number[] = []
+    for (let t = first; t < 1499; t++) {
+      src.push(2 * (x[t - lag + 1] as number) + (x[t - lag] as number))
+      past.push(2 * (y[t] as number) + (y[t - 1] as number))
+      fut.push(y[t + 1] as number)
+    }
+    expect(transferEntropy(x, y, { k, l, lag })).toBeCloseTo(
+      conditionalMutualInformation(src, fut, past),
+      13,
+    )
   })
 
   test('millerMadow shifts by the four-term cell-count correction', () => {

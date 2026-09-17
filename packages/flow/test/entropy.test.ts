@@ -60,7 +60,7 @@ describe('jointEntropy', () => {
   })
 
   test('string-key fallback agrees with integer keys', () => {
-    // 8 columns of alphabet 256 → 256^8 ≫ 2^31 forces string keys; compare
+    // 8 columns of alphabet 256 → 256^8 > 2^53 forces string keys; compare
     // against the same data recoded to a smaller alphabet with identical counts
     const cols = Array.from({ length: 8 }, (_, i) => prngSymbols(200, 256, 0xc0ffee + i))
     const recoded = cols.map((col) => {

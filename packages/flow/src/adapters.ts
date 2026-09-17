@@ -13,23 +13,35 @@ export interface SymbolsFromBytesOptions {
   alphabet?: 2 | 256
 }
 
+/** `Uint8Array` (incl. Node/Bun `Buffer`) or `Uint8ClampedArray`, cross-realm safe. */
+function isByteView(value: unknown): value is Uint8Array | Uint8ClampedArray {
+  if (!ArrayBuffer.isView(value)) return false
+  const tag = Object.prototype.toString.call(value)
+  return tag === '[object Uint8Array]' || tag === '[object Uint8ClampedArray]'
+}
+
 /**
  * Adapt raw bytes to symbols. With `alphabet: 2` each byte $b$ becomes the
  * bits $b_7, b_6, \dots, b_0$ (MSB-first); with the default `alphabet: 256`
- * the bytes are copied through unchanged. Always returns a fresh array —
- * the input is never aliased.
+ * the bytes are copied through unchanged. Always returns a fresh plain
+ * `Uint8Array` — the input is never aliased, also for a Node/Bun `Buffer`
+ * (whose `slice` would return a view). Anything but a `Uint8Array`,
+ * `Buffer`, or `Uint8ClampedArray` throws `invalid_input`.
  */
 export function symbolsFromBytes(
-  bytes: Uint8Array,
+  bytes: Uint8Array | Uint8ClampedArray,
   opts: SymbolsFromBytesOptions = {},
 ): Uint8Array {
+  if (!isByteView(bytes)) {
+    throw new FlowError('invalid_input', 'symbolsFromBytes needs a Uint8Array (or Buffer)')
+  }
   const alphabet = opts.alphabet ?? 256
   // The `2 | 256` type only guards TS callers; validate at runtime too, since
   // this ships as plain JS and every sibling adapter rejects bad options.
   if (alphabet !== 2 && alphabet !== 256) {
     throw new FlowError('invalid_input', `alphabet must be 2 or 256, got ${alphabet}`)
   }
-  if (alphabet === 256) return bytes.slice()
+  if (alphabet === 256) return new Uint8Array(bytes)
   const out = new Uint8Array(bytes.length * 8)
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i] as number
@@ -92,9 +104,16 @@ export function equalWidthBins(values: ArrayLike<number>, nBins: number): Int32A
   }
   const out = new Int32Array(n)
   if (min === max) return out
-  const scale = nBins / (max - min)
+  // Position t = (v − min)/(max − min) ∈ [0, 1] → bin ⌊t·nBins⌋. Dividing
+  // first keeps subnormal ranges exact; when max − min overflows (±1.7e308
+  // inputs) both terms are halved first.
+  const range = max - min
+  const finite = Number.isFinite(range)
+  const halfRange = max / 2 - min / 2
   for (let i = 0; i < n; i++) {
-    out[i] = Math.min(nBins - 1, Math.floor(((values[i] as number) - min) * scale))
+    const v = values[i] as number
+    const t = finite ? (v - min) / range : (v / 2 - min / 2) / halfRange
+    out[i] = Math.min(nBins - 1, Math.floor(t * nBins))
   }
   return out
 }

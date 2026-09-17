@@ -25,6 +25,9 @@
     "packages/flow": {
       "name": "@mindpeeker/flow",
       "version": "0.1.0",
+      "dependencies": {
+        "@mindpeeker/negentropy": "workspace:*",
+      },
     },
     "packages/gematria": {
       "name": "@mindpeeker/gematria",

@@ -112,6 +112,21 @@ describe('weightedPermutationEntropy', () => {
     )
   })
 
+  test('huge finite magnitudes do not overflow to NaN; scale invariance holds (regression)', () => {
+    const base = [1, 2, 1, 3, 2, 1, 3, 2]
+    const small = weightedPermutationEntropy(base, 3)
+    const huge = weightedPermutationEntropy(
+      base.map((v) => v * 1e200),
+      3,
+    )
+    expect(Number.isNaN(huge)).toBe(false)
+    expect(huge).toBeCloseTo(small, 12)
+    const extreme = weightedPermutationEntropy([1e300, -1e300, 1e300, -1e300, 5e299], 2)
+    expect(Number.isFinite(extreme)).toBe(true)
+    // below the rescale threshold results are unchanged by construction
+    expect(weightedPermutationEntropy(base, 3)).toBe(small)
+  })
+
   test('normalized WPE stays in [0, 1]', () => {
     const v = Array.from(prngUniforms(5000, 0xabc))
     const wpe = weightedPermutationEntropy(v, 4, { normalize: true })

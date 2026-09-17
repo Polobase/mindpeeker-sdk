@@ -93,3 +93,128 @@ export function balancedShiftPair(m: number): { x: Int32Array; y: Int32Array } {
   for (let t = 1; t < n; t++) y[t] = x[t - 1] as number
   return { x, y }
 }
+
+/**
+ * A live source that honours the forwarded signal the way `@mindpeeker/entropy`
+ * providers do: every pull waits `delayMs`, and an abort rejects the pending
+ * pull with `signal.reason` (a DOMException AbortError by default).
+ */
+export function signalHonouringSource(
+  name: string,
+  delayMs = 5,
+  chunkBytes = 4,
+): ByteSource & { readonly closed: boolean } {
+  let closed = false
+  return {
+    name,
+    get closed() {
+      return closed
+    },
+    stream(opts?: ByteStreamOptions) {
+      const signal = opts?.signal
+      return (async function* () {
+        let round = 1
+        try {
+          while (true) {
+            await new Promise<void>((resolve, reject) => {
+              if (signal?.aborted) {
+                reject(signal.reason)
+                return
+              }
+              const timer = setTimeout(() => {
+                signal?.removeEventListener('abort', onAbort)
+                resolve()
+              }, delayMs)
+              const onAbort = () => {
+                clearTimeout(timer)
+                reject(signal?.reason)
+              }
+              signal?.addEventListener('abort', onAbort, { once: true })
+            })
+            yield prngBytes(chunkBytes, round++)
+          }
+        } finally {
+          closed = true
+        }
+      })()
+    },
+  }
+}
+
+/** A source that yields one chunk and then never resolves again (ignores the signal). */
+export function stalledSource(name: string): ByteSource {
+  return {
+    name,
+    stream() {
+      return (async function* () {
+        yield Uint8Array.of(1, 2, 3)
+        await new Promise<never>(() => {})
+      })()
+    },
+  }
+}
+
+/** A source that simply ends (returns) once its signal is aborted. */
+export function returningSource(name: string, delayMs = 5): ByteSource {
+  return {
+    name,
+    stream(opts?: ByteStreamOptions) {
+      const signal = opts?.signal
+      return (async function* () {
+        let round = 7
+        while (true) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(done, delayMs)
+            function done() {
+              clearTimeout(timer)
+              signal?.removeEventListener('abort', done)
+              resolve()
+            }
+            signal?.addEventListener('abort', done, { once: true })
+          })
+          if (signal?.aborted) return
+          yield prngBytes(4, round++)
+        }
+      })()
+    },
+  }
+}
+
+/** A source whose stream fails with `error` after `chunks` good chunks. */
+export function failingSource(name: string, error: unknown, chunks = 1): ByteSource {
+  return {
+    name,
+    stream() {
+      return (async function* () {
+        for (let i = 0; i < chunks; i++) yield prngBytes(4, i + 1)
+        throw error
+      })()
+    },
+  }
+}
+
+/** Resolve after `ms` milliseconds. */
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** y copies x's bit from `lag` steps back with probability `coupling`, else iid bits. */
+export function coupledPair(
+  n: number,
+  coupling: number,
+  seed: number,
+  lag = 1,
+): { x: Int32Array; y: Int32Array } {
+  const x = prngBits(n, seed)
+  const u = prngUniforms(2 * n, seed ^ 0x5f5f5f5f)
+  const y = new Int32Array(n)
+  for (let t = lag; t < n; t++) {
+    y[t] =
+      (u[2 * t] as number) < coupling
+        ? (x[t - lag] as number)
+        : (u[2 * t + 1] as number) < 0.5
+          ? 0
+          : 1
+  }
+  return { x, y }
+}

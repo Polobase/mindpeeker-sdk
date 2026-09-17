@@ -47,7 +47,8 @@ export function permutationEntropy(
  *   p_w(\pi) = \frac{\sum_{s:\,\pi_s=\pi} w_s}{\sum_s w_s},\;
  *   w_s = \mathrm{Var}(\text{window}_s)$$
  * A constant series has all weights 0 → returns 0. `normalize` divides by
- * $\log_2(m!)$.
+ * $\log_2(m!)$. Magnitudes beyond $2^{256}$ are rescaled by a power of two
+ * first, so finite inputs never overflow to `NaN`.
  */
 export function weightedPermutationEntropy(
   values: ArrayLike<number>,
@@ -57,15 +58,20 @@ export function weightedPermutationEntropy(
   const codes = ordinalPatterns(values, order, opts) // reuse validation + Lehmer codes
   const delay = opts.delay ?? 1
   const count = codes.length
+  // Only relative weights matter: huge magnitudes (whose squares overflow) are
+  // rescaled by one exact power of two, which multiplies every weight alike.
+  let maxAbs = 0
+  for (let i = 0; i < values.length; i++) maxAbs = Math.max(maxAbs, Math.abs(values[i] as number))
+  const scale = maxAbs > 2 ** 256 ? 2 ** -Math.ceil(Math.log2(maxAbs)) : 1
   const weightByCode = new Map<number, number>()
   let totalWeight = 0
   for (let s = 0; s < count; s++) {
     let mean = 0
-    for (let j = 0; j < order; j++) mean += values[s + j * delay] as number
+    for (let j = 0; j < order; j++) mean += (values[s + j * delay] as number) * scale
     mean /= order
     let variance = 0
     for (let j = 0; j < order; j++) {
-      const d = (values[s + j * delay] as number) - mean
+      const d = (values[s + j * delay] as number) * scale - mean
       variance += d * d
     }
     variance /= order
