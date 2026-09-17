@@ -53,14 +53,19 @@ async function run(): Promise<void> {
   }
 }
 
-onMounted(run)
+// Auto-run only on the local CSPRNG: a remote beacon would fire a burst of
+// network requests before the visitor asked for anything.
+onMounted(() => {
+  if (currentSourceId() === 'crypto') run()
+  else message.value = `press “Scan catalog” to pull ~1.5 kB from ${sourceLabel(currentSourceId())}`
+})
 </script>
 
 <template>
   <div class="grid lg:grid-cols-2 gap-4">
     <UCard class="h-fit">
       <label class="text-xs text-muted uppercase tracking-wide">Catalog (one item per line)</label>
-      <UTextarea v-model="text" :rows="10" class="w-full mt-1 font-mono" />
+      <UTextarea v-model="text" :rows="10" class="w-full mt-1" :ui="{ base: 'font-mono' }" />
       <div class="mt-3 flex items-center gap-3">
         <UButton :loading="running" @click="run">Scan catalog</UButton>
         <UBadge color="neutral" variant="subtle">{{ items.length }} items</UBadge>
