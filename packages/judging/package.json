@@ -1,0 +1,56 @@
+{
+  "name": "@mindpeeker/judging",
+  "version": "0.2.0",
+  "description": "Exact scoring and null distributions for forced-choice and free-response psi experiments: direct hits with exact binomial tails and Rosenthal–Rubin π, beta-binomial Bayes factors, closed-deck Zener matching, Read's feedback baseline, sum-of-ranks convolution, SRI rank-matrix permutation tests, figure of merit, Soal/Bartlett displacement variance, and multiplicity baselines for post-hoc looks.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/judging"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/judging#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mindpeeker/negentropy": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "parapsychology",
+    "forced-choice",
+    "zener",
+    "ganzfeld",
+    "remote-viewing",
+    "rank-order",
+    "sum-of-ranks",
+    "permutation-test",
+    "binomial-test",
+    "bayes-factor",
+    "exact-test",
+    "multiple-comparisons"
+  ]
+}
