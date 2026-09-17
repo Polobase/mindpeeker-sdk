@@ -1,0 +1,17 @@
+{"v":2,"kind":"session","sources":["alpha","beta"],"bitsPerTrial":16,"registration":"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","genesis":"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"}
+{"v":2,"i":0,"prev":"fe0dd1b1de83ad7252d493af02913570caabadd16f27a35a0ea2eebadfb56464","t":1767225601000,"source":"alpha","sum":8,"bitsPerTrial":16,"arm":"experimental","run":0}
+{"v":2,"i":1,"prev":"50718ae60f30f13ae9b47f74d8841947ca075eec98b43565b627a00b43fbc65a","t":1767225602000,"source":"beta","sum":7,"bitsPerTrial":16,"arm":"experimental","run":0}
+{"v":2,"i":2,"prev":"bd588f400b94a046a889577d854e8fedf9e14bf1fe5d95106ebbbad614a3ee1e","t":1767225603000,"source":"alpha","sum":9,"bitsPerTrial":16,"arm":"control","run":1}
+{"v":2,"i":3,"prev":"4cf73e904bda024ec457762a5b7fd6949865c2020b3be687b525b50e230fe420","t":1767225604000,"source":"beta","sum":8,"bitsPerTrial":16,"arm":"control","run":1}
+{"v":2,"i":4,"prev":"61e2c49f2a46fed2f7894f7d1c48d85b8a5024b8e5b4e60eda3607c4f299c507","t":1767225605000,"source":"alpha","sum":10,"bitsPerTrial":16,"arm":"experimental","run":2}
+{"v":2,"i":5,"prev":"b76ba1c68131bccd6a906242a007518e1aebefb48e349d7528c5ad1ddc81ed11","t":1767225606000,"source":"beta","sum":5,"bitsPerTrial":16,"arm":"experimental","run":2}
+{"v":2,"i":6,"prev":"adb222eded73d8bd89ba171c5ef484d11a84bebcf925ce54bf0e9087aa734fa3","t":1767225607000,"source":"alpha","sum":10,"bitsPerTrial":16,"arm":"control","run":3}
+{"v":2,"i":7,"prev":"63ccbf0ab69c30c7c0d2cf14e9fa09c2f4a5330bd33ffbf1bc692e52a7ba453b","t":1767225608000,"source":"beta","sum":8,"bitsPerTrial":16,"arm":"control","run":3}
+{"v":2,"i":8,"prev":"bfa6d65e2247c00a2521eeafffe99bea38e897e2605e42edacddab1626fb52b6","t":1767225609000,"source":"alpha","sum":8,"bitsPerTrial":16,"arm":"experimental","run":4}
+{"v":2,"i":9,"prev":"24391c3191b9302678127709c98ab5ea262cf793c66fc9efd072bc0dc20ad036","t":1767225610000,"source":"beta","sum":7,"bitsPerTrial":16,"arm":"experimental","run":4}
+{"v":2,"i":10,"prev":"d5092bce1a6c356140e8dc3a73f308c3f81d2eac05ff0082df18374c5b250dd5","t":1767225611000,"source":"alpha","sum":10,"bitsPerTrial":16,"arm":"control","run":5}
+{"v":2,"i":11,"prev":"9063c90ba5fd137c97ec8c0638f00c4ef55fbf5472b2ff8ae4ce4089667d4967","t":1767225612000,"source":"beta","sum":5,"bitsPerTrial":16,"arm":"control","run":5}
+{"v":2,"i":12,"prev":"be75d2a82a857199c31d90120a41ec6bd0b59a3674b8621a3864070645cca943","t":1767225613000,"source":"alpha","sum":9,"bitsPerTrial":16,"arm":"experimental","run":6}
+{"v":2,"i":13,"prev":"2e977690fe04d8c8e6864b5365a8bfec1c31f12a4f1cf901f7a3f280347f08af","t":1767225614000,"source":"beta","sum":7,"bitsPerTrial":16,"arm":"experimental","run":6}
+{"v":2,"i":14,"prev":"a0ecfe6ca6e72101efc096b5be6131bcba3c7d3592f8a5468f871289fba3bbab","t":1767225615000,"source":"alpha","sum":10,"bitsPerTrial":16,"arm":"control","run":7}
+{"v":2,"i":15,"prev":"f40827bbb8087adc22c3b91088b627ae9aa2916e6af4543344702fe7ecc9d231","t":1767225616000,"source":"beta","sum":4,"bitsPerTrial":16,"arm":"control","run":7}

@@ -1,0 +1,55 @@
+{
+  "name": "@mindpeeker/ledger",
+  "version": "0.2.0",
+  "description": "Tamper-evident experiment records with WebCrypto only: RFC 8785 canonical JSON, hash-chained JSONL (verifies psi schema-v2 recordings), RFC 6962 Merkle trees with inclusion and consistency proofs, C2SP signed-note checkpoints with Ed25519 verification, Blum commit–reveal, a pre-registration schema, and beacon/VDF time-bracket records.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "Manuel Haller Polo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polobase/mindpeeker-sdk.git",
+    "directory": "packages/ledger"
+  },
+  "homepage": "https://github.com/Polobase/mindpeeker-sdk/tree/main/packages/ledger#readme",
+  "bugs": {
+    "url": "https://github.com/Polobase/mindpeeker-sdk/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "tamper-evident",
+    "hash-chain",
+    "jsonl",
+    "merkle-tree",
+    "rfc6962",
+    "transparency-log",
+    "checkpoint",
+    "signed-note",
+    "rfc8785",
+    "canonical-json",
+    "commit-reveal",
+    "pre-registration",
+    "timestamping",
+    "webcrypto"
+  ]
+}

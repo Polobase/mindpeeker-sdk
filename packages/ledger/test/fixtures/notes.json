@@ -1,0 +1,33 @@
+{
+  "generator": "packages/ledger/scripts/fixtures/notes.py (verdicts from pyca/cryptography)",
+  "go": {
+    "source": "golang.org/x/mod/sumdb/note/note_test.go (BSD-3-Clause, The Go Authors)",
+    "text": "If you think cryptography is the answer to your problem,\nthen you don't know what your problem is.\n",
+    "note": "If you think cryptography is the answer to your problem,\nthen you don't know what your problem is.\n\n— PeterNeumann x08go/ZJkuBS9UG/SffcvIAQxVBtiFupLLr8pAcElZInNIuGUgYN1FFYC2pZSNXgKvqfqdngotpRZb6KE6RyyBwJnAM=\n— EnochRoot rwz+eBzmZa0SO3NbfRGzPCpDckykFXSdeX+MNtCOXm2/5n2tiOHp+vAF1aGrQ5ovTG01oOTGwnWLox33WWd1RvMc+QQ=\n",
+    "keys": {
+      "peter": "PeterNeumann+c74f20a3+ARpc2QcUPDhMQegwxbzhKqiBfsVkmqq/LDE4izWy10TW",
+      "enoch": "EnochRoot+af0cfe78+ATtqJ7zOtqQtYqOo0CpvDXNlMhV3HeJDpjrASKGLWdop"
+    },
+    "verdicts": {
+      "PeterNeumann": "verified",
+      "EnochRoot": "verified"
+    }
+  },
+  "c2sp": {
+    "source": "https://c2sp.org/signed-note (editor copy, Example section)",
+    "note": "This is an example message.\n\n— example.com/foo Uw2QOkn8srV1yJGh2VYRlL1Tnagv1YEq6TfXppzi2ONncAlTgK7Ztg1ERYNZXsYjOBH3mFXmRKuwHjG1Yu72IneyaQM=\n",
+    "key": "example.com/foo+530d903a+AekyeRrm56hApGFkyQR4ZCbV54Id2LKaANYcrnKv3U2k",
+    "verdicts": {
+      "example.com/foo": "verified"
+    }
+  },
+  "sumdb": {
+    "source": "https://sum.golang.org/latest; key from go/src/cmd/go/internal/modfetch/key.go",
+    "captured": "2026-09-17",
+    "checkpoint": "go.sum database tree\n63570315\nOa4zLf66dXzZgbR+qL05aDrDMhePwydC3HqpTx4Mt+k=\n\n— sum.golang.org Az3grpEkw8lJA/ipRNCSE+/XjYyE+W9Osm5UWfy8ZzU8pc98TdvJZFgVGInLlbzcg5Ta9arZG1Lvlt40x3lKWNw4PA0=\n",
+    "key": "sum.golang.org+033de0ae+Ac4zctda0e5eza+HJyk9SxEdh+s3Ux18htTTAD8OuAn8",
+    "verdicts": {
+      "sum.golang.org": "verified"
+    }
+  }
+}

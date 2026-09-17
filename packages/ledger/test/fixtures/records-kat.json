@@ -1,0 +1,138 @@
+{
+  "generator": "packages/ledger/scripts/fixtures/records.py (hashlib, json)",
+  "commits": [
+    {
+      "valueHex": "",
+      "nonceHex": "000102030405060708090a0b0c0d0e0f",
+      "commitment": "3182738b0daaf61d20aaabb97b691fecd94fa6a29b7a2bc0001a41c51a7c612f"
+    },
+    {
+      "valueHex": "48",
+      "nonceHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "commitment": "4488bc3b9f2c0c48fb8df1f143f47f6f75d77acf9501f905a76e7f7dafbd8956"
+    },
+    {
+      "valueHex": "696e74656e74696f6e206f726465723a20484c42",
+      "nonceHex": "6465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80818283",
+      "commitment": "30a45c04c179dcb20566dd86c4d76bde49602c6d85bf0ce49dbbc339630b6f31"
+    },
+    {
+      "valueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "nonceHex": "ffffffffffffffffffffffffffffffffffffffff",
+      "commitment": "8d2412cf287c1cc320daa4f3b4780141a49b9cb7c034dae34532dc529b498b72"
+    }
+  ],
+  "combine": {
+    "valuesHex": [
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "00010409101924314051647990a9c4e10021446990b9e4114071a4d9104984c1"
+    ],
+    "xorHex": "030a17120b3a0f02731a2722cbfaaf82634ad7f20b3a6fa2f3da0702cb9a4f02",
+    "beaconHex": "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+    "mixedHex": "1218eb1c2966186672473a6635c584ddd2ca0992886675aa7a3eb27bf8ee4fd8"
+  },
+  "chains": [
+    {
+      "genesis": "0000000000000000000000000000000000000000000000000000000000000000",
+      "records": [
+        {
+          "n": 1
+        },
+        "second",
+        [1, 2, 3],
+        null,
+        {
+          "nested": {
+            "b": true,
+            "a": 0.5
+          }
+        }
+      ],
+      "lines": [
+        "{\"i\":0,\"prev\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"record\":{\"n\":1}}",
+        "{\"i\":1,\"prev\":\"ce6ca75cf29507219a2674b31e2627f3ff149cffdea1fc1ba70aca8249bd0013\",\"record\":\"second\"}",
+        "{\"i\":2,\"prev\":\"135fd4df8192c82b7ef15f72a4f509f429fa5743b1beddf8dd9d1a41455d0a41\",\"record\":[1,2,3]}",
+        "{\"i\":3,\"prev\":\"dab9f9f288bfaf347305a1fcb3c0e76b02848b32ac0ac9f762a07aa1aa5c374f\",\"record\":null}",
+        "{\"i\":4,\"prev\":\"d7f5a851a8550d01ea3314e852905b34a21658cc1fcebbb2fc1ef0cd1d680a35\",\"record\":{\"nested\":{\"a\":0.5,\"b\":true}}}"
+      ],
+      "head": "6a7edaa599d73fb177be315b02dc0e7b35a2e699e60ea39cc076ca7e4b236604"
+    },
+    {
+      "genesis": "18a3afb28c09b324bfd921b955fc7171094fd96235013adc165c2ec5badfa185",
+      "records": [
+        {
+          "event": "session-start",
+          "sources": ["alpha", "beta"]
+        }
+      ],
+      "lines": [
+        "{\"i\":0,\"prev\":\"18a3afb28c09b324bfd921b955fc7171094fd96235013adc165c2ec5badfa185\",\"record\":{\"event\":\"session-start\",\"sources\":[\"alpha\",\"beta\"]}}"
+      ],
+      "head": "416b65a4ce55a20fc70d75f7da0d42cb4a2694fb08a50e81b55901085cbc97d7"
+    }
+  ],
+  "registration": {
+    "value": {
+      "title": "Tripolar REG replication – pilot",
+      "authors": ["A. Operator", "B. Skeptic"],
+      "hypotheses": [
+        {
+          "id": "H1",
+          "statement": "HI-LO separation exceeds chance",
+          "kind": "confirmatory",
+          "statistic": "deltaZ = (zHI - zLO) / sqrt(2)",
+          "null": "N(0, 1)",
+          "direction": "greater"
+        },
+        {
+          "id": "E1",
+          "statement": "Baseline variance differs from binomial",
+          "kind": "exploratory"
+        }
+      ],
+      "primary": "H1",
+      "alpha": 0.05,
+      "sample": {
+        "kind": "fixed",
+        "size": 3000,
+        "unit": "trials"
+      },
+      "analysisPlanHash": "d96f86c03e60d020e47434513c5a81f91daf831897050c3c226c286006b861df",
+      "exclusions": ["runs aborted by a source health failure"],
+      "dataSources": [
+        {
+          "name": "truerng-3",
+          "role": "experimental"
+        },
+        {
+          "name": "hmac-drbg",
+          "role": "control",
+          "description": "seeded CSPRNG control arm"
+        }
+      ]
+    },
+    "canonical": "{\"registration\":{\"alpha\":0.05,\"analysisPlanHash\":\"d96f86c03e60d020e47434513c5a81f91daf831897050c3c226c286006b861df\",\"authors\":[\"A. Operator\",\"B. Skeptic\"],\"dataSources\":[{\"name\":\"truerng-3\",\"role\":\"experimental\"},{\"description\":\"seeded CSPRNG control arm\",\"name\":\"hmac-drbg\",\"role\":\"control\"}],\"exclusions\":[\"runs aborted by a source health failure\"],\"hypotheses\":[{\"direction\":\"greater\",\"id\":\"H1\",\"kind\":\"confirmatory\",\"null\":\"N(0, 1)\",\"statement\":\"HI-LO separation exceeds chance\",\"statistic\":\"deltaZ = (zHI - zLO) / sqrt(2)\"},{\"id\":\"E1\",\"kind\":\"exploratory\",\"statement\":\"Baseline variance differs from binomial\"}],\"primary\":\"H1\",\"sample\":{\"kind\":\"fixed\",\"size\":3000,\"unit\":\"trials\"},\"title\":\"Tripolar REG replication – pilot\"},\"schema\":\"mindpeeker-ledger/registration/1\"}",
+    "hash": "18a3afb28c09b324bfd921b955fc7171094fd96235013adc165c2ec5badfa185"
+  },
+  "bracket": {
+    "value": {
+      "registrationHash": "18a3afb28c09b324bfd921b955fc7171094fd96235013adc165c2ec5badfa185",
+      "notBefore": {
+        "beacon": {
+          "source": "drand",
+          "chain": "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 23456789,
+          "timestamp": "2026-09-17T12:00:00Z",
+          "valueHex": "abababababababababababababababababababababababababababababababab"
+        }
+      },
+      "notAfter": {
+        "kind": "rekor",
+        "ref": "108e9186e8c5677a"
+      }
+    },
+    "sealInput": "{\"notBefore\":{\"beacon\":{\"chain\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":23456789,\"source\":\"drand\",\"timestamp\":\"2026-09-17T12:00:00Z\",\"valueHex\":\"abababababababababababababababababababababababababababababababab\"}},\"registrationHash\":\"18a3afb28c09b324bfd921b955fc7171094fd96235013adc165c2ec5badfa185\",\"schema\":\"mindpeeker-ledger/time-bracket-seal/1\"}",
+    "hash": "1400d0f361cbcc6a9c13f55a116f8e647b73a227addeb5a41bb86fd58631b0aa"
+  }
+}
