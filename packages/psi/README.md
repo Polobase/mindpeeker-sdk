@@ -97,7 +97,7 @@ const p = permutationP(event.netvar.statistic, nulls) // resolution 1/1000
 | yoked control arm | `runTripolar({ control })`, `controlContrast`, `tostEquivalence` | $\Delta\varepsilon_E - \Delta\varepsilon_C$; TOST at $\varepsilon_0$ | $N(0,1)$ | pre-register $\varepsilon_0$ |
 | baseline "bind" | `IntentionSummary.variance` | $\sum z^2$, lower tail | $\chi^2(n)$ | secondary |
 | GCP formal event | `analyzeEvent` | netvar $\sum_t Z_s(t)^2$ | $\chi^2(T)$ | pre-registered window; `placeboWindows`, `timeOffsetSurrogates` |
-| GCP blocked event | `analyzeEvent({ blockSeconds })` | $\sum_B Z_B^2$ | $\chi^2(\#B)$ | block length is part of the registration |
+| GCP blocked event | `analyzeEvent({ blockSeconds })` | $\sum_B Z_B^2$ | $\chi^2(n_B)$ | block length is part of the registration |
 | cumulative-deviation curve | `analyzeEvent().cumdev` + `globalRankEnvelope` | whole curve | simulated / surrogate curves | global rank envelope, not the pointwise one |
 | FieldREG segments | `analyzeFieldReg` | most extreme segment | Šidák/Bonferroni over segments and scales | segment boundaries and `scales` registered |
 | presentiment (RNG analogue) | `presentimentEpochs`, `analyzePresentiment` | pre-window target − control $\Delta z$ | $N(0,1)$ for disjoint epochs; label-shuffle permutation | one pre-window; seed and surrogate count registered |
@@ -140,9 +140,14 @@ or *instructed* mode ("some kind of random process determines" it), with
 baseline runs "interspersed in some reasonable fashion"; the sign relation
 between noise and output was switched trial by trial as a bias safeguard;
 baseline runs showed a chance mean but "a statistically significant surplus
-of scores at the precise theoretical mean". PEAR also reported comparable
-results on pseudo-random and prerecorded sources and described the program
-as "anomalous man-machine interactions" rather than PK.
+of scores at the precise theoretical mean". Mishlove reports that PEAR obtained comparable results on pseudo-random and
+prerecorded sources and described the program as "anomalous man-machine
+interactions" rather than PK. The 1997 12-year review (Jahn et al.) is more
+specific: strictly deterministic sources (an algorithmic generator and a
+hard-wired shift register) showed no correlation, while a shift register
+with an analog random element did. This package treats an "effect" on
+deterministic control bits as a flaw in the analysis — that is our
+methodological stance, not a PEAR conclusion.
 
 ### Schedules
 
@@ -270,7 +275,7 @@ Bancel & Nelson 2008): 200-bit trials at 1 Hz and the statistics
 | `cumdev` | $D(t) = \sum_{s\le t}(Z_s(s)^2 - 1)$ | flat, Var $= 2t$ |
 | `envelope` | $\chi^2_{\text{isf}}(p, t) - t$, **pointwise** | — |
 | `composite` | $\sum_t Z_s(t)/\sqrt{T}$, pooled mean shift | $N(0,1)$ |
-| `blocked.netvar` | $\sum_B Z_B^2$ over `blockSeconds` blocks | $\chi^2(\#B)$ |
+| `blocked.netvar` | $\sum_B Z_B^2$ over `blockSeconds` blocks | $\chi^2(n_B)$ |
 
 - **Windows.** `{ startStep, endStep }` selects rounds by index — always
   aligned for lock-step recordings. `{ startMs, endMs }` selects by

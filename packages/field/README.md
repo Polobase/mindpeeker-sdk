@@ -87,7 +87,7 @@ was ≤ 0.05 in 58 % of fields at n = 60 and in 100 % at n = 300.
 (sparsest) neighbourhood unusual for a random field of the same size? It
 draws `runs` CSR fields from the entropy source with the same sampler,
 computes $T_{max} = \max_i k_i$ and $T_{min} = \min_i k_i$ for each, and
-returns $p = (1 + \#\{\text{simulated at least as extreme}\})/(1+\text{runs})$
+returns $p = (1 + n_{\ge})/(1+\text{runs})$, where $n_{\ge}$ counts simulated fields at least as extreme,
 with `rank`, `runs` and `accounting`. The test is exact (Besag & Diggle 1977)
 and, with discrete counts, conservative: under CSR the attractor p was
 ≤ 0.05 in 4.7 % of 300 fields at n = 300 and the void p in none (the sparsest

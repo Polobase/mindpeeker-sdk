@@ -1,0 +1,77 @@
+name: Bug report
+description: A package behaves differently from its README, types or tests.
+title: "[bug] <package>: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems (a forged VDF output or ledger record that verifies, entropy credited above its source, the visualizer server readable from another origin) must **not** be filed here: report them privately as described in SECURITY.md.
+
+        A statistical result you disagree with is not necessarily a bug. If the math is right but a claim about what it means looks wrong, use the research-claim review template instead.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - entropy
+        - negentropy
+        - flow
+        - coincidence
+        - judging
+        - psi
+        - field
+        - scan
+        - oracle
+        - gematria
+        - rate
+        - vdf
+        - ledger
+        - ephemeris
+        - visualizer
+        - repository (build, CI, docs, examples)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: From your lockfile or `npm view @mindpeeker/<package> version`; a commit hash if you use the repository.
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and platform
+      description: Bun, Node or browser version, and operating system.
+      placeholder: Bun 1.3.1 on macOS 15 (arm64)
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest script that shows the problem. Use `cryptoProvider()` or fixed bytes instead of hardware or network sources where you can, and pass a seed to anything randomized.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should happen, and where that is documented (README section, JSDoc, test).
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happens instead. Include the error's `name`, `code`, `message` and `cause` if one is thrown.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Hardware involved, how often it happens, anything you already ruled out.

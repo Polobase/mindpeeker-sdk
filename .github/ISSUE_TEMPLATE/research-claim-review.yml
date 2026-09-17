@@ -1,0 +1,55 @@
+name: Research-claim review
+description: A statement in a README, docs page or JSDoc overstates, misattributes or misquotes a result or source.
+title: "[claim] "
+labels: ["research-claim"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project states exact mathematics as fact and contested hypotheses as hypotheses. A statistical result must never lend credibility to a metaphysical claim, and every number must come from a cited source, a measurement or code that computes it. Use this template when a document falls short of that.
+
+        Disagreement about whether a hypothesis is true is welcome, but the documents only record what the evidence says; please point at the specific wording and the source that contradicts it.
+  - type: input
+    id: location
+    attributes:
+      label: Where
+      description: File and section, or a permalink to the lines.
+      placeholder: docs/research.md §4, or packages/psi/README.md "Presentiment"
+    validations:
+      required: true
+  - type: textarea
+    id: statement
+    attributes:
+      label: The statement as written
+      description: Quote it exactly.
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: Kind of problem
+      multiple: true
+      options:
+        - a number is wrong or has no source
+        - a citation is wrong, misattributed or unverifiable
+        - a quotation does not match the source
+        - a contested hypothesis is stated as fact
+        - a statistical result is presented as support for a mechanism
+        - the scope or limits of a method are missing
+        - a primary source is missing where a secondary one is cited
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The primary source (with page, section or DOI), a calculation or a script that shows the problem. Say whether you read the source yourself.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed wording
+      description: Optional. How the statement should read.

@@ -1,0 +1,71 @@
+name: Entropy provider or device request
+description: Propose a randomness source, beacon or hardware device for @mindpeeker/entropy.
+title: "[provider] "
+labels: ["provider-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, check the provider table in `packages/entropy/README.md`, its "Sources we evaluated — and why they're NOT providers" section, and `docs/devices.md`, which lists devices that are unsupported and why.
+
+        A provider is only added when its protocol is documented well enough to implement and test without guessing, and when its entropy claim can be stated honestly.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of source
+      options:
+        - cloud QRNG or TRNG API (private output)
+        - public randomness beacon
+        - USB or serial hardware device
+        - other local physical source (sensor, radio, camera, …)
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Source name and operator or vendor
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocol documentation
+      description: Links to the API reference, wire protocol, command set or datasheet. For a device, the USB class or driver it uses (CDC-ACM serial, FTDI, vendor library, kernel hwrng driver).
+    validations:
+      required: true
+  - type: textarea
+    id: entropy
+    attributes:
+      label: Entropy source and claims
+      description: What physical process produces the randomness, what the operator claims about it, and any published assessment (for example an SP 800-90B evaluation). Say which claims you have verified and which you have not.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verifiability
+      description: For beacons, whether outputs are signed or chained and how a client can check them. For private APIs, whether responses are signed.
+  - type: textarea
+    id: access
+    attributes:
+      label: Access, quotas and terms
+      description: Authentication, free-tier limits, rate limits, pricing, and terms of use that affect redistribution. Include the date you checked.
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Where it would need to run
+      multiple: true
+      options:
+        - browser
+        - Node
+        - Bun
+    validations:
+      required: true
+  - type: checkboxes
+    id: testing
+    attributes:
+      label: Testing
+      options:
+        - label: I own the device or have API access and can help test against the real source.

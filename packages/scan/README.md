@@ -102,7 +102,7 @@ Any reading has two interpretations, and we never pick one for you:
 ### The scan (`scan`, `race`, `generalVitality`)
 
 `race` draws a random subset of the catalog — AetherOnePi's rule,
-$s = \min(M, \operatorname{clamp}(\lfloor M/10 \rfloor, 120, 5000))$, via
+$s = \min(M, \mathrm{clamp}(\lfloor M/10 \rfloor, 120, 5000))$, via
 `subsetFraction` / `subsetMin` / `subsetMax` — as a Fisher–Yates prefix, then
 runs the **EV race**: each pass adds a `uniformInt(0..10)` to every raced
 item's Energetic Value in draw order; the first to reach `maxValue` (default
@@ -354,8 +354,8 @@ unchanged.
   reader (was one byte per coin): 8× less entropy, different results for the
   same bytes; `bitsUsed` now counts bits that entered a decision.
 - **Race subset rule (breaking).** Default subset is AetherOnePi's
-  $\min(M, \operatorname{clamp}(\lfloor M/10 \rfloor, 120, 5000))$ (was
-  $\max(12, \operatorname{round}(M/10))$); new `subsetMin`/`subsetMax`;
+  $\min(M, \mathrm{clamp}(\lfloor M/10 \rfloor, 120, 5000))$ (was
+  $\max(12, \mathrm{round}(M/10))$); new `subsetMin`/`subsetMax`;
   `race`, `raceSubsetSize`, and their types are exported.
 - **Results carry `id`** and, with vitality, `vitalityP`;
   `generalVitalitySf`, `GV_AUTO_MODE_THRESHOLD`, `generalVitalityReader`,

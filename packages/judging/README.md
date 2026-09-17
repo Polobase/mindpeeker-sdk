@@ -173,13 +173,13 @@ effect size is $((k+1)/2 - \bar r)/\sqrt{(k^2-1)/12}$.
 
 **Rank matrices.** For a $k \times k$ matrix $m_{ij}$ (transcript $i$ scored
 against target $j$) and true pairs on the diagonal,
-$p = \#\{\pi : \sum_i m_{i\pi(i)} \text{ at least as good as } \sum_i m_{ii}\}/k!$.
+$p = \lvert\{\pi : \sum_i m_{i\pi(i)} \text{ at least as good as } \sum_i m_{ii}\}\rvert/k!$.
 The judge's rows need not be independent: only the pairing is random.
 
 **Displacement.** With targets i.i.d. uniform on $m$ symbols, target $t$ is
 compared with the calls $\{g_{t-d}\}$. If a symbol $s$ appears $\mu_t(s)$
 times among them, the hits on that target are $X_t = \mu_t(T_t)$, so
-$\operatorname{Var} X_t = \sum_s \mu_t(s)^2/m - (\sum_s \mu_t(s)/m)^2$. For
+$\mathrm{Var}\, X_t = \sum_s \mu_t(s)^2/m - (\sum_s \mu_t(s)/m)^2$. For
 $m = 5$ that is 36/25 for AAA, 16/25 for AAB, 6/25 for ABC, and 16/25 and
 6/25 for the pairs at run ends. Soal's Table I weights (41, 818, 981, 39,
 121) give 872.00, where the binomial formula $73 \cdot 4N/25$ gives 934.4.

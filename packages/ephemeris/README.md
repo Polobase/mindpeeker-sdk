@@ -150,7 +150,7 @@ window by its excess over that level. The half width is half the run's length.
 `lstPermutationTest` relabels effects against LST $m$ times (seeded xoshiro128** Fisher–Yates),
 repeats the **whole scan** each time, and reports
 
-$$p = \frac{1 + \#\{b : \max_j \bar e^{(b)}_j \ge \max_j \bar e_j\}}{1 + m}.$$
+$$p = \frac{1 + \lvert\{b : \max_j \bar e^{(b)}_j \ge \max_j \bar e_j\}\rvert}{1 + m}.$$
 
 Because every relabeling also searches all windows, the multiplicity of the peak search is
 already paid for, and $P(p \le \alpha) \le \alpha$ holds exactly under exchangeability. The test
