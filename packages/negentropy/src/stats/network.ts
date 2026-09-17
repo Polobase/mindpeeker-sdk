@@ -11,9 +11,13 @@ import { stoufferZ } from './zscores.js'
  * Useful identity relating the three: Z_s(t)² = [Σᵢzᵢ² + 2S(t)] / N — netvar
  * is a specific mixture of device variance and covariance. Every z must be
  * finite: a NaN/±Infinity (e.g. from a zero-sd calibration) throws
- * `invalid_config` naming the source and step.
+ * `invalid_config` naming the source and step. Shared with the covar and
+ * blocked-statistics modules; not re-exported from the package root.
  */
-function checkMatrix(zBySource: readonly Float64Array[], sources: readonly string[]): number {
+export function checkMatrix(
+  zBySource: readonly Float64Array[],
+  sources: readonly string[],
+): number {
   if (zBySource.length === 0 || zBySource.length !== sources.length) {
     throw new NegentropyError(
       'invalid_config',

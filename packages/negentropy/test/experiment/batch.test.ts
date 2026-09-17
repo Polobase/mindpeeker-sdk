@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { NegentropyError } from '../../src/errors.js'
 import { analyzeBytes, analyzeTrials } from '../../src/experiment/batch.js'
+import { registerExperiment } from '../../src/experiment/registration.js'
 import { theoreticalCalibration } from '../../src/stats/calibration.js'
 import { netvar } from '../../src/stats/network.js'
 import { trialsFromBytes } from '../../src/stats/trials.js'
@@ -31,8 +32,12 @@ describe('analyzeTrials', () => {
     expect(event?.steps).toBe(300)
     expect(event?.cumulative.length).toBe(300)
     expect(event?.sources).toEqual(SOURCES)
+    expect(event?.status).toBe('complete')
     expect(result.composite.events).toBe(1)
+    expect(result.composite).toMatchObject({ independent: true, method: 'stouffer' })
     expect(result.series.length).toBe(3)
+    expect(result.series[0]).toBe(series[0] as TrialSeries) // the archive is the input, untouched
+    expect(result.analysedSteps).toBe(600)
   })
 
   test('an injected common signal fires inside its window and not outside', () => {
@@ -59,6 +64,10 @@ describe('analyzeTrials', () => {
     expect(hit?.label).toBe('meditation window')
     expect(control?.pValue).toBeGreaterThan(0.001)
     expect(corr?.pValue).toBeLessThan(1e-6)
+    // hit and corr share [200, 300): the composite is dependent and Brown-corrected
+    expect(result.composite).toMatchObject({ independent: false, method: 'brown', events: 3 })
+    expect(result.composite.variance).toBeGreaterThan(3)
+    expect(result.composite.reason).toContain('hit∩corr: 100 steps')
     expect(result.composite.z).toBeGreaterThan(5)
   })
 
@@ -75,7 +84,7 @@ describe('analyzeTrials', () => {
     expect(result.events[0]?.pValue).toBeGreaterThan(0.001) // null data stays null
   })
 
-  test("missing 'error' rejects ragged series; 'skip' truncates to the shortest", () => {
+  test("missing 'error' rejects ragged series; 'skip' keeps the archive and treats the tail as absent", () => {
     const series = nullSeries(600, 0x400)
     const ragged = [
       series[0] as TrialSeries,
@@ -91,9 +100,25 @@ describe('analyzeTrials', () => {
     ).toThrow(NegentropyError)
     const result = analyzeTrials(ragged, {
       missing: 'skip',
-      events: [{ id: 'e', statistic: 'netvar', start: 0, end: 500 }],
+      events: [{ id: 'e', statistic: 'netvar', start: 0, end: 600 }],
     })
-    expect(result.series.every((s) => s.sums.length === 500)).toBe(true)
+    expect(result.series.map((s) => s.sums.length)).toEqual([600, 500, 600]) // never truncated
+    expect(result.analysedSteps).toBe(600)
+    const event = result.events[0]
+    expect(event?.status).toBe('complete')
+    expect(event?.df).toBe(600)
+    // steps ≥ 500 combine a and c only
+    const zs = ragged.map((s) => zScores(s, theoreticalCalibration(s.source)))
+    let expected = netvar(
+      zs.map((z) => z.slice(0, 500)),
+      SOURCES,
+    ).statistic
+    const tail = netvar(
+      [(zs[0] as Float64Array).slice(500), (zs[2] as Float64Array).slice(500)],
+      ['a', 'c'],
+    )
+    expected += tail.statistic
+    expect(event?.value as number).toBeCloseTo(expected, 9)
   })
 
   test('Date windows resolve via timestamps', () => {
@@ -114,17 +139,17 @@ describe('analyzeTrials', () => {
     expect(result.events[0]?.steps).toBe(30)
   })
 
-  test('window validation', () => {
+  test('window validation: malformed windows throw invalid_window', () => {
     const series = nullSeries(100, 0x600)
     for (const [start, end] of [
       [50, 20],
       [-1, 10],
-      [0, 101],
       [10, 10],
+      [0.5, 10],
     ] as const) {
       expect(() =>
         analyzeTrials(series, { events: [{ id: 'bad', statistic: 'netvar', start, end }] }),
-      ).toThrow(NegentropyError)
+      ).toThrow(expect.objectContaining({ code: 'invalid_window' }))
     }
     // Date window without timestamps
     expect(() =>
@@ -139,7 +164,39 @@ describe('analyzeTrials', () => {
     expect(result.events).toEqual([])
     expect(result.composite.events).toBe(0)
     expect(Number.isNaN(result.composite.z)).toBe(true)
+    expect(result.composite.reason).toBe('no complete events')
     expect(result.series.length).toBe(3)
+  })
+
+  test('rejects duplicate sources and event ids, bad calibrations, and width mismatches', () => {
+    const series = nullSeries(50, 0x710)
+    const e = { id: 'e', statistic: 'netvar' as const, start: 0, end: 10 }
+    const code = (fn: () => unknown, expected: string) =>
+      expect(fn).toThrow(expect.objectContaining({ code: expected }))
+    code(
+      () => analyzeTrials([series[0] as TrialSeries, series[0] as TrialSeries], {}),
+      'invalid_config',
+    )
+    code(() => analyzeTrials(series, { events: [e, e] }), 'invalid_config')
+    const cal = (source: string, sd: number, mean = 100) => ({
+      ...theoreticalCalibration(source),
+      sd,
+      mean,
+    })
+    code(
+      () => analyzeTrials(series, { calibration: SOURCES.map((s) => cal(s, 0)) }),
+      'invalid_config',
+    )
+    code(
+      () => analyzeTrials(series, { calibration: SOURCES.map((s) => cal(s, 7, Number.NaN)) }),
+      'invalid_config',
+    )
+    code(() => analyzeTrials(series, { trial: { bitsPerTrial: 64 } }), 'invalid_config')
+    code(() => analyzeTrials([], {}), 'invalid_config')
+    const withNaN = { ...(series[0] as TrialSeries), sums: Float64Array.from([100, Number.NaN]) }
+    code(() => analyzeTrials([withNaN], {}), 'invalid_config') // NaN needs missing: 'skip'
+    const withInf = { ...withNaN, sums: Float64Array.from([100, Number.POSITIVE_INFINITY]) }
+    code(() => analyzeTrials([withInf], { missing: 'skip' }), 'invalid_config')
   })
 
   test('rejects mixed bitsPerTrial and missing calibrations', () => {
@@ -169,5 +226,20 @@ describe('analyzeBytes', () => {
       { events: [{ id: 'e', statistic: 'netvar', start: 0, end: 600 }] },
     )
     expect(viaBytes.events[0]?.value).toBe(viaTrials.events[0]?.value)
+  })
+
+  test('an interval clock cannot be applied to raw bytes (invalid_config)', async () => {
+    const recordings = [{ source: 'a', bytes: prngBytes(2500, 0x901) }]
+    const trial = { clock: { mode: 'interval' as const, intervalMs: 1000 } }
+    expect(() => analyzeBytes(recordings, { trial })).toThrow(
+      expect.objectContaining({ code: 'invalid_config' }),
+    )
+    const registration = await registerExperiment({ trial })
+    expect(() => analyzeBytes(recordings, registration)).toThrow(
+      expect.objectContaining({ code: 'invalid_config' }),
+    )
+    expect(() => analyzeBytes([{ source: 'a', bytes: [1, 2] as never }], {})).toThrow(
+      expect.objectContaining({ code: 'invalid_config' }),
+    )
   })
 })

@@ -16,12 +16,37 @@ export interface ToeplitzExtractor {
   extract(input: Uint8Array): Uint8Array
 }
 
-/** Leftover-hash-lemma output length: m = ⌊k − 2·log₂(1/ε)⌋. Default ε = 2⁻³². */
+/**
+ * Leftover-hash-lemma output length: m = ⌊k − 2·log₂(1/ε)⌋. Default ε = 2⁻³².
+ * `minEntropyBits` must be a finite number ≥ 0 and ε in (0, 1)
+ * (`invalid_config`); when k is too small to extract even one bit
+ * (k < 1 + 2·log₂(1/ε), i.e. 65 at the default ε) it throws
+ * `insufficient_data` naming the required k — never a zero, negative or NaN
+ * length.
+ */
 export function toeplitzOutputBits(minEntropyBits: number, epsilon = 2 ** -32): number {
+  if (
+    typeof minEntropyBits !== 'number' ||
+    !Number.isFinite(minEntropyBits) ||
+    minEntropyBits < 0
+  ) {
+    throw new NegentropyError(
+      'invalid_config',
+      `minEntropyBits must be a finite number ≥ 0, got ${minEntropyBits}`,
+    )
+  }
   if (!(epsilon > 0 && epsilon < 1)) {
     throw new NegentropyError('invalid_config', `epsilon must be in (0, 1), got ${epsilon}`)
   }
-  return Math.floor(minEntropyBits - 2 * Math.log2(1 / epsilon))
+  const slack = -2 * Math.log2(epsilon) // 2·log₂(1/ε) without overflowing 1/ε
+  const bits = Math.floor(minEntropyBits - slack)
+  if (bits < 1) {
+    throw new NegentropyError(
+      'insufficient_data',
+      `${minEntropyBits} bits of min-entropy cannot yield an output at ε=${epsilon}: need ≥ ${Math.ceil(1 + slack)}`,
+    )
+  }
+  return bits
 }
 
 /** Read bit t (global MSB-first order) from a byte array. */
@@ -53,6 +78,9 @@ export function toeplitzExtractor(
   inputBits: number,
   outputBits: number,
 ): ToeplitzExtractor {
+  if (!(seed instanceof Uint8Array)) {
+    throw new NegentropyError('invalid_config', 'seed must be a Uint8Array')
+  }
   if (!Number.isInteger(inputBits) || inputBits < 2) {
     throw new NegentropyError(
       'invalid_config',
@@ -83,10 +111,10 @@ export function toeplitzExtractor(
     inputBits,
     outputBits,
     extract(input: Uint8Array): Uint8Array {
-      if (input.length !== Math.ceil(inputBits / 8)) {
+      if (!(input instanceof Uint8Array) || input.length !== Math.ceil(inputBits / 8)) {
         throw new NegentropyError(
           'invalid_config',
-          `input must be exactly ${Math.ceil(inputBits / 8)} bytes, got ${input.length}`,
+          `input must be a Uint8Array of exactly ${Math.ceil(inputBits / 8)} bytes, got ${input?.length}`,
         )
       }
       // pack reversed input bits into words

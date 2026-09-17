@@ -108,5 +108,25 @@ describe('toeplitzExtractor', () => {
       toeplitzExtractor(new Uint8Array([0b10110000]), 4, 2).extract(new Uint8Array(2)),
     ).toThrow(NegentropyError) // input length
     expect(() => toeplitzOutputBits(100, 0)).toThrow(NegentropyError)
+    expect(() => toeplitzExtractor([0b10110000] as never, 4, 2)).toThrow(NegentropyError)
+    expect(() =>
+      toeplitzExtractor(new Uint8Array([0b10110000]), 4, 2).extract([1] as never),
+    ).toThrow(NegentropyError)
+  })
+
+  test('toeplitzOutputBits never returns a zero, negative or NaN length', () => {
+    const code = (fn: () => unknown, expected: string) =>
+      expect(fn).toThrow(expect.objectContaining({ code: expected }))
+    for (const bad of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      code(() => toeplitzOutputBits(bad), 'invalid_config')
+    }
+    // default ε = 2⁻³² costs 64 bits: k = 65 is the smallest that yields an output
+    expect(toeplitzOutputBits(65)).toBe(1)
+    expect(toeplitzOutputBits(65.9)).toBe(1)
+    code(() => toeplitzOutputBits(64), 'insufficient_data')
+    code(() => toeplitzOutputBits(10), 'insufficient_data')
+    expect(() => toeplitzOutputBits(10)).toThrow(/need ≥ 65/)
+    // tiny ε whose reciprocal overflows a double: 2·log₂(1/ε) = 2098 stays finite
+    expect(toeplitzOutputBits(3000, 2 ** -1049)).toBe(3000 - 2098)
   })
 })

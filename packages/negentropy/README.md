@@ -80,6 +80,103 @@ calibration without a finite sd > 0 throws `calibration_required`. χ² p-values
 are exact and O(1) at any df, including GCP network scale (60 sources × a day at
 1 Hz → df ≈ 5·10⁶).
 
+### Sequential monitoring (anytime-valid)
+
+Watching a live cumulative-deviation plot and stopping when it "looks
+significant" is optional stopping: the pointwise χ² envelope is crossed
+*somewhere* by about 46% of 3000-step H0 paths. A **test martingale** M_t
+(M₀ = 1, nonnegative, E[M_t | past] ≤ M_{t−1} under H0) removes the problem:
+by Ville's inequality P_H0(∃t: M_t ≥ 1/α) ≤ α, so you may look after every
+step and stop whenever you like.
+
+```ts
+import {
+  netvarMartingale, netvarLogM, netvarBoundary, anytimeEnvelope,
+  driftMartingale, driftBoundary, anytimeP, villeCrossing, cumulativeDeviation,
+} from '@mindpeeker/negentropy'
+
+// variance channel (netvar / cumdev): Gamma(1, 1) prior on the precision 1/Var Z
+const logM = netvarMartingale(stoufferZs, { sided: 'upper' })
+const p = anytimeP(logM)                 // running anytime-valid p-values
+const stopAt = villeCrossing(logM, 0.01) // first index with M_t ≥ 100, or −1
+const band = anytimeEnvelope(stoufferZs.length, 0.01, { sided: 'upper' })
+const curve = cumulativeDeviation(stoufferZs) // crosses band.upper exactly when M_t ≥ 100
+
+// live monitors keep t and D_t = Σ(Z² − 1): O(1) per tick
+const e = Math.exp(netvarLogM(t, deviation, { sided: 'upper' }))
+const { upper } = netvarBoundary(t, 0.01, { sided: 'upper' })
+
+// mean-shift channel (Stouffer walk); λ is part of the pre-registration
+const drift = driftMartingale(stoufferZs, { lambda: 100 })
+const bound = driftBoundary(t, 0.05, 100) // |Σz| ≥ bound ⇔ M_t ≥ 20
+```
+
+| export | test martingale | time-uniform boundary |
+|---|---|---|
+| `netvarMartingale(z, { a, b, sided })`, `netvarLogM(t, D, …)` | Gamma(a, b) mixture over τ = 1/Var Z: ln M_t = S_t/2 + a ln b − lnΓ(a) + lnΓ(a + t/2) − (a + t/2) ln(b + S_t/2), S_t = ΣZ² = t + D_t; `'upper'` restricts τ < 1 (variance excess) and adds ln[P(a + t/2, b + S_t/2)/P(a, b)] | `netvarBoundary(t, α, …)`, `anytimeEnvelope(steps, α, …)`: D_t ≥ `upper` (or ≤ `lower`) ⇔ M_t ≥ 1/α. At α = 0.05, a = b = 1 (two-sided): 19.50, 52.31, 165.80 at t = 10, 100, 1000 — the pointwise envelope at t = 1000 is 74.68 |
+| `driftMartingale(z, { lambda, sided })`, `driftLogM(t, S, …)` | N(0, 1/λ) mixture over the mean: M_t = √(λ/(t + λ))·exp(S_t²/(2(t + λ))), S_t = Σz; `'upper'` uses the half-normal prior (× 2Φ(S_t/√(t + λ))) | `driftBoundary(t, α, λ, sided)` = √((t + λ)·ln((t + λ)/(λα²))) (Robbins–Siegmund); `'upper'` by monotone root finding |
+| `anytimeP(logM)` | p_t = min(1, 1/max_{s≤t} M_s) | P_H0(∃t: p_t ≤ α) ≤ α |
+| `villeCrossing(logM, α)` | first index with M_t ≥ 1/α | type-I error ≤ α at any stopping time |
+
+All values are computed in log space (no overflow on long streams, no
+cancellation at t ≈ 10⁶), cross-checked against 40-digit mpmath closed forms
+and bisection roots (`scripts/fixtures/sequential.py`); boundaries are always
+reported on the conservative side of the exact root. The seeded tests run 1000
+H0 paths of 3000 steps: every time-uniform boundary is crossed in ≤ 5% of them
+(0.9–3.2%), the pointwise χ² envelope in 46% and the 1.96·√t parabola of the
+Stouffer walk in 56%. References: Ville (1939); Robbins
+(1970); Shafer, Shen, Vereshchagin & Vovk (2011); Howard, Ramdas, McAuliffe &
+Sekhon (2021); Ramdas, Grünwald, Vovk & Shafer (2023).
+
+Honest caveats:
+
+- **What is exact.** For Gaussian Z every variant is a martingale with
+  E[M_t] = 1 (checked by numerical integration). For independent fair-bit
+  trials under theoretical calibration, netvar `'upper'` and both drift
+  variants remain test *super*martingales — such z's are sub-Gaussian with
+  variance proxy 1 (checked by exact enumeration of Binomial(8, ½) trials).
+  Two-sided netvar also bets on variance *deficits*, where lattice trials are
+  not dominated by the Gaussian (a prior on large precisions gives
+  E[M₁] > 1 for 8-bit trials): there it is the de Moivre–Laplace
+  approximation.
+- **What voids it.** Empirical calibration, drifting hardware, serial
+  correlation or misaligned steps break the H0 model, not just the p-value.
+- **The price.** Anytime validity costs power at a fixed horizon (the band is
+  ~2.2× the pointwise envelope at t = 1000). With a truly pre-registered
+  endpoint the fixed-n χ² p-value is valid and more powerful.
+- **Pre-register the bet.** a, b, λ, the side and α are part of the
+  hypothesis; tuning them after looking is optional stopping again. The drift
+  boundary relative to √t is tightest near t ≈ 8.2·λ (α = 0.05).
+
+### GCP statistics
+
+Additional analysis forms from the Global Consciousness Project literature,
+over the same step-aligned z-matrices (finite z's; `invalid_config` otherwise):
+
+| export | statistic | null |
+|---|---|---|
+| `covar(z, sources, { bitsPerTrial })` | correlation of variances (C2): Σₜ Σᵢ<ⱼ (zᵢ² − 1)(zⱼ² − 1) / √(T·P·v²), P pairs, v = Var z² = 2 − 2/k for Binomial(k, ½) under theoretical calibration (E z⁴ = 3 − 2/k), else 2; `perStep` curve | N(0, 1) upper tail (CLT) |
+| `blockZ(zs, T)` | Σ over T-step blocks / √T (whole blocks only) | N(0, 1) per block |
+| `blockedNetvar(z, sources, { T })` | Σ_B Z_B², Z_B = Σ_{t∈B} Σᵣ z_{t,r} / √(T·N) (Bancel & Nelson 2008, eqs. 4.1–4.2); T = 1 is `netvar` bit for bit | χ²(blocks) |
+| `blockedDevvar(z, sources, { T })` | Σᵣ Σ_B Z_{B,r}², each source blocked alone; T = 1 is `devvar` | χ²(blocks × N) |
+| `blockingDecomposition(stoufferZs, Ts)` | per T: event z, `expected` = z₀/√T (no autocorrelation), eq. 4.6's `autocorrelationTerm` √(2T₀/T³)·Σₗ(T − l)ρ(l) and `predicted`, `residualSd` = √(1 − 1/T) | descriptive |
+| `networkAutocorrelation(series, maxLag, { p })` | lag z = ρ̂(l)·√n, integrated I(L) = Σ_{l≤L} z_l with pointwise envelope z_{1−p/2}·√L | N(0, 1) per lag (Bartlett) |
+| `epochAverage(curves, { align, length, offset })` | per-index Stouffer across events aligned at their onsets | N(0, 1) per index |
+| `varianceRatio(x, q)` | Lo–MacKinlay VR(q) over overlapping q-sums (bias-corrected), iid z and heteroskedasticity-robust z* | N(0, 1), two-sided |
+
+Caveats: `covar`'s normal tail is a CLT approximation over skewed products
+(expect T·P ≳ a few hundred), and v = 2 on lattice trials under-scales the
+statistic (variance (1 − 1/k)²: 0.77 at k = 8, 0.98 at k = 200). Blocks tile
+from step 0 and drop the trailing remainder (`droppedSteps`). The blocking
+decomposition linearizes probit z's, so `predicted` tracks the observed z
+only with many blocks; ρ is taken about the theoretical mean 0 and averaged
+over all blocking phases. The autocorrelation band and envelope are pointwise
+— scanning lags for the first exit is a multiple comparison. Epoch averages
+assume independent, non-overlapping epochs. `varianceRatio` is asymptotic
+(n ≫ q) and matches `arch.unitroot.VarianceRatio` (overlap, debiased). These
+reproduce published analysis *forms*; they neither use the GCP database nor
+presuppose its hypothesis.
+
 ### Negentropy estimators
 
 J(x) = H(gaussian of equal variance) − H(x) ≥ 0, zero iff Gaussian —
@@ -134,44 +231,100 @@ DFT test is cross-checked against an independent numpy implementation instead.
 ### Experiment layer
 
 ```ts
-import { registerExperiment, session } from '@mindpeeker/negentropy'
+import { analyzeTrials, registerExperiment, session } from '@mindpeeker/negentropy'
 import { drand, nistBeacon, cryptoProvider } from '@mindpeeker/entropy/providers'
 
 const registration = await registerExperiment({
   trial: { clock: { mode: 'interval', intervalMs: 1000 } },
   calibration: { trials: 600 }, // burn-in window, disjoint by construction
+  missing: 'skip',
   events: [{
     id: 'meditation-1', label: 'group session 19:00–19:20',
     statistic: 'netvar',
     start: new Date('2026-07-08T19:00:00Z'), end: new Date('2026-07-08T19:20:00Z'),
   }],
+  // optional: commit a public beacon pulse (a no-earlier-than bound for the registration)
+  anchors: { beacons: [{ source: 'drand', chainId: '8990e7a9…', round: 5_000_000,
+    timestamp: '2025-01-01T00:00:00Z', valueHex: 'ab12…' }] },
 })
 
 const live = session({
   sources: [drand(), nistBeacon(), cryptoProvider()],
   registration,
+  stepTimeoutMs: 60_000, // or Infinity: no deadline
 })
 for await (const tick of live) {
   render(tick.stouffer, tick.netvar, tick.cumdev, tick.activeEvents)
 }
-const result = live.stop() // batch-exact analysis + composite + archival series
+const result = live.stop() // never throws: analysis + composite + full archive
+
+// re-analysis later reproduces `result` exactly (no second burn-in):
+const again = analyzeTrials(result.series, { registration, calibration: result.calibration })
 ```
 
-Sessions run in lock-step rounds (one trial per source per tick, bounded
-memory), tolerate slow/dead sources with `missing: 'skip'`, and `stop()`
-delegates to `analyzeTrials` — re-analyzing `result.series` later reproduces
-the result exactly. `registerExperiment` freezes the config and embeds its
-SHA-256 in the result: the pre-registration paper trail.
+**Registration.** `registerExperiment` validates the config strictly (unique
+event ids, well-formed windows → `invalid_window`, trial width ≥ 8, calibration
+trials ≥ 2, valid calibrations with unique sources, valid anchors, no unknown
+keys → `invalid_config`), fills in every default, and hashes the versioned
+envelope `{"schema":"negentropy/experiment/1","config":<resolved>}` serialized
+as RFC 8785 canonical JSON (Date bounds as ISO 8601 strings). A config written
+with or without explicit defaults therefore hashes identically, and a later
+change of a library default cannot change what a hash certifies. The result
+carries `schema`, the frozen resolved `config`, the exact `canonical` string
+and its hex SHA-256 `hash` — any JCS implementation reproduces the hash from
+`JSON.parse(canonical)`. `canonicalJson` rejects (never coerces) what JSON cannot
+represent losslessly: NaN/±∞, `undefined`, BigInt, functions, symbols, lone
+surrogates and noncharacters, cycles, and every non-plain object (Date, Map,
+Set, typed arrays, class instances). Passing a registration to
+`session`/`analyzeTrials`/`analyzeBytes` embeds its hash in the result; a
+registration mutated after hashing (e.g. a Date changed with `setTime`) is
+refused.
 
-Batch equivalents: `analyzeBytes(recordings, config)` /
-`analyzeTrials(series, config)`; multi-event runs combine via the Stouffer
-`composite` (with `bonferroni` for individual-event claims).
+**Sessions** run in lock-step rounds (one trial per source per tick, bounded
+memory). The archive holds one row per tick for every source — its trial sum,
+or `NaN` when it missed the round — stamped with the tick time, so
+`live.series()` and `result.series` stay step-aligned and are never truncated;
+`result.analysedSteps` is the row count. With `missing: 'skip'` a round
+proceeds with whoever answered, a source that ends leaves the roster, and a
+source that times out or ends during burn-in is dropped from the roster and
+the archive; the default `'error'` throws `timeout`/`source_ended` instead.
+Statistics combine over the sources present at each step, exactly as the live
+loop does, so `result.events[i].value` for a window starting at step 0 equals
+the live `tick.netvar` bit for bit. `stop()` is total: an event whose window
+has not elapsed (or whose Date window has not closed — no step stamped at or
+after its end) comes back `status: 'incomplete'` with NaN value/p/z and the
+covered `steps`, and a session stopped during burn-in returns its empty
+archive. The session owns an AbortController, linked to your `signal` and
+handed to every `source.stream()`; `stop()`, your abort, and leaving the loop
+all abort it, and listeners added to your signal are removed when the run
+ends. `stepTimeoutMs` must be finite in (0, 2³¹ − 1] or `Infinity`.
+
+**Batch.** `analyzeTrials(series, config | registration | { registration,
+calibration })` and `analyzeBytes(recordings, …)` (count clock only — raw bytes
+carry no timing, so an interval clock throws `invalid_config`). Duplicate
+sources or event ids and malformed calibrations are rejected. Exact
+reproduction of a session or an earlier analysis:
+`analyzeTrials(result.series, { registration, calibration: result.calibration })`,
+or for an unregistered run `analyzeTrials(result.series, { ...config, calibration: result.calibration })`
+— the re-analysis calibrations must match the registered calibration spec.
+
+**Composite.** Complete events combine into `result.composite`. Disjoint
+windows give the Stouffer Z = Σzₑ/√E (`independent: true`). When windows
+overlap — or several statistics share a window — plain Stouffer is
+anti-conservative (netvar + devvar + correlation on one window over 3 sources:
+Var ≈ 1.93), so the composite switches to Brown's covariance correction in
+Stouffer form, Z = Σzₑ/√(Σᵢⱼ ρᵢⱼ) (`independent: false`, `method: 'brown'`,
+`reason` names the overlaps). ρ comes from the exact H0 per-step moments of
+the statistics over their shared steps (netvar pairs: O/√(AB); netvar–devvar on
+one window of N sources ≈ 1/√N; devvar–correlation 0), checked against Monte
+Carlo. `brownCompositeZ(events, R)` takes your own correlation matrix;
+`bonferroni` covers individual-event claims.
 
 ## Extraction: manufacture order from noise
 
 ```ts
 import {
-  vonNeumann, peres, peresRate,             // debiasing (iid bits in!)
+  vonNeumann, peres, peresRate, debiasStream, // debiasing (iid bits in!)
   sha256Condition, hmacCondition, conditionStream, // SP 800-90B vetted
   toeplitzExtractor, toeplitzOutputBits,    // seeded strong extractor
   ContinuousHealth,                          // RCT + APT, observational or strict
@@ -201,8 +354,26 @@ x = await conditionAccounted(x)          // min(Output_Entropy(8·inBytes, 256, 
   0.999·n_out (the non-vetted §3.1.5.2 cap, kept as house policy); an omitted
   n_in defaults to ⌈h_in⌉, the most conservative width. Example: 512 input bits
   carrying 256 bits credit 255.0 bits, not 255.744.
+- **Streams.** `conditionStream(raw, { minEntropyPerByte: h, safetyFactor })`
+  hashes every n = ⌈safetyFactor·256/h⌉ raw bytes into one 32-byte block,
+  independent of chunking, in linear time. Each block's credit is
+  `vettedOutputEntropy(h·n, 256, 8·n)` — never a full 256 bits: safetyFactor 2
+  at h = 8 → 255.744 bits, safetyFactor 1 at h = 8 → 251.69 (the ω term),
+  safetyFactor 1 at h = 4 → 255.0 (the ψ term). `debiasStream(raw, method)`
+  debiases bytes with state carried across chunks: `'von-neumann'` equals the
+  batch `vonNeumann` over the whole input; `'peres'` is Zhou & Bruck's (2012)
+  random-stream algorithm — the streaming form of Peres, whose output stopped at
+  any length is unbiased and independent (its order differs from the batch
+  `peres`; emitting Peres's outputs immediately in batch order is biased, which
+  the tests show exhaustively). Both streams race each pull against `signal`
+  (a blocked upstream cannot delay `aborted`), close the upstream on exit, and
+  wrap upstream errors as `source_failed`. `hmacCondition` rejects an empty key
+  with `invalid_config`.
 - **Toeplitz** extraction is a strong extractor — the seed may be public,
-  but must be uniform and independent of the input.
+  but must be uniform and independent of the input. `toeplitzOutputBits(k, ε)`
+  rejects a negative/NaN k (`invalid_config`) and throws `insufficient_data`
+  naming the required k when not even one bit can be extracted (k < 65 at the
+  default ε = 2⁻³²).
 - **Health tests** (SP 800-90B RCT/APT) run observationally by default
   (alarms, keep going — the anomaly-logger stance) or `strict` (throw —
   the randomness-supplier stance). `minEntropyPerSample` must be in (0, 8]
@@ -247,7 +418,9 @@ chi-square quantile tails and the incomplete beta (`test/fixtures/numerics.json`
 `scripts/fixtures/numerics.py`), scipy grids (`special.json`), exact BigInt
 enumeration for binomial tails (n ≤ 60) and APT cutoffs.
 
-## Behaviour changes in 0.2.0 (numerics, statistics, estimators, accounting)
+## Behaviour changes in 0.2.0
+
+Numerics, statistics, estimators and accounting:
 
 - Domain errors in the special functions are `NegentropyError('invalid_config')`
   instead of `RangeError`; non-convergence is the new `'numerical'` code
@@ -280,6 +453,74 @@ enumeration for binomial tails (n ≤ 60) and APT cutoffs.
 - `trialStream` and `windowedNegentropy` race each upstream pull against the
   abort signal and close the upstream on abort/early exit.
 
+Experiment layer and extraction streams:
+
+- **Registration hashes change.** `registerExperiment` hashes the default-resolved
+  envelope `{"schema":"negentropy/experiment/1","config":…}` instead of the raw
+  config, so every 0.1.x hash differs. Registration now validates strictly
+  (unknown keys, duplicate event ids, malformed windows, bad calibrations and
+  anchors throw), `config` is the resolved config, and the result gains
+  `schema` and `canonical`. New optional `anchors.beacons` is committed in the
+  hash. Hand-built `{ config, hash }` objects are refused.
+- `canonicalJson` follows RFC 8785 and rejects Date (was an ISO string),
+  `undefined` members (were dropped), Map/Set/typed arrays/class instances
+  (were serialized as their enumerable keys), BigInt, lone surrogates and
+  noncharacters.
+- `session` archives one row per tick per source (NaN = absent) stamped with
+  the tick time (was per-source chunk-arrival time), so under
+  `missing: 'skip'` sources no longer desynchronise and nothing is truncated.
+  `stop()` never throws: unelapsed windows are `status: 'incomplete'` (it threw
+  `invalid_window`), and stopping during burn-in returns an empty result (it
+  threw `insufficient_data`). New `series()` accessor.
+- `session` validates at construction: `stepTimeoutMs` (finite in (0, 2³¹ − 1]
+  or `Infinity` = no deadline; ≥ 2³¹ used to fire after 1 ms), sources, events,
+  and provided calibrations (`calibration_required` is now thrown by `session()`
+  itself, not on the first tick); a correlation event needs ≥ 2 sources.
+- `session` passes a session-owned AbortController's signal to
+  `source.stream()` (it passed the caller's signal); `stop()` aborts it, and the
+  listener on the caller's signal is removed when the run ends.
+- Burn-in honours `missing: 'skip'`: a source that times out or ends during
+  calibration is dropped from the roster (it threw `timeout`/`source_ended`).
+- Live `netvar`/`cumdev` use compensated summation, so they equal the batch
+  values bit for bit.
+- `analyzeTrials` under `missing: 'skip'` treats NaN sums and the tail of
+  shorter series as absent and combines over present sources per step (it
+  truncated every series to the shortest, also in `result.series`).
+  `result.analysedSteps` is new. Under `'error'`, NaN sums throw.
+- Event windows past the data and unclosed Date windows yield
+  `status: 'incomplete'` events instead of `invalid_window`; a Date window whose
+  end lies beyond the last timestamp is no longer analysed as if complete.
+  `EventResult` gains `status` and `reason`.
+- Overlapping complete events switch the composite to Brown's correction;
+  `ExperimentComposite` gains `independent`, `method`, `variance`, `reason`.
+  Incomplete events are excluded; `compositeZ` rejects them.
+- `analyzeTrials` accepts `{ registration, calibration }` (re-analysis without
+  re-burning) and rejects duplicate sources/event ids, invalid calibrations
+  (non-finite mean, sd ≤ 0), non-Float64Array sums, mismatched timestamps and a
+  series width that differs from an explicit `trial.bitsPerTrial`.
+  `analyzeBytes` throws `invalid_config` for an interval clock (it silently used
+  count-mode trials).
+- `conditionStream` pools in linear time (was O(N²) per large chunk), races
+  pulls against the signal, closes the upstream, wraps upstream errors as
+  `source_failed`, and rejects non-Uint8Array chunks, unknown modes and empty
+  HMAC keys. Its output is unchanged.
+- `hmacCondition` rejects an empty key (`invalid_config`, was a DOMException);
+  `sha256Condition`/`hmacCondition`/`toeplitzExtractor` reject non-Uint8Array
+  input.
+- `toeplitzOutputBits` rejects NaN/negative/infinite min-entropy and throws
+  `insufficient_data` when no output bit is possible (it returned 0, negative
+  or NaN lengths).
+- New: `debiasStream`, `createDebiaser`, `brownCompositeZ`, `EXPERIMENT_SCHEMA`.
+
+Sequential and GCP statistics (additive — no existing output changes):
+
+- New anytime-valid monitoring: `netvarMartingale`, `netvarLogM`,
+  `netvarBoundary`, `anytimeEnvelope`, `driftMartingale`, `driftLogM`,
+  `driftBoundary`, `anytimeP`, `villeCrossing`.
+- New GCP statistics: `covar`, `blockZ`, `blockedNetvar`, `blockedDevvar`,
+  `blockingDecomposition`, `networkAutocorrelation`, `epochAverage`,
+  `varianceRatio`.
+
 ## What this package will not tell you
 
 Statistical tests can only *fail* a source — passing proves nothing about
@@ -296,5 +537,6 @@ p-values either way.
 bun test                      # fixtures are checked in — no Python needed
 uv run scripts/fixtures/generate.py   # regenerate fixtures (scipy/mpmath)
 uv run scripts/fixtures/numerics.py   # Temme coefficients + numerics.json (mpmath, then biome format)
+uv run --python 3.12 scripts/fixtures/sequential.py   # sequential.json (mpmath, numpy/scipy, arch; then biome format)
 cd ../entropy && bun run demo:negentropy   # live session demo over real providers
 ```

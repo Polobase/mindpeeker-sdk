@@ -1,33 +1,52 @@
 import { NegentropyError } from '../errors.js'
+import { KahanSum } from '../internal/kahan.js'
 import { calibrate, theoreticalCalibration } from '../stats/calibration.js'
-import { DEFAULT_BITS_PER_TRIAL, trialStream } from '../stats/trials.js'
+import { trialStream, validateBitsPerTrial } from '../stats/trials.js'
 import { stoufferZ } from '../stats/zscores.js'
-import type { Calibration, Trial, TrialSource } from '../types.js'
-import { analyzeTrials } from './batch.js'
+import type { Calibration, Trial, TrialSeries, TrialSource } from '../types.js'
+import { analyzeTrials, unanalysedResult } from './batch.js'
+import { validateExperimentConfig } from './config.js'
 import type { RegisteredExperiment } from './registration.js'
+import { assertRegistrationIntact, isRegistration } from './registration.js'
+import {
+  abortPromise,
+  noop,
+  STEP_TIMEOUT,
+  snapshotConfig,
+  stepDeadline,
+  validateSources,
+  validateStepTimeout,
+} from './session-support.js'
 import type { EventSpec, ExperimentConfig, ExperimentResult } from './types.js'
 
 export interface SessionOptions extends ExperimentConfig {
   sources: readonly TrialSource[]
+  /** Aborting it ends the run with `aborted` and releases every source; `stop()` still works afterwards. */
   signal?: AbortSignal
-  /** Max wait per lock-step round before 'timeout' (or a skip, under missing:'skip'). Default 30_000. */
+  /**
+   * Max wait per lock-step round (and per burn-in pull) before 'timeout' — or
+   * a skip under missing:'skip'. A finite number in (0, 2³¹ − 1] ms, or
+   * `Infinity` for no deadline; anything else throws `invalid_config`.
+   * Default 30_000.
+   */
   stepTimeoutMs?: number
-  /** Clock override for deterministic tests. */
+  /** Clock for tick timestamps (Date windows) — override for deterministic tests. Default Date.now. */
   now?: () => number
-  /** Pre-registered config: overrides the inline trial/calibration/events/missing and embeds its hash. */
+  /** Pre-registered config: replaces the inline trial/calibration/events/missing and embeds its hash. */
   registration?: RegisteredExperiment
 }
 
 export interface SessionTick {
   step: number
+  /** Tick time from `now()`; archived as every source's timestamp for this step. */
   at: number
-  /** Aligned to `sources`; NaN for a source that missed this round. */
+  /** Aligned to `sources`; NaN for a source that missed this round (or left the roster). */
   zBySource: Float64Array
   /** Names of the sources that contributed this round. */
   present: readonly string[]
   /** Stouffer Z over the present sources. */
   stouffer: number
-  /** Running Σ Z² — live dashboard feed. */
+  /** Running Σ Z² — equals the batch netvar over steps [0, step]. */
   netvar: number
   /** Running Σ (Z² − 1) — the live cumulative-deviation value. */
   cumdev: number
@@ -37,78 +56,91 @@ export interface SessionTick {
 
 export interface Session extends AsyncIterable<SessionTick> {
   /**
-   * End the run and analyze everything recorded so far via the batch core —
-   * a later re-analysis of `result.series` reproduces this result exactly.
+   * End the run, release every source, and analyze the archive. Total: never
+   * throws — events whose window has not elapsed come back
+   * `status: 'incomplete'`, and a session stopped during burn-in returns its
+   * (empty) archive with every event incomplete. Reproduce the result exactly
+   * with `analyzeTrials(result.series, { registration, calibration: result.calibration })`
+   * (unregistered: `{ ...config, calibration: result.calibration }`).
    */
   stop(): ExperimentResult
+  /** Snapshot of the step-aligned archive so far (post-calibration; NaN = absent). */
+  series(): readonly TrialSeries[]
 }
 
-const STEP_TIMEOUT: unique symbol = Symbol('step-timeout')
-
-function stepDeadline(ms: number): { promise: Promise<typeof STEP_TIMEOUT>; cancel: () => void } {
-  let id: ReturnType<typeof setTimeout> | undefined
-  const promise = new Promise<typeof STEP_TIMEOUT>((resolve) => {
-    id = setTimeout(() => resolve(STEP_TIMEOUT), ms)
-  })
-  return { promise, cancel: () => clearTimeout(id) }
-}
+type Outcome = IteratorResult<Trial> | typeof STEP_TIMEOUT
 
 /**
  * Live experiment over N sources in lock-step rounds: each tick awaits one
- * trial from every (still-active) source, so z vectors are step-aligned with
- * bounded memory — one trial per source in flight. Lazy: no source I/O until
- * the first tick is pulled. A stalled source stalls the round (that is the
- * honest behavior for netvar, which needs simultaneity); under
- * missing:'skip' the round proceeds with whoever answered and a source that
- * ends is dropped from the roster.
+ * trial from every source still in the roster, so z vectors are step-aligned
+ * with bounded memory (one trial per source in flight). Lazy: no source I/O
+ * until the first tick is pulled.
+ *
+ * Archive: one row per tick for every source — its trial sum, or NaN when it
+ * missed the round — stamped with the tick time, so `series()` and
+ * `result.series` stay step-aligned and are never truncated.
+ *
+ * missing:'error' (default): a round timeout throws `timeout`, a source that
+ * ends throws `source_ended` (also during burn-in). missing:'skip': the round
+ * proceeds with whoever answered (a slow source's pending trial carries into
+ * a later round), a source that ends leaves the roster, and during burn-in a
+ * source that times out or ends is dropped from the roster and the archive.
+ *
+ * Validation happens here, not later: sources, config (events, windows,
+ * calibrations), `stepTimeoutMs`, and provided calibrations
+ * (`calibration_required` when a source has none at the trial width). A
+ * correlation event needs ≥ 2 sources.
+ *
+ * Abort: the session owns an AbortController linked to `signal` and passes
+ * it to every `source.stream()`; `stop()`, the caller's abort, and leaving
+ * the loop all abort it, so sockets and hardware are released. Listeners
+ * added to the caller's signal are removed when the run ends.
  */
 export function session(opts: SessionOptions): Session {
-  const { sources } = opts
-  if (sources.length === 0) {
-    throw new NegentropyError('invalid_config', 'session needs at least one source')
+  if (opts === null || typeof opts !== 'object') {
+    throw new NegentropyError('invalid_config', 'session needs an options object')
   }
-  const names = new Set(sources.map((s) => s.name))
-  if (names.size !== sources.length) {
-    throw new NegentropyError('invalid_config', 'source names must be unique')
-  }
-  const config: ExperimentConfig = opts.registration ? opts.registration.config : opts
-  const bitsPerTrial = config.trial?.bitsPerTrial ?? DEFAULT_BITS_PER_TRIAL
-  const missing = config.missing ?? 'error'
-  const stepTimeoutMs = opts.stepTimeoutMs ?? 30_000
-  const now = opts.now ?? (() => Date.now())
-  const events = config.events ?? []
-
-  // recorded per-source trial data (post-calibration) + the tick timeline
-  const sums: number[][] = sources.map(() => [])
-  const trialTimes: number[][] = sources.map(() => [])
-  let calibrations: Calibration[] | null = Array.isArray(config.calibration)
-    ? null // resolved in start() with validation
-    : config.calibration && typeof config.calibration === 'object'
-      ? null // burn-in — resolved live
-      : sources.map((s) => theoreticalCalibration(s.name, bitsPerTrial))
-
-  let stopped = false
-  let generator: AsyncGenerator<SessionTick> | null = null
-  const iterators: AsyncGenerator<Trial>[] = []
-  const registrationHash: string | undefined = opts.registration?.hash
-
-  let abortPromise: Promise<never> | null = null
-  if (opts.signal) {
-    const signal = opts.signal
-    abortPromise = new Promise<never>((_, reject) => {
-      signal.addEventListener(
-        'abort',
-        () => reject(new NegentropyError('aborted', 'session aborted')),
-        { once: true },
+  const sources = validateSources(opts.sources)
+  let registration: RegisteredExperiment | undefined
+  if (opts.registration !== undefined) {
+    if (!isRegistration(opts.registration)) {
+      throw new NegentropyError(
+        'invalid_config',
+        'registration must come from registerExperiment()',
       )
-    })
-    abortPromise.catch(() => {}) // guard: session may end before anyone awaits it
+    }
+    assertRegistrationIntact(opts.registration)
+    registration = opts.registration
+  }
+  let config: ExperimentConfig = opts
+  if (registration) config = registration.config
+  validateExperimentConfig(config)
+  if (!registration) config = snapshotConfig(opts)
+  const bitsPerTrial = validateBitsPerTrial(config.trial?.bitsPerTrial)
+  const missing = config.missing ?? 'error'
+  const events: readonly EventSpec[] = config.events ?? []
+  if (sources.length < 2 && events.some((event) => event.statistic === 'correlation')) {
+    throw new NegentropyError('invalid_config', 'a correlation event needs at least 2 sources')
+  }
+  const stepTimeoutMs = validateStepTimeout(opts.stepTimeoutMs ?? 30_000)
+  if (opts.now !== undefined && typeof opts.now !== 'function') {
+    throw new NegentropyError('invalid_config', 'now must be a function')
+  }
+  const now = opts.now ?? (() => Date.now())
+  const callerSignal = opts.signal
+  if (callerSignal !== undefined && typeof callerSignal?.addEventListener !== 'function') {
+    throw new NegentropyError('invalid_config', 'signal must be an AbortSignal')
   }
 
-  function resolveProvidedCalibrations(): Calibration[] {
-    const provided = config.calibration as readonly Calibration[]
-    return sources.map((s) => {
-      const cal = provided.find((c) => c.source === s.name && c.bitsPerTrial === bitsPerTrial)
+  const spec = config.calibration ?? 'theoretical'
+  let calibrations: (Calibration | null)[] | null = null
+  if (spec === 'theoretical') {
+    calibrations = sources.map((s) => theoreticalCalibration(s.name, bitsPerTrial))
+  } else if (Array.isArray(spec)) {
+    calibrations = sources.map((s) => {
+      const cal = (spec as readonly Calibration[]).find(
+        (c) => c.source === s.name && c.bitsPerTrial === bitsPerTrial,
+      )
       if (!cal) {
         throw new NegentropyError(
           'calibration_required',
@@ -119,170 +151,186 @@ export function session(opts: SessionOptions): Session {
       return cal
     })
   }
+  const burn = calibrations === null ? (spec as { trials: number }).trials : 0
 
-  async function pullOne(index: number): Promise<Trial> {
+  // step-aligned archive: one row per tick for every included source
+  const included = sources.map(() => true)
+  const sums: number[][] = sources.map(() => [])
+  const times: number[] = []
+
+  const sessionController = new AbortController()
+  const sourceControllers = sources.map(() => new AbortController())
+  const iterators: AsyncGenerator<Trial>[] = []
+  let stopped = false
+  let generator: AsyncGenerator<SessionTick> | null = null
+  let detachCaller = noop
+
+  function release(): void {
+    detachCaller()
+    detachCaller = noop
+    if (!sessionController.signal.aborted) sessionController.abort()
+    for (const controller of sourceControllers) if (!controller.signal.aborted) controller.abort()
+    for (const iterator of iterators) void iterator.return(undefined).catch(noop)
+  }
+
+  function timeoutError(i: number, phase: string): NegentropyError {
+    const name = sources[i]?.name as string
+    return new NegentropyError(
+      'timeout',
+      `no trial from ${name} within ${stepTimeoutMs}ms${phase}`,
+      {
+        source: name,
+      },
+    )
+  }
+
+  function endedError(i: number, phase: string): NegentropyError {
+    const name = sources[i]?.name as string
+    return new NegentropyError('source_ended', `${name} ended ${phase}`, { source: name })
+  }
+
+  async function race(pending: Promise<IteratorResult<Trial>>, aborted: Promise<never>) {
     const deadline = stepDeadline(stepTimeoutMs)
     try {
-      const raced = await Promise.race([
-        (iterators[index] as AsyncGenerator<Trial>).next(),
-        deadline.promise,
-        ...(abortPromise ? [abortPromise] : []),
-      ])
-      if (raced === STEP_TIMEOUT) {
-        throw new NegentropyError(
-          'timeout',
-          `no trial from ${sources[index]?.name} within ${stepTimeoutMs}ms`,
-          {
-            source: sources[index]?.name,
-          },
-        )
-      }
-      if ((raced as IteratorResult<Trial>).done) {
-        throw new NegentropyError(
-          'source_ended',
-          `${sources[index]?.name} ended during calibration`,
-          {
-            source: sources[index]?.name,
-          },
-        )
-      }
-      return (raced as IteratorResult<Trial>).value as Trial
+      return await Promise.race<Outcome>(
+        deadline ? [pending, deadline.promise, aborted] : [pending, aborted],
+      )
     } finally {
-      deadline.cancel()
+      deadline?.cancel()
     }
   }
 
-  async function burnInCalibration(burn: number): Promise<Calibration[]> {
-    if (!Number.isInteger(burn) || burn < 2) {
-      throw new NegentropyError(
-        'invalid_config',
-        `calibration.trials must be an integer ≥ 2, got ${burn}`,
-      )
-    }
-    return Promise.all(
+  async function burnIn(aborted: Promise<never>): Promise<void> {
+    const fitted = await Promise.all(
       sources.map(async (source, i) => {
         const collected = new Float64Array(burn)
-        for (let t = 0; t < burn; t++) collected[t] = (await pullOne(i)).sum
+        for (let t = 0; t < burn; t++) {
+          const pending = (iterators[i] as AsyncGenerator<Trial>).next()
+          void pending.catch(noop)
+          const outcome = await race(pending, aborted)
+          if (outcome === STEP_TIMEOUT || outcome.done) {
+            if (missing === 'error') {
+              throw outcome === STEP_TIMEOUT
+                ? timeoutError(i, ' during calibration')
+                : endedError(i, 'during calibration')
+            }
+            ;(sourceControllers[i] as AbortController).abort() // release it right away
+            return null // dropped from the roster
+          }
+          collected[t] = outcome.value.sum
+        }
         return calibrate(
           { source: source.name, bitsPerTrial, sums: collected },
           { minTrials: burn },
         )
       }),
     )
+    fitted.forEach((cal, i) => {
+      if (cal === null) included[i] = false
+    })
+    calibrations = fitted
+    if (!included.some(Boolean)) {
+      throw new NegentropyError('insufficient_data', 'no source completed its calibration window')
+    }
   }
 
   async function* run(): AsyncGenerator<SessionTick> {
-    if (opts.signal?.aborted) throw new NegentropyError('aborted', 'session aborted before start')
-    for (const source of sources) {
-      iterators.push(
-        trialStream(source, {
-          ...config.trial,
-          signal: opts.signal,
-          ...(opts.now && { now: opts.now }),
-        }),
-      )
+    if (stopped) return
+    if (callerSignal?.aborted) throw new NegentropyError('aborted', 'session aborted before start')
+    if (callerSignal) {
+      const onCallerAbort = () => {
+        if (!sessionController.signal.aborted) sessionController.abort(callerSignal.reason)
+        for (const controller of sourceControllers) controller.abort(callerSignal.reason)
+      }
+      callerSignal.addEventListener('abort', onCallerAbort, { once: true })
+      detachCaller = () => callerSignal.removeEventListener('abort', onCallerAbort)
     }
-    if (!calibrations) {
-      calibrations = Array.isArray(config.calibration)
-        ? resolveProvidedCalibrations()
-        : await burnInCalibration((config.calibration as { trials: number }).trials)
-    }
-
-    const active = sources.map(() => true)
-    const pending: (Promise<IteratorResult<Trial>> | null)[] = sources.map(() => null)
-    let step = 0
-    let runningNetvar = 0
-    let runningCumdev = 0
-
+    const abort = abortPromise(sessionController.signal)
     try {
+      sources.forEach((source, i) => {
+        const signal = (sourceControllers[i] as AbortController).signal
+        iterators.push(trialStream(source, { ...config.trial, signal, ...(opts.now && { now }) }))
+      })
+      if (calibrations === null) await burnIn(abort.promise)
+      const cals = calibrations as unknown as readonly (Calibration | null)[]
+
+      const active = included.slice()
+      const pending: (Promise<IteratorResult<Trial>> | null)[] = sources.map(() => null)
+      const netvar = new KahanSum()
+      const cumdev = new KahanSum()
+      let step = 0
       while (!stopped && active.some(Boolean)) {
         for (let i = 0; i < sources.length; i++) {
           if (active[i] && pending[i] === null) {
-            pending[i] = (iterators[i] as AsyncGenerator<Trial>).next()
+            const next = (iterators[i] as AsyncGenerator<Trial>).next()
+            void next.catch(noop)
+            pending[i] = next
           }
         }
-        const deadline = stepDeadline(stepTimeoutMs)
-        let outcomes: (IteratorResult<Trial> | typeof STEP_TIMEOUT | null)[]
-        try {
-          outcomes = await Promise.all(
-            sources.map((_, i) =>
-              active[i] && pending[i]
-                ? Promise.race([
-                    pending[i] as Promise<IteratorResult<Trial>>,
-                    deadline.promise,
-                    ...(abortPromise ? [abortPromise] : []),
-                  ])
-                : Promise.resolve(null),
-            ),
-          )
-        } finally {
-          deadline.cancel()
-        }
+        const outcomes = await Promise.all(
+          sources.map((_, i) =>
+            active[i] && pending[i]
+              ? race(pending[i] as Promise<IteratorResult<Trial>>, abort.promise)
+              : Promise.resolve(null),
+          ),
+        )
         if (stopped) break
+        if (missing === 'error') {
+          outcomes.forEach((outcome, i) => {
+            if (outcome === STEP_TIMEOUT) throw timeoutError(i, '')
+            if (outcome?.done) throw endedError(i, 'mid-session')
+          })
+        }
 
         const zBySource = new Float64Array(sources.length).fill(Number.NaN)
+        const row = new Float64Array(sources.length).fill(Number.NaN)
         const present: string[] = []
         const presentZ: number[] = []
-        for (let i = 0; i < sources.length; i++) {
-          const outcome = outcomes[i]
-          if (outcome === null || outcome === undefined) continue
-          if (outcome === STEP_TIMEOUT) {
-            if (missing === 'error') {
-              throw new NegentropyError(
-                'timeout',
-                `no trial from ${sources[i]?.name} within ${stepTimeoutMs}ms`,
-                { source: sources[i]?.name },
-              )
-            }
-            continue // pending promise carries into the next round
-          }
+        outcomes.forEach((outcome, i) => {
+          if (outcome === null || outcome === STEP_TIMEOUT) return // absent this round
           pending[i] = null
           if (outcome.done) {
-            if (missing === 'error') {
-              throw new NegentropyError('source_ended', `${sources[i]?.name} ended mid-session`, {
-                source: sources[i]?.name,
-              })
-            }
-            active[i] = false
-            continue
+            active[i] = false // left the roster
+            return
           }
-          const trial = outcome.value as Trial
-          const cal = calibrations[i] as Calibration
-          const z = (trial.sum - cal.mean) / cal.sd
+          const cal = cals[i] as Calibration
+          const z = (outcome.value.sum - cal.mean) / cal.sd
           zBySource[i] = z
+          row[i] = outcome.value.sum
           present.push(sources[i]?.name as string)
           presentZ.push(z)
-          ;(sums[i] as number[]).push(trial.sum)
-          ;(trialTimes[i] as number[]).push(trial.at ?? now())
-        }
-
-        if (present.length === 0) {
-          if (!active.some(Boolean)) break
-          continue // everyone slow this round — keep waiting
-        }
+        })
+        if (present.length === 0) continue // nobody answered — no tick, keep waiting
 
         const at = now()
+        for (let i = 0; i < sources.length; i++) {
+          if (included[i]) (sums[i] as number[]).push(row[i] as number)
+        }
+        times.push(at)
         const stouffer = stoufferZ(presentZ)
-        runningNetvar += stouffer * stouffer
-        runningCumdev += stouffer * stouffer - 1
-        const activeEvents = events
-          .filter((event) => windowContains(event, step, at))
-          .map((event) => event.id)
-
+        netvar.add(stouffer * stouffer)
+        cumdev.add(stouffer * stouffer - 1)
         yield {
           step,
           at,
           zBySource,
           present,
           stouffer,
-          netvar: runningNetvar,
-          cumdev: runningCumdev,
-          activeEvents,
+          netvar: netvar.value,
+          cumdev: cumdev.value,
+          activeEvents: events.filter((e) => windowContains(e, step, at)).map((e) => e.id),
         }
         step++
       }
+    } catch (error) {
+      if (stopped) return // stop() ends the run cleanly
+      if (sessionController.signal.aborted) {
+        throw new NegentropyError('aborted', 'session aborted', { cause: error })
+      }
+      throw error
     } finally {
-      for (const iterator of iterators) void iterator.return(undefined).catch(() => {})
+      abort.dispose()
+      release()
     }
   }
 
@@ -290,12 +338,22 @@ export function session(opts: SessionOptions): Session {
     if (event.start instanceof Date && event.end instanceof Date) {
       return at >= event.start.getTime() && at < event.end.getTime()
     }
-    return (
-      typeof event.start === 'number' &&
-      typeof event.end === 'number' &&
-      step >= event.start &&
-      step < event.end
-    )
+    return step >= (event.start as number) && step < (event.end as number)
+  }
+
+  function archive(): TrialSeries[] {
+    const timestamps = Float64Array.from(times)
+    const out: TrialSeries[] = []
+    sources.forEach((source, i) => {
+      if (!included[i]) return
+      out.push({
+        source: source.name,
+        bitsPerTrial,
+        sums: Float64Array.from(sums[i] as number[]),
+        timestamps: timestamps.slice(),
+      })
+    })
+    return out
   }
 
   return {
@@ -303,28 +361,31 @@ export function session(opts: SessionOptions): Session {
       generator ??= run()
       return generator
     },
+    series: archive,
     stop(): ExperimentResult {
       stopped = true
-      for (const iterator of iterators) void iterator.return(undefined).catch(() => {})
-      if (!calibrations) {
-        throw new NegentropyError(
-          'insufficient_data',
-          'session stopped before live calibration completed',
+      release()
+      const series = archive()
+      const hash = registration?.hash
+      if (calibrations === null) {
+        return unanalysedResult(
+          events,
+          series,
+          [],
+          'session stopped before its calibration window completed',
+          hash,
         )
       }
-      const series = sources.map((source, i) => ({
-        source: source.name,
-        bitsPerTrial,
-        sums: Float64Array.from(sums[i] as number[]),
-        timestamps: Float64Array.from(trialTimes[i] as number[]),
-      }))
-      const result = analyzeTrials(series, {
-        trial: config.trial,
-        calibration: calibrations,
-        events,
-        missing: 'skip', // roster changes/misses make exact alignment impossible live
-      })
-      return registrationHash !== undefined ? { ...result, registration: registrationHash } : result
+      const fitted = calibrations.filter((cal): cal is Calibration => cal !== null)
+      if (series.length === 0) {
+        return unanalysedResult(events, series, [], 'no source completed calibration', hash)
+      }
+      return analyzeTrials(
+        series,
+        registration
+          ? { registration, calibration: fitted }
+          : { trial: config.trial, calibration: fitted, events, missing },
+      )
     },
   }
 }

@@ -41,7 +41,13 @@ export interface Trial {
 export interface TrialSeries {
   readonly source: string
   readonly bitsPerTrial: number
+  /**
+   * One trial sum per step. In a step-aligned experiment archive recorded
+   * under missing:'skip', NaN marks a step at which this source was absent
+   * (only the experiment layer accepts NaN; the stats functions reject it).
+   */
   readonly sums: Float64Array
+  /** Epoch ms per step (same length as `sums`); a session archive stamps every source with the tick time. */
   readonly timestamps?: Float64Array
   /** Trailing bits that did not fill a whole trial (batch extraction only). */
   readonly leftoverBits?: number

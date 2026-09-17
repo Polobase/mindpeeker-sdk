@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { NegentropyError } from '../../src/errors.js'
+import type { NegentropyError } from '../../src/errors.js'
+import { analyzeTrials } from '../../src/experiment/batch.js'
 import { registerExperiment } from '../../src/experiment/registration.js'
 import type { SessionTick } from '../../src/experiment/session.js'
 import { session } from '../../src/experiment/session.js'
+import { theoreticalCalibration } from '../../src/stats/calibration.js'
 import { stoufferZ } from '../../src/stats/zscores.js'
 import type { TrialSource } from '../../src/types.js'
 import { countingSource, prngBytes, prngUniforms } from '../helpers/byte-sources.js'
@@ -107,11 +109,20 @@ describe('session (live)', () => {
     const result = live.stop()
     expect(result.series.length).toBe(2)
     expect(result.series[0]?.sums.length).toBe(10)
+    expect(result.analysedSteps).toBe(10)
     const event = result.events[0]
     expect(event?.steps).toBe(10)
-    // batch netvar over the archived series equals the running live netvar
-    expect(event?.value).toBeCloseTo(ticks[9]?.netvar as number, 8)
-    expect(event?.cumulative[9]).toBeCloseTo(ticks[9]?.cumdev as number, 8)
+    // batch netvar over the archived series equals the running live netvar — bit for bit
+    expect(event?.value).toBe(ticks[9]?.netvar as number)
+    expect(event?.cumulative[9]).toBe(ticks[9]?.cumdev as number)
+    expect([...(result.series[0]?.timestamps ?? [])]).toEqual(ticks.map((tick) => tick.at))
+    // the documented reproducing call
+    expect(
+      analyzeTrials(result.series, {
+        events: [{ id: 'all', statistic: 'netvar', start: 0, end: 10 }],
+        calibration: result.calibration,
+      }),
+    ).toEqual(result)
   })
 
   test('abort surfaces as aborted', async () => {
@@ -233,12 +244,61 @@ describe('session (live)', () => {
     const result = live.stop()
     expect(result.registration).toBe(registration.hash)
     expect(result.events.length).toBe(1)
+    expect(analyzeTrials(result.series, { registration, calibration: result.calibration })).toEqual(
+      result,
+    )
   })
 
-  test('validates configuration', () => {
-    expect(() => session({ sources: [] })).toThrow(NegentropyError)
-    expect(() => session({ sources: [instantSource('dup', 1), instantSource('dup', 2)] })).toThrow(
-      NegentropyError,
+  test('a registered burn-in session is reproduced exactly without re-burning', async () => {
+    const registration = await registerExperiment({
+      calibration: { trials: 20 },
+      events: [
+        { id: 'e', statistic: 'netvar', start: 0, end: 15 },
+        { id: 'late', statistic: 'devvar', start: 10, end: 99 },
+      ],
+    })
+    const live = session({
+      sources: [biasedSource('p', 0x3003), biasedSource('q', 0x4004)],
+      registration,
+    })
+    await takeTicks(live, 15)
+    const result = live.stop()
+    expect(result.calibration.map((c) => c.trials)).toEqual([20, 20])
+    expect(result.events.map((e) => e.status)).toEqual(['complete', 'incomplete'])
+    expect(analyzeTrials(result.series, { registration, calibration: result.calibration })).toEqual(
+      result,
     )
+  })
+
+  test('validates configuration up front', () => {
+    const code = (fn: () => unknown, expected: string) =>
+      expect(fn).toThrow(expect.objectContaining({ code: expected }))
+    const a = instantSource('a', 1)
+    code(() => session({ sources: [] }), 'invalid_config')
+    code(
+      () => session({ sources: [instantSource('dup', 1), instantSource('dup', 2)] }),
+      'invalid_config',
+    )
+    code(() => session({ sources: [{ name: 'x' } as TrialSource] }), 'invalid_config')
+    for (const stepTimeoutMs of [0, -1, Number.NaN, 2 ** 31, Number.MAX_SAFE_INTEGER]) {
+      code(() => session({ sources: [a], stepTimeoutMs }), 'invalid_config')
+    }
+    const e = { id: 'e', statistic: 'netvar' as const, start: 0, end: 5 }
+    code(() => session({ sources: [a], events: [e, e] }), 'invalid_config')
+    code(() => session({ sources: [a], events: [{ ...e, start: 5 }] }), 'invalid_window')
+    code(
+      () => session({ sources: [a], events: [{ ...e, statistic: 'correlation' }] }),
+      'invalid_config',
+    )
+    code(() => session({ sources: [a], calibration: { trials: 1 } }), 'invalid_config')
+    code(
+      () => session({ sources: [a], calibration: [theoreticalCalibration('other')] }),
+      'calibration_required',
+    )
+    code(
+      () => session({ sources: [a], calibration: [{ ...theoreticalCalibration('a'), sd: 0 }] }),
+      'invalid_config',
+    )
+    code(() => session({ sources: [a], registration: { hash: 'x' } as never }), 'invalid_config')
   })
 })
