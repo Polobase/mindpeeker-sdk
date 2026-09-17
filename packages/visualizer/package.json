@@ -1,7 +1,7 @@
 {
   "name": "@mindpeeker/visualizer",
   "version": "0.1.0",
-  "description": "Real-time dashboard for entropy/negentropy/PSI data — a Bun-native WebSocket server plus a zero-dependency WebGL2 client.",
+  "description": "Real-time dashboard for entropy/negentropy/PSI data — a Bun-native WebSocket server plus a zero-dependency WebGL2 client, with anytime-valid envelopes and hash-chained trial recording/replay.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -38,7 +38,8 @@
   },
   "dependencies": {
     "@mindpeeker/entropy": "workspace:*",
-    "@mindpeeker/negentropy": "workspace:*"
+    "@mindpeeker/negentropy": "workspace:*",
+    "@mindpeeker/psi": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

@@ -4,17 +4,22 @@
  * - `invalid_channel` — caller error at attach time: duplicate, empty or
  *   non-string channel name, a channel id outside the wire format's `u16`
  *   range, a source that is not (async) iterable, or a static document that
- *   is not JSON-serializable (BigInt, cycles, a throwing `toJSON`, `undefined`).
+ *   is not JSON-serializable (BigInt, cycles, a throwing `toJSON`, `undefined`);
+ *   or `setNote` on an unknown channel or with a non-string note.
  * - `protocol` — a frame or producer emission violated the wire format (bad
  *   version, unknown kind, truncated header, payload size not matching its
- *   declared shape, a malformed JSON text frame, non-string matrix labels, or a
- *   matrix `range` that is not a finite `[lo, hi]` with `lo < hi`).
+ *   declared shape, a malformed JSON text frame, non-string matrix labels, a
+ *   matrix `range` that is not a finite `[lo, hi]` with `lo < hi`, or series
+ *   `bands` that are not 1–8 numeric `{lo, hi}` pairs or come with `band`).
  * - `server` — the dashboard cannot serve: invalid `DashboardOptions` (port,
  *   host, ringCapacity, allowedOrigins, onChannelError), an attach after
  *   `stop()`, or an underlying failure of the runtime's HTTP server.
  * - `invalid_options` — a demo CLI argument or source selection is invalid:
  *   unknown flag or source name, a flag missing its value, an out-of-range
- *   `--port`/`--baud`, or a malformed `SourceOptions` field.
+ *   `--port`/`--baud`, `--replay` combined with live flags, a malformed
+ *   `SourceOptions` field, a `--record` file that exists or cannot be
+ *   written, or a `--replay` file that cannot be read, is not a psi schema-v2
+ *   recording, or whose hash chain is broken.
  * - `aborted` — the caller's `AbortSignal` fired.
  */
 export type VisualizerErrorCode =

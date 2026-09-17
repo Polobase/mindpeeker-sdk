@@ -5,7 +5,7 @@
  * (the GL panels are thin shells around these functions, because GL itself
  * cannot run in CI).
  */
-import type { RateCardGeometry } from '../src/types.js'
+import type { RateCardGeometry, SeriesBand, SeriesPoint } from '../src/types.js'
 
 /**
  * Affine map $x \mapsto r_0 + (x - d_0)\frac{r_1 - r_0}{d_1 - d_0}$. A
@@ -127,21 +127,63 @@ export function seriesPath(
   return new Float32Array(verts)
 }
 
+const NO_BANDS: readonly SeriesBand[] = Object.freeze([])
+
 /**
- * Build a `TRIANGLE_STRIP` vertex array for the envelope band: for each
- * banded point, the pair (x, lo), (x, hi). Points without a band (or with
- * non-finite bounds) are skipped, so the strip covers exactly the banded run.
+ * A point's envelopes as one list: `bands` when present, else its single
+ * `band` as the first band, else none.
+ */
+export function pointBands(point: Pick<SeriesPoint, 'band' | 'bands'>): readonly SeriesBand[] {
+  if (point.bands) return point.bands
+  if (point.band) return [{ lo: point.band[0], hi: point.band[1] }]
+  return NO_BANDS
+}
+
+/**
+ * Build a `TRIANGLE_STRIP` vertex array for the primary (first) envelope band:
+ * for each banded point, the pair (x, lo), (x, hi). Points without a band (or
+ * with non-finite bounds) are skipped, so the strip covers exactly the banded
+ * run.
  */
 export function bandStrip(
-  points: readonly { t: number; band?: readonly [number, number] }[],
+  points: readonly Pick<SeriesPoint, 't' | 'band' | 'bands'>[],
   xScale: (x: number) => number,
   yScale: (y: number) => number,
 ): Float32Array {
   const verts: number[] = []
   for (const p of points) {
-    if (!p.band || !Number.isFinite(p.band[0]) || !Number.isFinite(p.band[1])) continue
+    const band = pointBands(p)[0]
+    if (!band || !Number.isFinite(band.lo) || !Number.isFinite(band.hi)) continue
     const x = xScale(p.t)
-    verts.push(x, yScale(p.band[0]), x, yScale(p.band[1]))
+    verts.push(x, yScale(band.lo), x, yScale(band.hi))
+  }
+  return new Float32Array(verts)
+}
+
+/**
+ * `LINES` vertex pairs tracing one bound (`lo` or `hi`) of band `index`
+ * across consecutive points: a segment is emitted only where both ends are
+ * finite, so an infinite side (a one-sided boundary) or a missing band leaves
+ * a gap instead of a spike.
+ */
+export function boundSegments(
+  points: readonly Pick<SeriesPoint, 't' | 'band' | 'bands'>[],
+  index: number,
+  side: 'lo' | 'hi',
+  xScale: (x: number) => number,
+  yScale: (y: number) => number,
+): Float32Array {
+  const verts: number[] = []
+  let previous: { x: number; y: number } | undefined
+  for (const p of points) {
+    const bound = pointBands(p)[index]?.[side]
+    if (bound === undefined || !Number.isFinite(bound)) {
+      previous = undefined
+      continue
+    }
+    const current = { x: xScale(p.t), y: yScale(bound) }
+    if (previous) verts.push(previous.x, previous.y, current.x, current.y)
+    previous = current
   }
   return new Float32Array(verts)
 }

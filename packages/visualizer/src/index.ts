@@ -7,14 +7,18 @@ export type { VisualizerErrorCode, VisualizerErrorOptions } from './errors.js'
 export { VisualizerError } from './errors.js'
 export type { DecodedFrame } from './protocol.js'
 export {
+  BANDS_PREFIX_BYTES,
   decodeFrame,
   encodeBytesFrame,
   encodeMatrixFrame,
   encodeSeriesFrame,
   FRAME_KIND,
   HEADER_BYTES,
+  isSupportedProtocolVersion,
   isValidRange,
   MATRIX_PREFIX_BYTES,
+  MAX_SERIES_BANDS,
+  MIN_PROTOCOL_VERSION,
   PROTOCOL_VERSION,
   parseTextMessage,
   SERIES_POINT_BYTES,
@@ -29,6 +33,7 @@ export type {
   DirectoryMessage,
   MatrixFrameInput,
   RateCardGeometry,
+  SeriesBand,
   SeriesPoint,
   SeriesSample,
   StaticMessage,

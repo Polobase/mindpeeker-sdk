@@ -3,6 +3,7 @@ import { VisualizerError } from '../../src/errors.js'
 import {
   bracketHost,
   isLoopbackHostname,
+  negotiateProtocolVersion,
   resolveServerConfig,
   upgradeRefusal,
 } from '../../src/server/security.js'
@@ -184,5 +185,24 @@ describe('upgradeRefusal', () => {
 
   test('a missing Host header is refused', () => {
     expect(upgradeRefusal(upgrade(undefined), loopback)).toContain('Host')
+  })
+})
+
+describe('negotiateProtocolVersion', () => {
+  const negotiate = (query: string) =>
+    negotiateProtocolVersion(new URL(`http://localhost:4000/ws${query}`))
+
+  test('no v means protocol 1; v is capped at the newest version', () => {
+    expect(negotiate('')).toBe(1)
+    expect(negotiate('?v=1')).toBe(1)
+    expect(negotiate('?v=2')).toBe(2)
+    expect(negotiate('?v=99')).toBe(2)
+    expect(negotiate('?other=1&v=2')).toBe(2)
+  })
+
+  test('a malformed or repeated v is refused', () => {
+    for (const query of ['?v=0', '?v=', '?v=abc', '?v=2.5', '?v=-1', '?v=1e3', '?v=1&v=2']) {
+      expect(negotiate(query)).toBeUndefined()
+    }
   })
 })

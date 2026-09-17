@@ -9,31 +9,39 @@ import { VisualizerError } from '../errors.js'
 import { describeError } from '../internal/describe-error.js'
 import { CANCELLED, cancellableNext, closeIterator, toAsyncIterator } from '../internal/iterate.js'
 import { RingBuffer } from '../internal/ring.js'
-import {
-  encodeBytesFrame,
-  encodeMatrixFrame,
-  encodeSeriesFrame,
-  isValidRange,
-  PROTOCOL_VERSION,
-} from '../protocol.js'
+import { encodeBytesFrame, encodeMatrixFrame } from '../protocol.js'
 import type {
-  ChannelInfo,
   ChannelKind,
   ChannelStatus,
   Dashboard,
   DashboardOptions,
-  DirectoryMessage,
   MatrixFrameInput,
   SeriesSample,
 } from '../types.js'
 import { clientAssetResponse } from './assets.js'
-import { MAX_INBOUND_PAYLOAD_BYTES, resolveServerConfig, upgradeRefusal } from './security.js'
+import {
+  type Channel,
+  directoryText,
+  type Frame,
+  matrixMeta,
+  rendition,
+  seriesEmission,
+  sharedFrame,
+} from './channel.js'
+import { planReplay } from './replay.js'
+import {
+  MAX_INBOUND_PAYLOAD_BYTES,
+  negotiateProtocolVersion,
+  resolveServerConfig,
+  upgradeRefusal,
+} from './security.js'
 
 /**
  * Per-socket buffered-bytes budget. When a client's kernel/user-space queue
  * exceeds this, new binary frames are dropped for that socket instead of
  * queued — the second half of the "slow clients never block producers"
- * guarantee (the ring buffer bounds replay history, this bounds live fan-out).
+ * guarantee (the ring buffer bounds replay history, this bounds live fan-out
+ * and the replay a late joiner is sent).
  */
 const MAX_BUFFERED_BYTES = 4 * 1024 * 1024
 /** Longest wait for one consumed iterator's `return()` during `stop()`. */
@@ -42,21 +50,14 @@ const PUMP_CLOSE_GRACE_MS = 150
 const SERVER_STOP_GRACE_MS = 150
 /** Cap on the `error` text published in the directory. */
 const MAX_ERROR_TEXT = 300
+/** Cap on a channel note. */
+const MAX_NOTE_TEXT = 200
+/** Note changes are coalesced into at most one directory update per interval. */
+const NOTE_BROADCAST_MS = 100
 
-interface Channel {
-  readonly id: number
-  readonly name: string
-  readonly kind: ChannelKind
-  status: ChannelStatus
-  error?: string
-  rowLabels?: readonly string[]
-  colLabels?: readonly string[]
-  range?: readonly [number, number]
-  /** JSON of the last published labels + range, for change detection. */
-  metaKey: string
-  readonly ring: RingBuffer<Uint8Array>
-  /** Pre-serialized `static` text frame (static channels only). */
-  staticText?: string
+/** What each socket remembers: the protocol version it negotiated. */
+interface SocketData {
+  readonly version: number
 }
 
 interface Pump {
@@ -80,26 +81,33 @@ async function bounded(task: Promise<unknown>, ms: number): Promise<void> {
 
 function noop(): void {}
 
-function labelList(value: unknown, field: string, channel: string): readonly string[] | undefined {
-  if (value === undefined) return undefined
-  if (!Array.isArray(value) || !value.every((label) => typeof label === 'string')) {
-    throw new VisualizerError('protocol', `matrix ${field} must be an array of strings`, {
-      channel,
-    })
-  }
-  return Object.freeze([...value])
+/** Value key of a channel's published labels and range. */
+function metaKeyOf(meta: Partial<Channel>): string {
+  return JSON.stringify([
+    meta.rowLabels ?? null,
+    meta.colLabels ?? null,
+    meta.range ?? null,
+    meta.bandLabels ?? null,
+  ])
 }
+
+/** The key of a channel without labels or range: no directory update until some arrive. */
+const EMPTY_META_KEY = metaKeyOf({})
 
 /**
  * Start a dashboard: `Bun.serve` HTTP + WebSocket on one port. HTTP serves
  * the bundled WebGL2 client (`Cache-Control: no-cache`); `/ws` upgrades to the
  * fan-out socket after the Origin/Host policy check (see
- * `DashboardOptions.allowedOrigins`). Every client receives, in order: the
- * channel directory (JSON), every static document (JSON), then each streaming
- * channel's retained ring of binary frames, oldest first, in registration
- * order — so a late joiner immediately shows recent history. The socket is
- * send-only: any inbound message closes it (1003), and inbound messages over
- * 1 KiB are refused by the runtime.
+ * `DashboardOptions.allowedOrigins`) and protocol negotiation (`/ws?v=<n>`
+ * gets `min(n, PROTOCOL_VERSION)`, no `v` gets 1, a malformed `v` HTTP 400).
+ * Every client receives, in order: the channel directory (JSON, for its
+ * version), every static document (JSON), then each streaming channel's
+ * retained frames, oldest first, in registration order — so a late joiner
+ * immediately shows recent history. The replay respects the buffered-amount
+ * budget: when the retained history is larger, each channel replays its
+ * newest frames that fit (see `planReplay`). The socket is send-only: any
+ * inbound message closes it (1003), and inbound messages over 1 KiB are
+ * refused by the runtime.
  *
  * Producers attached via `attach*` are pumped in detached background tasks;
  * their frames go into a per-channel drop-oldest {@link RingBuffer} and are
@@ -121,30 +129,12 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     throw new VisualizerError('server', 'onChannelError must be a function')
   }
   const channels = new Map<string, Channel>()
-  const sockets = new Set<ServerWebSocket<undefined>>()
+  const sockets = new Set<ServerWebSocket<SocketData>>()
   const pumps = new Set<Pump>()
   let nextChannelId = 0
   let stopped = false
   let stopping: Promise<void> | undefined
-
-  const directoryMessage = (): string => {
-    const list: ChannelInfo[] = [...channels.values()].map((c) => ({
-      id: c.id,
-      name: c.name,
-      kind: c.kind,
-      status: c.status,
-      ...(c.rowLabels ? { rowLabels: c.rowLabels } : {}),
-      ...(c.colLabels ? { colLabels: c.colLabels } : {}),
-      ...(c.range ? { range: c.range } : {}),
-      ...(c.status === 'error' && c.error !== undefined ? { error: c.error } : {}),
-    }))
-    const message: DirectoryMessage = {
-      type: 'directory',
-      version: PROTOCOL_VERSION,
-      channels: list,
-    }
-    return JSON.stringify(message)
-  }
+  let noteTimer: ReturnType<typeof setTimeout> | undefined
 
   const broadcastText = (text: string): void => {
     for (const ws of sockets) {
@@ -152,17 +142,36 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     }
   }
 
-  const broadcastFrame = (frame: Uint8Array): void => {
+  /** Send every socket the directory for its version (each rendering built once). */
+  const broadcastDirectory = (): void => {
+    if (noteTimer !== undefined) {
+      clearTimeout(noteTimer)
+      noteTimer = undefined
+    }
+    const texts = new Map<number, string>()
     for (const ws of sockets) {
       if (ws.readyState !== 1) continue
-      if (ws.getBufferedAmount() > MAX_BUFFERED_BYTES) continue // drop, never queue unboundedly
-      ws.send(frame)
+      const { version } = ws.data
+      let text = texts.get(version)
+      if (text === undefined) {
+        text = directoryText(channels.values(), version)
+        texts.set(version, text)
+      }
+      ws.send(text)
     }
   }
 
-  let server: Server<undefined>
+  const broadcastFrame = (frame: Frame): void => {
+    for (const ws of sockets) {
+      if (ws.readyState !== 1) continue
+      if (ws.getBufferedAmount() > MAX_BUFFERED_BYTES) continue // drop, never queue unboundedly
+      ws.send(rendition(frame, ws.data.version))
+    }
+  }
+
+  let server: Server<SocketData>
   try {
-    server = Bun.serve({
+    server = Bun.serve<SocketData>({
       port: config.port,
       hostname: config.host,
       async fetch(req, srv) {
@@ -172,7 +181,13 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
           if (refusal !== undefined) {
             return new Response(`forbidden: ${refusal}`, { status: 403 })
           }
-          if (srv.upgrade(req)) return undefined
+          const version = negotiateProtocolVersion(url)
+          if (version === undefined) {
+            return new Response('bad protocol version request (expected ?v=<integer ≥ 1>)', {
+              status: 400,
+            })
+          }
+          if (srv.upgrade(req, { data: { version } })) return undefined
           return new Response('websocket upgrade required', { status: 400 })
         }
         return (
@@ -188,12 +203,17 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
           }
           sockets.add(ws)
           try {
-            ws.send(directoryMessage())
+            const { version } = ws.data
+            ws.send(directoryText(channels.values(), version))
             for (const channel of channels.values()) {
               if (channel.staticText !== undefined) ws.send(channel.staticText)
             }
-            for (const channel of channels.values()) {
-              for (const frame of channel.ring.snapshot()) ws.send(frame)
+            const rings = [...channels.values()].map((channel) =>
+              channel.ring.snapshot().map((frame) => rendition(frame, version)),
+            )
+            const budget = MAX_BUFFERED_BYTES - ws.getBufferedAmount()
+            for (const frames of planReplay(rings, budget)) {
+              for (const frame of frames) ws.send(frame)
             }
           } catch {
             sockets.delete(ws)
@@ -213,19 +233,21 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     throw new VisualizerError(
       'server',
       `failed to start dashboard on ${config.urlHost}:${config.port}`,
-      {
-        cause,
-      },
+      { cause },
     )
   }
 
-  /** Validate a new channel name without registering anything. */
-  const checkName = (name: unknown): string => {
+  const assertRunning = (name: unknown): void => {
     if (stopped) {
       throw new VisualizerError('server', 'dashboard already stopped', {
         channel: typeof name === 'string' ? name : undefined,
       })
     }
+  }
+
+  /** Validate a new channel name without registering anything. */
+  const checkName = (name: unknown): string => {
+    assertRunning(name)
     if (typeof name !== 'string' || name.length === 0) {
       throw new VisualizerError('invalid_channel', 'channel name must be a non-empty string')
     }
@@ -264,8 +286,8 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       name,
       kind,
       status: 'live',
-      metaKey: '',
-      ring: new RingBuffer(config.ringCapacity),
+      metaKey: EMPTY_META_KEY,
+      ring: new RingBuffer<Frame>(config.ringCapacity),
     }
     channels.set(name, channel)
     return channel
@@ -275,7 +297,7 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     if (channel.status === status && channel.error === error) return
     channel.status = status
     channel.error = error
-    if (!stopped) broadcastText(directoryMessage())
+    if (!stopped) broadcastDirectory()
   }
 
   const fail = (channel: Channel, error: unknown): void => {
@@ -287,11 +309,23 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
     }
   }
 
+  /** Publish changed metadata (compared by value, so a mutated reused array is seen). */
+  const updateMeta = (channel: Channel, meta: Partial<Channel>): void => {
+    const metaKey = metaKeyOf(meta)
+    if (metaKey === channel.metaKey) return
+    channel.metaKey = metaKey
+    channel.rowLabels = meta.rowLabels
+    channel.colLabels = meta.colLabels
+    channel.range = meta.range
+    channel.bandLabels = meta.bandLabels
+    broadcastDirectory()
+  }
+
   /** Pump one producer; detached so attach* returns immediately. */
   const consume = <T>(
     channel: Channel,
     iterator: AsyncIterator<T>,
-    encode: (item: T) => Uint8Array,
+    encode: (item: T) => Frame,
   ): void => {
     let finish: () => void = noop
     const pump: Pump = { done: new Promise<void>((resolve) => (finish = resolve)) }
@@ -336,6 +370,8 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
 
   const shutdown = async (): Promise<void> => {
     stopped = true
+    if (noteTimer !== undefined) clearTimeout(noteTimer)
+    noteTimer = undefined
     opts.signal?.removeEventListener('abort', onAbort)
     const drained = [...pumps].map((pump) => pump.done)
     for (const pump of pumps) pump.cancel?.()
@@ -355,23 +391,22 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       const channelName = checkName(name)
       const iterator = openSource<Uint8Array>(channelName, src)
       const channel = register(channelName, 'bytes')
-      broadcastText(directoryMessage())
-      consume(channel, iterator, (bytes) => encodeBytesFrame(channel.id, bytes))
+      broadcastDirectory()
+      consume(channel, iterator, (bytes) => sharedFrame(encodeBytesFrame(channel.id, bytes)))
     },
 
     attachSeries(name, src) {
       const channelName = checkName(name)
       const iterator = openSource<SeriesSample>(channelName, src)
       const channel = register(channelName, 'series')
-      broadcastText(directoryMessage())
+      broadcastDirectory()
       let autoT = 0
       consume(channel, iterator, (sample) => {
-        const point =
-          typeof sample === 'number'
-            ? { t: autoT, value: sample }
-            : { t: sample.t ?? autoT, value: sample.value, band: sample.band }
+        const emission = seriesEmission(channel.id, channel.name, sample, autoT)
         autoT++
-        return encodeSeriesFrame(channel.id, [point])
+        // a sample without bands keeps the last published labels
+        if (emission.bandLabels) updateMeta(channel, { bandLabels: emission.bandLabels })
+        return emission.frame
       })
     },
 
@@ -379,33 +414,11 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       const channelName = checkName(name)
       const iterator = openSource<MatrixFrameInput>(channelName, src)
       const channel = register(channelName, 'matrix')
-      broadcastText(directoryMessage())
+      broadcastDirectory()
       consume(channel, iterator, (frame) => {
         const bytes = encodeMatrixFrame(channel.id, frame)
-        const rowLabels = labelList(frame.rowLabels, 'rowLabels', channel.name)
-        const colLabels = labelList(frame.colLabels, 'colLabels', channel.name)
-        if (frame.range !== undefined && !isValidRange(frame.range)) {
-          throw new VisualizerError(
-            'protocol',
-            'matrix range must be a finite [lo, hi] with lo < hi',
-            {
-              channel: channel.name,
-            },
-          )
-        }
-        const range = frame.range
-          ? Object.freeze([frame.range[0], frame.range[1]] as const)
-          : undefined
-        // Compare copies by value, so a producer mutating one reused label array is still seen.
-        const metaKey = JSON.stringify([rowLabels ?? null, colLabels ?? null, range ?? null])
-        if (metaKey !== channel.metaKey) {
-          channel.metaKey = metaKey
-          channel.rowLabels = rowLabels
-          channel.colLabels = colLabels
-          channel.range = range
-          broadcastText(directoryMessage())
-        }
-        return bytes
+        updateMeta(channel, matrixMeta(frame, channel.name))
+        return sharedFrame(bytes)
       })
     },
 
@@ -431,8 +444,31 @@ export function createDashboard(opts: DashboardOptions = {}): Dashboard {
       const channel = register(channelName, 'static')
       // Same key order as JSON.stringify({ type, id, name, data }).
       channel.staticText = `{"type":"static","id":${channel.id},"name":${JSON.stringify(channelName)},"data":${dataText}}`
-      broadcastText(directoryMessage())
+      broadcastDirectory()
       broadcastText(channel.staticText)
+    },
+
+    setNote(name, note) {
+      assertRunning(name)
+      const channel = typeof name === 'string' ? channels.get(name) : undefined
+      if (!channel) {
+        throw new VisualizerError('invalid_channel', `no channel named ${JSON.stringify(name)}`)
+      }
+      if (note !== undefined && typeof note !== 'string') {
+        throw new VisualizerError('invalid_channel', 'a channel note must be a string', {
+          channel: channel.name,
+        })
+      }
+      const text =
+        note !== undefined && note.length > MAX_NOTE_TEXT
+          ? `${note.slice(0, MAX_NOTE_TEXT - 1)}…`
+          : note
+      if (text === channel.note) return
+      channel.note = text
+      noteTimer ??= setTimeout(() => {
+        noteTimer = undefined
+        if (!stopped) broadcastDirectory()
+      }, NOTE_BROADCAST_MS)
     },
 
     stop() {

@@ -10,7 +10,7 @@ import type { RateCardGeometry } from '../../src/types.js'
 import { CLIP_VS, createGL, createProgram, DynamicBuffer } from '../gl.js'
 import { tessellateDial } from '../math.js'
 import { drawCaption, setupOverlay } from '../overlay.js'
-import type { Panel, PanelShell } from './panel.js'
+import { badgeDetail, type Panel, type PanelShell } from './panel.js'
 
 const SWEEP_PERIOD_MS = 12_000
 
@@ -72,8 +72,8 @@ export function dialPanel(shell: PanelShell): Panel {
     wrap: shell.wrap,
     setInfo(info) {
       lastStatus = info.status
-      lastDetail = info.error
-      showStatus(info.status, info.error)
+      lastDetail = badgeDetail(info)
+      showStatus(info.status, lastDetail)
     },
     resize() {
       shell.resizeGl()

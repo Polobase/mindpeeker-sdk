@@ -1,21 +1,35 @@
-import { describe, expect, test } from 'bun:test'
-import { cumulativeDeviation, significanceEnvelope, trialsFromBytes } from '@mindpeeker/negentropy'
+import { afterAll, describe, expect, test } from 'bun:test'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { recordSession, verifyChain } from '@mindpeeker/psi'
 import {
-  BITS_PER_TRIAL,
+  BAND_LABELS,
   CHANNEL_LABELS,
   createErrorReporter,
-  cumdevSeries,
-  type DemoByteSource,
+  type DemoSession,
   histogramMatrix,
   parseArgs,
   SAMPLE_RATE_CARD,
   sourceListing,
   startDemo,
+  startReplay,
 } from '../src/demo.js'
 import { VisualizerError } from '../src/errors.js'
-import { parseTextMessage } from '../src/protocol.js'
-import type { DirectoryMessage, MatrixFrameInput, SeriesSample } from '../src/types.js'
-import { closed, fromItems, openSocket, prngBytes, WsInbox } from './helpers/streams.js'
+import { decodeFrame, FRAME_KIND, parseTextMessage } from '../src/protocol.js'
+import type { DirectoryMessage, MatrixFrameInput } from '../src/types.js'
+import {
+  closed,
+  fromItems,
+  openInbox,
+  openSocket,
+  prngBytes,
+  until,
+  type WsInbox,
+} from './helpers/streams.js'
+
+const dir = mkdtempSync(join(tmpdir(), 'mindpeeker-viz-demo-'))
+afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
 function codeOf(fn: () => unknown): string {
   try {
@@ -106,6 +120,26 @@ describe('parseArgs', () => {
     }
   })
 
+  test('--record rides along with a live run; --replay replaces the live source', () => {
+    expect(parseArgs(['--source', 'esp32', '--record', 'run.jsonl'])).toEqual({
+      command: 'run',
+      options: { port: 0, host: 'localhost', source: 'esp32', sourceOpts: {}, record: 'run.jsonl' },
+    })
+    expect(parseArgs(['--replay', 'run.jsonl', '--port', '8080'])).toEqual({
+      command: 'replay',
+      options: { port: 8080, host: 'localhost', replay: 'run.jsonl' },
+    })
+    for (const argv of [
+      ['--replay', 'a.jsonl', '--record', 'b.jsonl'],
+      ['--source', 'esp32', '--replay', 'a.jsonl'],
+      ['--replay', 'a.jsonl', '--raw'],
+      ['--replay'],
+      ['--record', '--raw'],
+    ]) {
+      expect(codeOf(() => parseArgs(argv))).toBe('invalid_options')
+    }
+  })
+
   test('unknown arguments are errors; help and list-sources short-circuit', () => {
     expect(codeOf(() => parseArgs(['--verbose']))).toBe('invalid_options')
     expect(parseArgs(['--port', '1', '-h', '--bogus'])).toEqual({ command: 'help' })
@@ -118,70 +152,6 @@ describe('parseArgs', () => {
     for (const name of ['crypto', 'jitter', 'serial', 'esp32', 'camera', 'mic', 'hwrng']) {
       expect(listing).toContain(`  ${name}`)
     }
-  })
-})
-
-/** A byte source that serves `bytes` in chunks of `chunk`, optionally pausing between them. */
-function recordedSource(bytes: Uint8Array, chunk: number, pauseMs = 0): DemoByteSource {
-  return {
-    name: 'recorded',
-    async *stream() {
-      for (let at = 0; at < bytes.length; at += chunk) {
-        if (pauseMs > 0) await new Promise((resolve) => setTimeout(resolve, pauseMs))
-        yield bytes.subarray(at, at + chunk)
-      }
-    },
-  }
-}
-
-type Point = Exclude<SeriesSample, number>
-
-describe('cumdevSeries', () => {
-  const bytes = prngBytes(25_000, 0x5eed) // exactly 1000 trials of 200 bits
-
-  test('plots every trial, t = 1…T, bit-identical to the batch cumulative deviation', async () => {
-    const points = (await collect(cumdevSeries(recordedSource(bytes, 256)))) as Point[]
-    const { sums } = trialsFromBytes(bytes, 'recorded', { bitsPerTrial: BITS_PER_TRIAL })
-    expect(points).toHaveLength(1000)
-    expect(sums).toHaveLength(1000)
-    const zs = Array.from(sums, (s) => (s - 100) / Math.sqrt(50))
-    const batch = cumulativeDeviation(zs)
-    let squares = 0
-    points.forEach((point, i) => {
-      expect(point.t).toBe(i + 1)
-      expect(point.value).toBe(batch[i] as number)
-      // exact rational reference: D(t) = (Σ(S−100)² − 50t) / 50
-      squares += ((sums[i] as number) - 100) ** 2
-      expect(point.value).toBeCloseTo((squares - 50 * (i + 1)) / 50, 8)
-    })
-  })
-
-  test('the band is the two-sided 90% pointwise χ² envelope', async () => {
-    const points = (await collect(cumdevSeries(recordedSource(bytes, 256)))) as Point[]
-    // independent closed forms: df 1 via the normal quantile, df 2 via −2 ln(1 − p)
-    expect(points[0]?.band?.[1]).toBeCloseTo(3.8414588206941227 - 1, 10)
-    expect(points[0]?.band?.[0]).toBeCloseTo(0.003932140000019528 - 1, 10)
-    expect(points[1]?.band?.[1]).toBeCloseTo(5.991464547107982 - 2, 10)
-    expect(points[1]?.band?.[0]).toBeCloseTo(0.10258658877510116 - 2, 10)
-    // and negentropy's significanceEnvelope (upper p = 0.05, lower p = 0.95) at every step
-    const upper = significanceEnvelope(1000, 0.05)
-    const lower = significanceEnvelope(1000, 0.95)
-    points.forEach((point, i) => {
-      const [lo, hi] = point.band as readonly [number, number]
-      expect(Math.abs(hi - (upper[i] as number))).toBeLessThan(1e-9 * (1 + (i + 1)))
-      expect(Math.abs(lo - (lower[i] as number))).toBeLessThan(1e-9 * (1 + (i + 1)))
-    })
-  })
-
-  test('source-driven pacing: points follow chunk arrival, with no sleep of their own', async () => {
-    const started = performance.now()
-    const it = cumdevSeries(recordedSource(bytes.subarray(0, 2500), 250, 5))
-    const first = await it.next()
-    expect(first.done).toBe(false)
-    const rest = await collect({ [Symbol.asyncIterator]: () => it })
-    expect(rest).toHaveLength(99) // 100 trials in 2 500 bytes, all delivered
-    // 10 chunks × 5 ms of source pacing; the old demo slept 150 ms per trial (15 s here)
-    expect(performance.now() - started).toBeLessThan(2000)
   })
 })
 
@@ -219,29 +189,64 @@ describe('createErrorReporter', () => {
   })
 })
 
+const wsUrl = (session: DemoSession, query = '') =>
+  `${session.dashboard.url.replace('http', 'ws')}ws${query}`
+
+async function nextDirectory(inbox: WsInbox): Promise<DirectoryMessage> {
+  for (;;) {
+    const msg = await inbox.next()
+    if (typeof msg !== 'string') continue
+    const parsed = parseTextMessage(msg)
+    if (parsed.type === 'directory') return parsed
+  }
+}
+
+async function codeOfAsync(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise
+  } catch (error) {
+    expect(error).toBeInstanceOf(VisualizerError)
+    return (error as VisualizerError).code
+  }
+  throw new Error('expected a VisualizerError')
+}
+
 describe('startDemo', () => {
   const options = { port: 0, host: 'localhost', source: 'crypto', sourceOpts: {} }
 
-  test('serves the five demo channels; the cumdev title states the band', async () => {
+  test('serves the six demo channels; envelopes are labeled and the netvar note appears', async () => {
     const failures: unknown[] = []
-    const session = startDemo(options, { onChannelError: (_c, e) => failures.push(e) })
+    const session = await startDemo(options, { onChannelError: (_c, e) => failures.push(e) })
     try {
       expect(session.providerName).toBe('crypto')
-      const ws = await openSocket(`${session.dashboard.url.replace('http', 'ws')}ws`)
-      const inbox = new WsInbox(ws)
-      const first = await inbox.next()
-      const dir = parseTextMessage(first as string) as DirectoryMessage
+      const inbox = await openInbox(wsUrl(session, '?v=2'))
+      const dir = parseTextMessage((await inbox.next()) as string) as DirectoryMessage
+      expect(dir.version).toBe(2)
       expect(dir.channels.map((c) => c.name)).toEqual([
         'crypto noise',
         CHANNEL_LABELS.negentropy,
         CHANNEL_LABELS.cumdev,
+        CHANNEL_LABELS.netvar,
         CHANNEL_LABELS.histogram,
         CHANNEL_LABELS.rateCard,
       ])
-      expect(CHANNEL_LABELS.cumdev).toContain('two-sided 90% pointwise')
+      expect(dir.channels[0]?.note).toBeUndefined() // the CSPRNG is not health-tested
       const stat = parseTextMessage((await inbox.next()) as string)
       expect(stat).toMatchObject({ type: 'static', data: SAMPLE_RATE_CARD })
-      const code = closed(ws)
+
+      let latest = dir
+      const deadline = Date.now() + 5000
+      while (
+        (latest.channels[2]?.bandLabels === undefined || latest.channels[3]?.note === undefined) &&
+        Date.now() < deadline
+      ) {
+        latest = await nextDirectory(inbox)
+      }
+      expect(latest.channels[2]?.bandLabels).toEqual([BAND_LABELS.pointwise, BAND_LABELS.anytime])
+      expect(latest.channels[3]?.bandLabels).toEqual([BAND_LABELS.pointwise])
+      expect(latest.channels[3]?.note).toMatch(/^anytime p = /)
+
+      const code = closed(inbox.ws)
       await session.stop()
       expect(await code).toBe(1000)
       expect(failures).toEqual([])
@@ -251,20 +256,105 @@ describe('startDemo', () => {
     }
   })
 
-  test('an unknown source or a pre-aborted signal fails before binding', () => {
-    expect(codeOf(() => startDemo({ ...options, source: 'nope' }))).toBe('invalid_options')
+  test('a health-tested source announces its health tests on the noise channel', async () => {
+    const session = await startDemo({ ...options, source: 'jitter' })
+    try {
+      const inbox = await openInbox(wsUrl(session))
+      const dir = await nextDirectory(inbox)
+      expect(dir.channels[0]).toMatchObject({
+        name: `${session.providerName} noise`,
+        note: 'SP 800-90B health tests: no failures',
+      })
+    } finally {
+      await session.stop()
+    }
+  })
+
+  test('an unknown source, a pre-aborted signal or an existing --record file fails', async () => {
+    expect(await codeOfAsync(startDemo({ ...options, source: 'nope' }))).toBe('invalid_options')
     const controller = new AbortController()
     controller.abort()
-    expect(codeOf(() => startDemo(options, { signal: controller.signal }))).toBe('aborted')
+    expect(await codeOfAsync(startDemo(options, { signal: controller.signal }))).toBe('aborted')
+    const existing = join(dir, 'existing.jsonl')
+    writeFileSync(existing, 'keep me\n')
+    expect(await codeOfAsync(startDemo({ ...options, record: existing }))).toBe('invalid_options')
+    expect(readFileSync(existing, 'utf8')).toBe('keep me\n')
   })
 
   test('aborting the runtime signal stops the dashboard', async () => {
     const controller = new AbortController()
-    const session = startDemo(options, { signal: controller.signal })
-    const ws = await openSocket(`${session.dashboard.url.replace('http', 'ws')}ws`)
+    const session = await startDemo(options, { signal: controller.signal })
+    const ws = await openSocket(wsUrl(session))
     const code = closed(ws)
     controller.abort()
     expect(await code).toBe(1000)
     await session.stop()
+  })
+})
+
+describe('--record and --replay', () => {
+  test('a recorded live session verifies and replays through the trial channels', async () => {
+    const path = join(dir, 'live.jsonl')
+    const live = await startDemo(
+      { port: 0, host: 'localhost', source: 'crypto', sourceOpts: {}, record: path },
+      { now: () => 1_700_000_000_000 },
+    )
+    try {
+      const inbox = await openInbox(wsUrl(live, '?v=2'))
+      const dir = await nextDirectory(inbox)
+      expect(dir.channels[2]?.note).toBe('recording → live.jsonl')
+      await until(() => readFileSync(path, 'utf8').split('\n').length > 60, 5000)
+    } finally {
+      await live.stop()
+    }
+    const text = readFileSync(path, 'utf8')
+    expect(text.endsWith('\n')).toBe(true)
+    const verification = await verifyChain(text)
+    expect(verification.ok).toBe(true)
+
+    const replay = await startReplay({ port: 0, host: 'localhost', replay: path }, { pace: false })
+    try {
+      expect(replay.providerName).toBe('replay')
+      expect(replay.note).toContain(verification.head as string)
+      const inbox = await openInbox(wsUrl(replay, '?v=2'))
+      const first = await nextDirectory(inbox)
+      expect(first.channels.map((c) => c.name)).toEqual([
+        CHANNEL_LABELS.cumdev,
+        CHANNEL_LABELS.netvar,
+      ])
+      expect(first.channels[0]?.note).toContain('chain ok')
+      let frame: Uint8Array | undefined
+      while (frame === undefined) {
+        const msg = await inbox.next()
+        if (typeof msg !== 'string') frame = msg
+      }
+      expect(frame[1]).toBe(FRAME_KIND.bands)
+      const decoded = decodeFrame(frame)
+      if (decoded.kind !== 'series') throw new Error('wrong kind')
+      expect(decoded.points[0]?.bands).toHaveLength(decoded.channelId === 0 ? 2 : 1)
+    } finally {
+      await replay.stop()
+    }
+  })
+
+  test('a broken chain is refused before anything is served', async () => {
+    const source = { name: 'a', stream: () => fromItems(prngBytes(25 * 4, 3)) }
+    const lines: string[] = []
+    for await (const line of recordSession([source], { chain: true, now: () => 0 })) {
+      lines.push(line)
+    }
+    // swap two trial lines: every record stays well-formed, the links do not
+    ;[lines[2], lines[3]] = [lines[3] as string, lines[2] as string]
+    const broken = join(dir, 'broken.jsonl')
+    writeFileSync(broken, lines.join('\n'))
+    try {
+      await startReplay({ port: 0, host: 'localhost', replay: broken })
+      throw new Error('replayed a broken chain')
+    } catch (error) {
+      expect(error).toBeInstanceOf(VisualizerError)
+      expect((error as VisualizerError).code).toBe('invalid_options')
+      expect((error as VisualizerError).message).toContain('refusing to replay')
+      expect((error as VisualizerError).message).toContain('hash chain broken at record 3')
+    }
   })
 })

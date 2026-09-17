@@ -1,17 +1,22 @@
 import { describe, expect, test } from 'bun:test'
 import { VisualizerError } from '../src/errors.js'
 import {
+  BANDS_PREFIX_BYTES,
   decodeFrame,
   encodeBytesFrame,
   encodeMatrixFrame,
   encodeSeriesFrame,
   FRAME_KIND,
   HEADER_BYTES,
+  isSupportedProtocolVersion,
   isValidRange,
+  MAX_SERIES_BANDS,
+  MIN_PROTOCOL_VERSION,
   PROTOCOL_VERSION,
   parseTextMessage,
   SERIES_POINT_BYTES,
 } from '../src/protocol.js'
+import type { SeriesPoint } from '../src/types.js'
 import { prngBytes } from './helpers/streams.js'
 
 describe('bytes frames', () => {
@@ -31,9 +36,9 @@ describe('bytes frames', () => {
     expect(decoded.bytes.length).toBe(0)
   })
 
-  test('header layout is exactly [version, kind, u16 LE id]', () => {
+  test('header layout is exactly [layout version 1, kind, u16 LE id]', () => {
     const frame = encodeBytesFrame(0x1234, new Uint8Array([0xaa]))
-    expect(frame[0]).toBe(PROTOCOL_VERSION)
+    expect(frame[0]).toBe(1)
     expect(frame[1]).toBe(FRAME_KIND.bytes)
     // little-endian: low byte first
     expect(frame[2]).toBe(0x34)
@@ -109,6 +114,150 @@ describe('series frames', () => {
   })
 })
 
+describe('multi-band series frames (protocol 2, kind 4)', () => {
+  const inf = Number.POSITIVE_INFINITY
+  const points: SeriesPoint[] = [
+    {
+      t: 1,
+      value: -0.5,
+      bands: [
+        { lo: -0.99, hi: 2.84 },
+        { lo: -inf, hi: 9.92 },
+      ],
+    },
+    {
+      t: 2,
+      value: 0.1 + 0.2,
+      bands: [
+        { lo: -1.9, hi: 3.99 },
+        { lo: Number.NaN, hi: 12.5 },
+      ],
+    },
+  ]
+
+  test('round-trips several bands per point bit-exactly, NaN and ±∞ included', () => {
+    const frame = encodeSeriesFrame(0x0203, points)
+    expect([frame[0], frame[1]]).toEqual([2, FRAME_KIND.bands])
+    expect(new DataView(frame.buffer).getUint16(HEADER_BYTES, true)).toBe(2)
+    expect(frame.byteLength).toBe(HEADER_BYTES + BANDS_PREFIX_BYTES + 2 * 16 * 3)
+    const decoded = decodeFrame(frame)
+    if (decoded.kind !== 'series') throw new Error('wrong kind')
+    expect(decoded.channelId).toBe(0x0203)
+    expect(decoded.points).toEqual(points)
+    expect(Object.is(decoded.points[1]?.value, 0.1 + 0.2)).toBe(true)
+    expect(decoded.points[0]?.bands?.[1]?.lo).toBe(-inf)
+    expect(Number.isNaN(decoded.points[1]?.bands?.[1]?.lo)).toBe(true)
+  })
+
+  test('labels are not encoded; shorter band lists and a single band are NaN-padded', () => {
+    const decoded = decodeFrame(
+      encodeSeriesFrame(1, [
+        {
+          t: 0,
+          value: 1,
+          bands: [
+            { lo: 0, hi: 1, label: 'pointwise' },
+            { lo: 2, hi: 3 },
+          ],
+        },
+        { t: 1, value: 2, band: [4, 5] },
+        { t: 2, value: 3 },
+      ]),
+    )
+    if (decoded.kind !== 'series') throw new Error('wrong kind')
+    expect(decoded.points[0]?.bands).toEqual([
+      { lo: 0, hi: 1 },
+      { lo: 2, hi: 3 },
+    ])
+    expect(decoded.points[1]?.bands).toEqual([
+      { lo: 4, hi: 5 },
+      { lo: Number.NaN, hi: Number.NaN },
+    ])
+    expect(decoded.points[2]?.bands).toEqual([
+      { lo: Number.NaN, hi: Number.NaN },
+      { lo: Number.NaN, hi: Number.NaN },
+    ])
+  })
+
+  test('version 1 downgrades to kind 2 carrying the first band', () => {
+    const frame = encodeSeriesFrame(5, points, { version: 1 })
+    expect([frame[0], frame[1]]).toEqual([1, FRAME_KIND.series])
+    const decoded = decodeFrame(frame)
+    if (decoded.kind !== 'series') throw new Error('wrong kind')
+    expect(decoded.points).toEqual([
+      { t: 1, value: -0.5, band: [-0.99, 2.84] },
+      { t: 2, value: 0.1 + 0.2, band: [-1.9, 3.99] },
+    ])
+  })
+
+  test('points without bands keep the kind-2 layout at every version', () => {
+    const plain = [{ t: 0, value: 1, band: [0, 2] as const }]
+    expect(encodeSeriesFrame(0, plain)).toEqual(encodeSeriesFrame(0, plain, { version: 1 }))
+    expect(encodeSeriesFrame(0, plain)[0]).toBe(1)
+  })
+
+  const protocolCode = (fn: () => unknown): string => {
+    try {
+      fn()
+    } catch (error) {
+      expect(error).toBeInstanceOf(VisualizerError)
+      return (error as VisualizerError).code
+    }
+    throw new Error('expected a throw')
+  }
+
+  test('malformed bands are rejected at encode time', () => {
+    const bad: unknown[] = [
+      { t: 0, value: 0, band: [0, 1], bands: [{ lo: 0, hi: 1 }] },
+      { t: 0, value: 0, bands: [] },
+      {
+        t: 0,
+        value: 0,
+        bands: Array.from({ length: MAX_SERIES_BANDS + 1 }, () => ({ lo: 0, hi: 1 })),
+      },
+      { t: 0, value: 0, bands: [{ lo: '0', hi: 1 }] },
+      { t: 0, value: 0, bands: [null] },
+      { t: 0, value: 0, bands: [{ lo: 0, hi: 1, label: 7 }] },
+    ]
+    for (const point of bad) {
+      expect(protocolCode(() => encodeSeriesFrame(0, [point as SeriesPoint]))).toBe('protocol')
+    }
+  })
+
+  test('decoding checks the layout byte, band count and point size', () => {
+    const good = encodeSeriesFrame(0, points)
+    const relabeled = good.slice()
+    relabeled[0] = 1 // kind 4 needs layout version 2
+    expect(protocolCode(() => decodeFrame(relabeled))).toBe('protocol')
+    expect(protocolCode(() => decodeFrame(good.slice(0, good.length - 8)))).toBe('protocol')
+    expect(protocolCode(() => decodeFrame(new Uint8Array([2, 4, 0, 0, 1])))).toBe('protocol')
+    for (const count of [0, MAX_SERIES_BANDS + 1]) {
+      const frame = good.slice()
+      new DataView(frame.buffer).setUint16(HEADER_BYTES, count, true)
+      expect(protocolCode(() => decodeFrame(frame))).toBe('protocol')
+    }
+    // a kind-2 frame claiming layout 2 is rejected too
+    const series = encodeSeriesFrame(0, [{ t: 0, value: 0 }])
+    series[0] = 2
+    expect(protocolCode(() => decodeFrame(series))).toBe('protocol')
+  })
+})
+
+describe('protocol versions', () => {
+  test('this build speaks versions 1 and 2', () => {
+    expect([MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]).toEqual([1, 2])
+    expect([0, 1, 2, 3, 1.5, '2', Number.NaN].map(isSupportedProtocolVersion)).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ])
+  })
+})
+
 describe('matrix frames', () => {
   test('round-trips a rows×cols matrix', () => {
     const data = new Float32Array([1, 2, 3, 4, 5, 6])
@@ -160,11 +309,13 @@ describe('malformed frames', () => {
   test('rejects an unknown version', () => {
     expectProtocolError(() => decodeFrame(new Uint8Array([2, 1, 0, 0])))
     expectProtocolError(() => decodeFrame(new Uint8Array([0, 1, 0, 0])))
+    expectProtocolError(() => decodeFrame(new Uint8Array([3, 4, 0, 0, 1, 0])))
   })
 
   test('rejects an unknown kind', () => {
     expectProtocolError(() => decodeFrame(new Uint8Array([1, 0, 0, 0])))
     expectProtocolError(() => decodeFrame(new Uint8Array([1, 4, 0, 0])))
+    expectProtocolError(() => decodeFrame(new Uint8Array([2, 5, 0, 0])))
   })
 
   test('rejects a matrix frame without its prefix', () => {
@@ -232,11 +383,13 @@ describe('text messages', () => {
       [{ ...entry, range: [1, 1] }, 'range'],
       [{ ...entry, range: [0] }, 'range'],
       [{ ...entry, error: { message: 'x' } }, 'error'],
+      [{ ...entry, bandLabels: ['ok', 3] }, 'bandLabels'],
+      [{ ...entry, note: 42 }, 'note'],
     ]
     for (const [bad, field] of cases) expect(protocolMessage(directory([bad]))).toContain(field)
   })
 
-  test('a valid directory with every optional field parses', () => {
+  test('a valid directory with every optional field parses, at both versions', () => {
     const full = {
       ...entry,
       kind: 'matrix',
@@ -245,17 +398,23 @@ describe('text messages', () => {
       colLabels: ['a', 'b'],
       range: [0, 160],
       error: 'device unplugged',
+      note: 'health_test: 1 failure',
     }
-    expect(parseTextMessage(directory([entry, full])) as unknown).toEqual({
-      type: 'directory',
-      version: PROTOCOL_VERSION,
-      channels: [entry, full],
-    })
+    const banded = { ...entry, id: 1, kind: 'series', bandLabels: ['pointwise', ''] }
+    for (const version of [MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]) {
+      expect(parseTextMessage(directory([entry, full, banded], version)) as unknown).toEqual({
+        type: 'directory',
+        version,
+        channels: [entry, full, banded],
+      })
+    }
   })
 
-  test('a foreign-version directory is returned unchecked so the client can report the mismatch', () => {
-    const message = parseTextMessage(directory([{ something: 'new' }], PROTOCOL_VERSION + 1))
-    expect(message.type === 'directory' && message.version).toBe(PROTOCOL_VERSION + 1)
+  test('an unsupported-version directory is returned unchecked so the client can report the mismatch', () => {
+    for (const version of [0, PROTOCOL_VERSION + 1]) {
+      const message = parseTextMessage(directory([{ something: 'new' }], version))
+      expect(message.type === 'directory' && message.version).toBe(version)
+    }
   })
 
   test('a static message needs a u16 id, a string name and data', () => {

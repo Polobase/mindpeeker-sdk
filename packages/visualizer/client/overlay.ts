@@ -96,11 +96,32 @@ export function formatTick(v: number): string {
   return Number(v.toPrecision(4)).toString()
 }
 
-/** Status caption in a panel corner (latest value, drop counts, …). */
-export function drawCaption(overlay: Overlay, text: string): void {
+/** Status caption in the top-right corner (latest value, drop counts, …); `line` stacks captions. */
+export function drawCaption(overlay: Overlay, text: string, line = 0): void {
   const { ctx } = overlay
   ctx.fillStyle = OVERLAY_TEXT
   ctx.textAlign = 'right'
   ctx.textBaseline = 'top'
-  ctx.fillText(text, overlay.width - 6, 6)
+  ctx.fillText(text, overlay.width - 6, 6 + line * LABEL_HEIGHT)
+}
+
+/** One legend row: a color swatch (CSS color) and its label. */
+export interface LegendEntry {
+  readonly label: string
+  readonly color: string
+}
+
+/** Legend in the bottom-right corner, one row per entry, last entry lowest. */
+export function drawLegend(overlay: Overlay, entries: readonly LegendEntry[]): void {
+  const { ctx, width, height } = overlay
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'bottom'
+  entries.forEach((entry, i) => {
+    const y = height - 6 - (entries.length - 1 - i) * LABEL_HEIGHT
+    const textWidth = ctx.measureText(entry.label).width
+    ctx.fillStyle = entry.color
+    ctx.fillRect(width - 6 - textWidth - 16, y - 7, 10, 3)
+    ctx.fillStyle = OVERLAY_TEXT
+    ctx.fillText(entry.label, width - 6, y)
+  })
 }

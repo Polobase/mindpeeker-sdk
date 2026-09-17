@@ -12,7 +12,7 @@ import type { DecodedFrame } from '../../src/protocol.js'
 import { createGL, createProgram, FULLSCREEN_VS } from '../gl.js'
 import { matrixScale, normalizeMatrix, viridisLut } from '../math.js'
 import { drawCaption, formatTick, setupOverlay } from '../overlay.js'
-import type { Panel, PanelShell } from './panel.js'
+import { badgeDetail, type Panel, type PanelShell } from './panel.js'
 
 const FS = `#version 300 es
 precision highp float;
@@ -104,7 +104,7 @@ export function matrixPanel(shell: PanelShell): Panel {
     root: shell.root,
     wrap: shell.wrap,
     setInfo(info) {
-      shell.setStatus(info.status, info.error)
+      shell.setStatus(info.status, badgeDetail(info))
       const next = info.range
       const changed = next?.[0] !== range?.[0] || next?.[1] !== range?.[1]
       range = next

@@ -61,16 +61,24 @@ export class WsInbox {
     return this.#closed
   }
 
-  /** Next message in arrival order; rejects after `timeoutMs`. */
+  /**
+   * Next message in arrival order; rejects after `timeoutMs` (the expired
+   * waiter is withdrawn, so a later message is not lost to it).
+   */
   next(timeoutMs = 2000): Promise<string | Uint8Array> {
     const queued = this.#messages.shift()
     if (queued !== undefined) return Promise.resolve(queued)
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('timed out waiting for message')), timeoutMs)
-      this.#waiters.push((msg) => {
+      const waiter = (msg: string | Uint8Array) => {
         clearTimeout(timer)
         resolve(msg)
-      })
+      }
+      const timer = setTimeout(() => {
+        const index = this.#waiters.indexOf(waiter)
+        if (index >= 0) this.#waiters.splice(index, 1)
+        reject(new Error('timed out waiting for message'))
+      }, timeoutMs)
+      this.#waiters.push(waiter)
     })
   }
 }
@@ -96,6 +104,28 @@ export function openSocket(
     ws.addEventListener('open', () => {
       clearTimeout(timer)
       resolve(ws)
+    })
+    ws.addEventListener('error', () => {
+      clearTimeout(timer)
+      reject(new Error('websocket failed to open'))
+    })
+  })
+}
+
+/**
+ * Open a WebSocket with its {@link WsInbox} subscribed *before* the handshake
+ * completes, so messages the server sends inside its `open` handler (the
+ * directory and the replay) can never be dispatched before the listener exists.
+ */
+export function openInbox(url: string, timeoutMs = 2000): Promise<WsInbox & { ws: WebSocket }> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(url)
+    ws.binaryType = 'arraybuffer'
+    const inbox = Object.assign(new WsInbox(ws), { ws })
+    const timer = setTimeout(() => reject(new Error('websocket open timed out')), timeoutMs)
+    ws.addEventListener('open', () => {
+      clearTimeout(timer)
+      resolve(inbox)
     })
     ws.addEventListener('error', () => {
       clearTimeout(timer)

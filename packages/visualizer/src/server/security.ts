@@ -4,6 +4,7 @@
  * over `Request`/strings so they unit-test without a socket.
  */
 import { VisualizerError } from '../errors.js'
+import { MIN_PROTOCOL_VERSION, PROTOCOL_VERSION } from '../protocol.js'
 
 /** Largest inbound WebSocket message accepted before the runtime closes the socket. */
 export const MAX_INBOUND_PAYLOAD_BYTES = 1024
@@ -112,6 +113,23 @@ export function resolveServerConfig(opts: {
     allowedHostnames: hostnames,
     loopbackBind: isLoopbackHostname(bracketHost(unbracketed)),
   }
+}
+
+/**
+ * The protocol version for a `/ws` upgrade URL: `min(v, PROTOCOL_VERSION)` for
+ * a strictly decimal query parameter `v` ≥ {@link MIN_PROTOCOL_VERSION}, 1 when
+ * `v` is absent (clients built before negotiation), `undefined` for anything
+ * else (`v=0`, `v=abc`, `v=2.5`, a repeated `v`), which the server refuses
+ * with HTTP 400.
+ */
+export function negotiateProtocolVersion(url: URL): number | undefined {
+  const requested = url.searchParams.getAll('v')
+  if (requested.length === 0) return MIN_PROTOCOL_VERSION
+  const raw = requested[0] as string
+  if (requested.length > 1 || !/^\d{1,6}$/.test(raw)) return undefined
+  const version = Number(raw)
+  if (version < MIN_PROTOCOL_VERSION) return undefined
+  return Math.min(version, PROTOCOL_VERSION)
 }
 
 function parseUrl(text: string): URL | undefined {

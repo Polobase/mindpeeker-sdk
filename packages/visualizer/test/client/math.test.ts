@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   autoRange,
   bandStrip,
+  boundSegments,
   fitColumns,
   gridColumns,
   linearScale,
@@ -9,6 +10,7 @@ import {
   matrixScale,
   niceTicks,
   normalizeMatrix,
+  pointBands,
   seriesPath,
   tessellateDial,
   VIRIDIS_STOPS,
@@ -138,6 +140,78 @@ describe('seriesPath / bandStrip', () => {
   test('bandStrip emits (x,lo),(x,hi) pairs only for finite bands', () => {
     const verts = bandStrip(points, id, id)
     expect(verts).toEqual(new Float32Array([2, 2, 2, 4]))
+  })
+})
+
+describe('multi-band points', () => {
+  const inf = Number.POSITIVE_INFINITY
+  const id = (x: number) => x
+  const points = [
+    {
+      t: 0,
+      value: 0,
+      bands: [
+        { lo: -1, hi: 1 },
+        { lo: -inf, hi: 10 },
+      ],
+    },
+    {
+      t: 1,
+      value: 0,
+      bands: [
+        { lo: -2, hi: 2 },
+        { lo: -inf, hi: 11 },
+      ],
+    },
+    {
+      t: 2,
+      value: 0,
+      bands: [
+        { lo: -3, hi: 3 },
+        { lo: Number.NaN, hi: Number.NaN },
+      ],
+    },
+    { t: 3, value: 0, band: [-4, 4] as const },
+    {
+      t: 4,
+      value: 0,
+      bands: [
+        { lo: -5, hi: 5 },
+        { lo: 0, hi: 12 },
+      ],
+    },
+    {
+      t: 5,
+      value: 0,
+      bands: [
+        { lo: -6, hi: 6 },
+        { lo: 1, hi: 13 },
+      ],
+    },
+  ]
+
+  test('pointBands unifies band and bands', () => {
+    expect(pointBands({ band: [1, 2] })).toEqual([{ lo: 1, hi: 2 }])
+    expect(pointBands({ bands: [{ lo: 3, hi: 4 }] })).toEqual([{ lo: 3, hi: 4 }])
+    expect(pointBands({})).toEqual([])
+  })
+
+  test('bandStrip shades the first band of multi-band and single-band points alike', () => {
+    expect(bandStrip(points, id, id)).toEqual(
+      new Float32Array([
+        0, -1, 0, 1, 1, -2, 1, 2, 2, -3, 2, 3, 3, -4, 3, 4, 4, -5, 4, 5, 5, -6, 5, 6,
+      ]),
+    )
+  })
+
+  test('boundSegments joins consecutive finite bounds and breaks at gaps and infinities', () => {
+    // hi of band 1: 10 → 11, gap (NaN at t=2, no band 1 at t=3), 12 → 13
+    expect(boundSegments(points, 1, 'hi', id, id)).toEqual(
+      new Float32Array([0, 10, 1, 11, 4, 12, 5, 13]),
+    )
+    // lo of band 1 is −∞ until t=4: only the last segment exists
+    expect(boundSegments(points, 1, 'lo', id, id)).toEqual(new Float32Array([4, 0, 5, 1]))
+    expect(boundSegments(points, 7, 'hi', id, id)).toEqual(new Float32Array([]))
   })
 })
 

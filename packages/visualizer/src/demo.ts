@@ -1,44 +1,75 @@
 /**
  * Demo plumbing behind the `mindpeeker-viz` CLI, importable and side-effect
  * free (the CLI in `cli.ts` is a thin entry that parses `Bun.argv`, calls
- * {@link startDemo} and handles SIGINT). BUN-ONLY: it starts a dashboard and
- * resolves device-backed sources through `sources.ts`.
+ * {@link startDemo} / {@link startReplay} and handles SIGINT). BUN-ONLY: it
+ * starts a dashboard, resolves device-backed sources through `sources.ts` and
+ * reads/writes recordings with `node:fs`.
  *
- * Wiring, one device session fanned out to every panel:
+ * Live wiring, one device session fanned out to every panel:
  *
- * - the source's byte stream              → scrolling noise bitmap
+ * - the source's byte stream              → scrolling noise bitmap (health note)
  * - `windowedNegentropy` over that noise  → rolling series panel
- * - GCP cumulative deviation
- *   $D(t) = \sum_{s\le t} (Z_s^2 - 1)$ of a live `trialStream`, banded by the
- *   two-sided 90% pointwise $\chi^2$ envelope
+ * - 200-bit trials as hash-chained psi JSONL v2 lines (written to disk with
+ *   `--record`) → per-round Stouffer Z → {@link NetvarMonitor}:
+ *   - cumulative deviation $D(t)$ with the two-sided 90% pointwise $\chi^2$
+ *     band and the anytime-valid (α = 0.05) boundary
+ *   - running netvar Z with the anytime-valid p in its caption
  * - decaying byte-value histogram         → 1×32 bar-mode matrix panel
  * - a hardcoded sample rate-card geometry → radial dial panel
+ *
+ * `--replay` verifies a recording's hash chain and drives the two trial
+ * channels from its lines through the same Stouffer/monitor path.
  */
-import { trialStream, windowedNegentropy } from '@mindpeeker/negentropy'
-import { chi2Ppf, KahanSum } from '@mindpeeker/negentropy/numerics'
+import { basename } from 'node:path'
+import { windowedNegentropy } from '@mindpeeker/negentropy'
+import type { DemoOptions, ReplayOptions } from './demo/args.js'
+import { type HealthEvent, healthMonitored, healthNote } from './demo/health.js'
+import {
+  anytimeNote,
+  cumdevSample,
+  type MonitorPoint,
+  monitorPoints,
+  netvarSample,
+} from './demo/monitor.js'
+import {
+  BITS_PER_TRIAL,
+  createRecorder,
+  liveTrialLines,
+  pacedRounds,
+  type Recorder,
+  readRecording,
+  roundZs,
+  stoufferRounds,
+  tapLines,
+  type VerifiedRecording,
+} from './demo/recording.js'
 import { VisualizerError } from './errors.js'
 import { describeError } from './internal/describe-error.js'
 import { fanOut, paced } from './internal/fan-out.js'
 import { createDashboard } from './server/dashboard.js'
-import { resolveSource, type SourceOptions, sourceDescriptions } from './sources.js'
+import { resolveSource, sourceDescriptions } from './sources.js'
 import type { Dashboard, MatrixFrameInput, RateCardGeometry, SeriesSample } from './types.js'
 
-/** GCP convention: a trial is the sum of 200 bits, Binomial(200, ½) under H0. */
-export const BITS_PER_TRIAL = 200
-/** Probability mass in each tail outside the demo envelope (two-sided 90% band). */
-export const ENVELOPE_TAIL = 0.05
+export type { DemoCommand, DemoOptions, ReplayOptions } from './demo/args.js'
+export { parseArgs, USAGE } from './demo/args.js'
+export type { HealthEvent } from './demo/health.js'
+export type { MonitorPoint } from './demo/monitor.js'
+export { BAND_LABELS, NetvarMonitor } from './demo/monitor.js'
+export type { VerifiedRecording } from './demo/recording.js'
+export { BITS_PER_TRIAL } from './demo/recording.js'
+export type { FanOutOptions } from './internal/fan-out.js'
+export { fanOut, paced }
+
 /** Pause after every source chunk, so the bitmap scrolls legibly (all panels share it). */
 export const SOURCE_INTERVAL_MS = 50
 /** Bytes per source chunk. */
 export const SOURCE_CHUNK_BYTES = 256
 
-export type { FanOutOptions } from './internal/fan-out.js'
-export { fanOut, paced }
-
-/** Panel titles; the cumdev title states exactly what the band is. */
+/** Panel titles; the band legends state exactly what each envelope is. */
 export const CHANNEL_LABELS = Object.freeze({
   negentropy: 'windowed negentropy (logcosh)',
-  cumdev: 'cumulative deviation · two-sided 90% pointwise χ² envelope',
+  cumdev: 'cumulative deviation · pointwise χ² band and anytime-valid boundary',
+  netvar: 'running netvar Z of the Stouffer Z series',
   histogram: 'byte histogram',
   rateCard: 'rate card',
 })
@@ -74,40 +105,58 @@ export interface DemoByteSource {
 }
 
 /**
- * Live GCP-style cumulative deviation with its envelope, one point per trial.
- * Every trial the source delivers is used — the pace is the source's own, the
- * generator never sleeps — and `t` is the 1-based trial count.
- *
- * - `value` is $D(t) = \sum_{s \le t}(Z_s^2 - 1)$ with
- *   $Z_s = (S_s - k/2)/\sqrt{k/4}$, $k = 200$, accumulated incrementally with
- *   the Neumaier-compensated `KahanSum` in the same order as negentropy's
- *   batch `cumulativeDeviation` — so every value is bit-identical to the batch
- *   statistic over the trials so far, at $O(1)$ cost per trial.
- * - `band` is the two-sided 90% **pointwise** envelope
- *   $[\chi^2_{0.05}(t) - t,\ \chi^2_{0.95}(t) - t]$ (the de Moivre–Laplace
- *   approximation for Binomial trials, as in negentropy's
- *   `significanceEnvelope`); an $H_0$ path leaves it *somewhere* far more
- *   often than 10%.
+ * Live trial statistics, one point per 200-bit trial: the source's trials as
+ * hash-chained schema-v2 lines (persisted first when a `recorder` is given),
+ * then the same Stouffer-round → {@link NetvarMonitor} path a replay takes.
+ * Every trial the source delivers is used, at the source's own pace.
  */
-export async function* cumdevSeries(
+export function liveMonitorPoints(
   src: DemoByteSource,
-  opts: { readonly signal?: AbortSignal } = {},
+  opts: {
+    readonly signal?: AbortSignal
+    readonly recorder?: Recorder
+    readonly now?: () => number
+  } = {},
+): AsyncGenerator<MonitorPoint> {
+  const lines = liveTrialLines(src, opts)
+  const persisted = opts.recorder ? tapLines(lines, opts.recorder) : lines
+  return monitorPoints(roundZs(stoufferRounds(persisted, 'live trials')), BITS_PER_TRIAL)
+}
+
+/**
+ * Replayed trial statistics of a verified recording: its rounds (paced by the
+ * recorded timestamps unless `pace` is false) → Stouffer Z → monitor, with
+ * $n$ = sources × bits per trial fair bits per step.
+ */
+export function replayMonitorPoints(
+  recording: VerifiedRecording,
+  opts: { readonly signal?: AbortSignal; readonly pace?: boolean } = {},
+): AsyncGenerator<MonitorPoint> {
+  const rounds = stoufferRounds(recording.lines, recording.name)
+  const timed = opts.pace === false ? rounds : pacedRounds(rounds, opts)
+  return monitorPoints(roundZs(timed), recording.sources.length * recording.bitsPerTrial)
+}
+
+/** Cumulative-deviation samples: pointwise χ² band plus the anytime-valid boundary. */
+export async function* cumdevSeries(
+  points: AsyncIterable<MonitorPoint>,
 ): AsyncGenerator<SeriesSample> {
-  const accumulator = new KahanSum()
-  const sd = Math.sqrt(BITS_PER_TRIAL / 4)
-  let t = 0
-  const trials = trialStream(src, {
-    bitsPerTrial: BITS_PER_TRIAL,
-    chunkBytes: 25,
-    signal: opts.signal,
-  })
-  for await (const trial of trials) {
-    const z = (trial.sum - BITS_PER_TRIAL / 2) / sd
-    accumulator.add(z * z - 1)
-    t++
-    const lo = chi2Ppf(ENVELOPE_TAIL, t) - t
-    const hi = chi2Ppf(1 - ENVELOPE_TAIL, t) - t
-    yield { t, value: accumulator.value, band: [lo, hi] }
+  for await (const point of points) yield cumdevSample(point)
+}
+
+/** Netvar Z samples; `onNote` receives the anytime-p caption whenever its text changes. */
+export async function* netvarSeries(
+  points: AsyncIterable<MonitorPoint>,
+  onNote: (text: string) => void = () => {},
+): AsyncGenerator<SeriesSample> {
+  let last: string | undefined
+  for await (const point of points) {
+    const text = anytimeNote(point)
+    if (text !== last) {
+      last = text
+      onNote(text)
+    }
+    yield netvarSample(point)
   }
 }
 
@@ -127,114 +176,6 @@ export async function* histogramMatrix(
     for (const byte of chunk) bins[byte >> 3] = (bins[byte >> 3] as number) + 1
     yield { rows: 1, cols: 32, data: bins.slice(), colLabels: labels }
   }
-}
-
-/** What the demo serves and reads. */
-export interface DemoOptions {
-  readonly port: number
-  readonly host: string
-  readonly source: string
-  readonly sourceOpts: SourceOptions
-}
-
-/** Result of {@link parseArgs}: run the demo, or print help / the source list. */
-export type DemoCommand =
-  | { readonly command: 'run'; readonly options: DemoOptions }
-  | { readonly command: 'help' }
-  | { readonly command: 'list-sources' }
-
-/** CLI usage text. */
-export const USAGE = `usage: mindpeeker-viz [options]
-
-  --source <name>       entropy source (default: crypto); see --list-sources
-  --raw                 pass hardware raw samples through, skip SHA-256 conditioning
-  --serial-path <path>  serial/esp32 device (default: /dev/cu.usbserial-110 or /dev/ttyUSB0)
-  --baud <n>            serial baud rate, a positive integer (default: 921600)
-  --camera-device <id>  ffmpeg camera device (default: '0' macOS / '/dev/video0' Linux)
-  --mic-device <spec>   ffmpeg audio device (default: ':0' macOS / 'default' Linux)
-  --hwrng-path <path>   kernel hwrng device (default: /dev/hwrng)
-  --port <n>            HTTP/WS port, 0-65535 (default: 0 = ephemeral)
-  --host <h>            bind host (default: localhost)
-  --list-sources        print the available entropy sources and exit
-  -h, --help            print this help and exit`
-
-function optionsError(message: string): VisualizerError {
-  return new VisualizerError('invalid_options', message)
-}
-
-/** Strict unsigned decimal: rejects '', '1e3', '0x10', '-1', '8080abc', ' 80'. */
-function parseDecimal(flag: string, raw: string, expected: string): number {
-  if (!/^\d+$/.test(raw)) throw optionsError(`${flag} must be ${expected}, got '${raw}'`)
-  return Number(raw)
-}
-
-/**
- * Parse CLI arguments (without the executable and script). Pure: never
- * prints, never exits. `--help`/`-h` and `--list-sources` return at once.
- *
- * @throws {VisualizerError} `invalid_options` for an unknown flag, a flag
- *   without a value (a following `--flag` does not count as a value), an empty
- *   value, `--port` outside $[0, 65535]$ or `--baud` that is not an integer ≥ 1
- *   (both strictly decimal).
- */
-export function parseArgs(argv: readonly string[]): DemoCommand {
-  let port = 0
-  let host = 'localhost'
-  let source = 'crypto'
-  const sourceOpts: SourceOptions = {}
-  let i = 0
-  const value = (flag: string): string => {
-    const v = argv[++i]
-    if (v === undefined || v.startsWith('--')) throw optionsError(`missing value for ${flag}`)
-    if (v.length === 0) throw optionsError(`empty value for ${flag}`)
-    return v
-  }
-  for (; i < argv.length; i++) {
-    const arg = argv[i] as string
-    switch (arg) {
-      case '--help':
-      case '-h':
-        return { command: 'help' }
-      case '--list-sources':
-        return { command: 'list-sources' }
-      case '--port':
-        port = parseDecimal('--port', value(arg), 'an integer in [0, 65535]')
-        if (port > 65_535) throw optionsError(`--port must be in [0, 65535], got ${port}`)
-        break
-      case '--baud': {
-        const baud = parseDecimal('--baud', value(arg), 'a positive integer')
-        if (!(Number.isSafeInteger(baud) && baud >= 1)) {
-          throw optionsError(`--baud must be a positive integer, got ${baud}`)
-        }
-        sourceOpts.baudRate = baud
-        break
-      }
-      case '--host':
-        host = value(arg)
-        break
-      case '--source':
-        source = value(arg)
-        break
-      case '--raw':
-        sourceOpts.raw = true
-        break
-      case '--serial-path':
-        sourceOpts.serialPath = value(arg)
-        break
-      case '--camera-device':
-        sourceOpts.cameraDevice = value(arg)
-        break
-      case '--mic-device':
-        sourceOpts.micDevice = value(arg)
-        break
-      case '--hwrng-path':
-        sourceOpts.hwrngPath = value(arg)
-        break
-      default:
-        throw optionsError(`unknown argument: ${arg}`)
-    }
-  }
-  return { command: 'run', options: { port, host, source, sourceOpts } }
 }
 
 /** The `--list-sources` text. */
@@ -264,32 +205,65 @@ export function createErrorReporter(
   }
 }
 
-/** A running demo. */
+/** A running demo (live or replay). */
 export interface DemoSession {
   readonly dashboard: Dashboard
+  /** The live provider's name, or `replay`. */
   readonly providerName: string
-  /** One-line note on what the source needs (hardware, ffmpeg, root, …). */
+  /** One-line note on what the source needs, or what is being replayed. */
   readonly note: string
-  /** Abort every stream and stop the dashboard; idempotent. */
+  /** Abort every stream, stop the dashboard and close a recording; idempotent. */
   stop(): Promise<void>
 }
 
-/**
- * Resolve the source, start a dashboard and attach the five demo channels.
- * Nothing touches the device until the first frame is pulled.
- *
- * @throws {VisualizerError} `invalid_options` for an unknown source or bad
- *   source options; `server` / `aborted` from `createDashboard`.
- */
-export function startDemo(
-  options: DemoOptions,
-  runtime: {
-    readonly signal?: AbortSignal
-    readonly onChannelError?: (channel: string, error: unknown) => void
-  } = {},
-): DemoSession {
-  const { provider, note } = resolveSource(options.source, options.sourceOpts)
-  if (runtime.signal?.aborted) throw new VisualizerError('aborted', 'demo aborted before start')
+/** Runtime hooks shared by {@link startDemo} and {@link startReplay}. */
+export interface DemoRuntime {
+  readonly signal?: AbortSignal
+  readonly onChannelError?: (channel: string, error: unknown) => void
+  /** Called for each health-test failure of a health-tested live source. */
+  readonly onHealthEvent?: (event: HealthEvent) => void
+  /** Trial timestamp clock for live recordings (tests). Default `Date.now`. */
+  readonly now?: () => number
+  /** Replay at the recorded pace (default) or as fast as the panels pull. */
+  readonly pace?: boolean
+}
+
+/** A note on a channel that may already be gone because the demo stopped. */
+function noteQuietly(dashboard: Dashboard, channel: string, text: string): void {
+  try {
+    dashboard.setNote(channel, text)
+  } catch {
+    // stopped: nothing left to annotate
+  }
+}
+
+/** Fan monitor points out to the cumulative-deviation and netvar channels. */
+function attachTrialChannels(
+  dashboard: Dashboard,
+  points: AsyncIterable<MonitorPoint>,
+  signal: AbortSignal,
+): void {
+  const [cumdevPoints, netvarPoints] = fanOut(points, 2, { signal }) as [
+    AsyncIterableIterator<MonitorPoint>,
+    AsyncIterableIterator<MonitorPoint>,
+  ]
+  dashboard.attachSeries(CHANNEL_LABELS.cumdev, cumdevSeries(cumdevPoints))
+  dashboard.attachSeries(
+    CHANNEL_LABELS.netvar,
+    netvarSeries(netvarPoints, (text) => noteQuietly(dashboard, CHANNEL_LABELS.netvar, text)),
+  )
+}
+
+function abortedBeforeStart(): VisualizerError {
+  return new VisualizerError('aborted', 'demo aborted before start')
+}
+
+/** Start a dashboard whose lifetime follows `runtime.signal` and a private controller. */
+function openDashboard(
+  options: { readonly port: number; readonly host: string },
+  runtime: DemoRuntime,
+): { dashboard: Dashboard; controller: AbortController; detach: () => void } {
+  if (runtime.signal?.aborted) throw abortedBeforeStart()
   const controller = new AbortController()
   const dashboard = createDashboard({
     port: options.port,
@@ -297,14 +271,80 @@ export function startDemo(
     signal: controller.signal,
     ...(runtime.onChannelError ? { onChannelError: runtime.onChannelError } : {}),
   })
-  const signal = controller.signal
   const forwardAbort = (): void => controller.abort()
   runtime.signal?.addEventListener('abort', forwardAbort, { once: true })
+  return {
+    dashboard,
+    controller,
+    detach: () => runtime.signal?.removeEventListener('abort', forwardAbort),
+  }
+}
+
+function session(
+  opened: ReturnType<typeof openDashboard>,
+  fields: { readonly providerName: string; readonly note: string },
+  recorder?: Recorder,
+): DemoSession {
+  let stopping: Promise<void> | undefined
+  return Object.freeze({
+    dashboard: opened.dashboard,
+    ...fields,
+    stop() {
+      stopping ??= (async () => {
+        opened.detach()
+        opened.controller.abort()
+        await opened.dashboard.stop()
+        await recorder?.close()
+      })()
+      return stopping
+    },
+  })
+}
+
+/**
+ * Resolve the source, start a dashboard and attach the six demo channels.
+ * Nothing touches the device until the first frame is pulled. With
+ * `options.record`, the recording file is created (never overwritten) before
+ * any trial flows.
+ *
+ * @throws {VisualizerError} `invalid_options` for an unknown source, bad
+ *   source options, or a `--record` file that exists or cannot be created;
+ *   `server` / `aborted` from `createDashboard`.
+ */
+export async function startDemo(
+  options: DemoOptions,
+  runtime: DemoRuntime = {},
+): Promise<DemoSession> {
+  const { provider, note, healthTested } = resolveSource(options.source, options.sourceOpts)
+  const opened = openDashboard(options, runtime)
+  const { dashboard, controller } = opened
+  let recorder: Recorder | undefined
+  if (options.record !== undefined) {
+    try {
+      recorder = await createRecorder(options.record)
+    } catch (error) {
+      opened.detach()
+      await dashboard.stop()
+      throw error
+    }
+  }
+  const signal = controller.signal
+  if (signal.aborted) {
+    await session(opened, { providerName: provider.name, note }, recorder).stop()
+    throw abortedBeforeStart()
+  }
+  const noiseChannel = `${provider.name} noise`
+  const source = healthTested
+    ? healthMonitored(provider, (event) => {
+        noteQuietly(dashboard, noiseChannel, healthNote(event))
+        runtime.onHealthEvent?.(event)
+      })
+    : provider
 
   // One device session, fanned out to every panel — a single camera or serial
   // port is opened exactly once (opening it per panel would conflict).
   const streams = fanOut(
-    paced(provider.stream({ chunkBytes: SOURCE_CHUNK_BYTES, signal }), SOURCE_INTERVAL_MS, signal),
+    paced(source.stream({ chunkBytes: SOURCE_CHUNK_BYTES, signal }), SOURCE_INTERVAL_MS, signal),
     4,
     { signal },
   ) as [
@@ -315,27 +355,44 @@ export function startDemo(
   ]
   const [bitmapBytes, negentropyBytes, trialBytes, histogramBytes] = streams
 
-  dashboard.attachByteStream(`${provider.name} noise`, bitmapBytes)
+  dashboard.attachByteStream(noiseChannel, bitmapBytes)
+  if (healthTested) dashboard.setNote(noiseChannel, healthNote())
   dashboard.attachSeries(CHANNEL_LABELS.negentropy, negentropySeries(negentropyBytes, signal))
-  dashboard.attachSeries(
-    CHANNEL_LABELS.cumdev,
-    cumdevSeries({ name: provider.name, stream: () => trialBytes }, { signal }),
+  const trials = liveMonitorPoints(
+    { name: provider.name, stream: () => trialBytes },
+    { signal, ...(recorder && { recorder }), ...(runtime.now && { now: runtime.now }) },
   )
+  attachTrialChannels(dashboard, trials, signal)
+  if (recorder) dashboard.setNote(CHANNEL_LABELS.cumdev, `recording → ${basename(recorder.path)}`)
   dashboard.attachMatrix(CHANNEL_LABELS.histogram, histogramMatrix(histogramBytes))
   dashboard.attachStatic(CHANNEL_LABELS.rateCard, SAMPLE_RATE_CARD)
+  return session(opened, { providerName: provider.name, note }, recorder)
+}
 
-  let stopping: Promise<void> | undefined
-  return Object.freeze({
-    dashboard,
-    providerName: provider.name,
-    note,
-    stop() {
-      stopping ??= (async () => {
-        runtime.signal?.removeEventListener('abort', forwardAbort)
-        controller.abort()
-        await dashboard.stop()
-      })()
-      return stopping
-    },
-  })
+/**
+ * Verify a recording's hash chain, then start a dashboard whose two trial
+ * channels (cumulative deviation with both envelopes, netvar Z with the
+ * anytime p) are driven by it. Byte-level panels need raw bytes, which a
+ * trial recording does not hold, so they are absent.
+ *
+ * @throws {VisualizerError} `invalid_options` for an unreadable file or a
+ *   broken chain (nothing is served then); `server` / `aborted` from
+ *   `createDashboard`.
+ */
+export async function startReplay(
+  options: ReplayOptions,
+  runtime: DemoRuntime = {},
+): Promise<DemoSession> {
+  const recording = await readRecording(options.replay)
+  const opened = openDashboard(options, runtime)
+  const { dashboard, controller } = opened
+  const signal = controller.signal
+  const pace = runtime.pace ?? true
+  attachTrialChannels(dashboard, replayMonitorPoints(recording, { signal, pace }), signal)
+  dashboard.setNote(
+    CHANNEL_LABELS.cumdev,
+    `replay of ${recording.name} · chain ok · head ${recording.head.slice(0, 12)}…`,
+  )
+  const note = `${recording.name}: ${recording.trials} trials from ${recording.sources.join(', ')} (${recording.bitsPerTrial} bits each), hash chain verified, head ${recording.head}`
+  return session(opened, { providerName: 'replay', note })
 }

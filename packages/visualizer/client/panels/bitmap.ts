@@ -8,7 +8,7 @@
 import type { DecodedFrame } from '../../src/protocol.js'
 import { createGL, createProgram, FULLSCREEN_VS } from '../gl.js'
 import { drawCaption, setupOverlay } from '../overlay.js'
-import type { Panel, PanelShell } from './panel.js'
+import { badgeDetail, type Panel, type PanelShell } from './panel.js'
 
 const TEX_W = 256
 const TEX_H = 256
@@ -55,7 +55,7 @@ export function bitmapPanel(shell: PanelShell): Panel {
     root: shell.root,
     wrap: shell.wrap,
     setInfo(info) {
-      shell.setStatus(info.status, info.error)
+      shell.setStatus(info.status, badgeDetail(info))
     },
     resize() {
       shell.resizeGl()

@@ -58,6 +58,12 @@ export interface ResolvedSource {
   readonly provider: ByteProvider
   /** One-line note on hardware/tooling requirements, shown by the CLI. */
   readonly note: string
+  /**
+   * Whether the provider runs `@mindpeeker/entropy`'s SP 800-90B health tests
+   * (every physical-noise source) and can therefore end a session with
+   * `EntropyError('health_test')`.
+   */
+  readonly healthTested: boolean
 }
 
 const isDarwin = process.platform === 'darwin'
@@ -139,6 +145,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
     build: () => ({
       provider: cryptoProvider(),
       note: 'software CSPRNG — no hardware needed',
+      healthTested: false,
     }),
   },
   jitter: {
@@ -146,6 +153,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
     build: (opts) => ({
       provider: jitterEntropy({ conditioning: conditioning(opts) }),
       note: 'CPU clock jitter — no hardware, slow (~9 KiB/s)',
+      healthTested: true,
     }),
   },
   serial: {
@@ -155,6 +163,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
       return {
         provider: serialProvider(opts, 'serial'),
         note: `serial TRNG at ${path} @ ${opts.baudRate ?? 921_600} baud`,
+        healthTested: true,
       }
     },
   },
@@ -165,6 +174,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
       return {
         provider: serialProvider(opts, 'esp32'),
         note: `ESP32 TRNG at ${path} @ ${opts.baudRate ?? 921_600} baud (AetherOnePi firmware)`,
+        healthTested: true,
       }
     },
   },
@@ -178,6 +188,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
           conditioning: conditioning(opts),
         }),
         note: `camera ${device} via ffmpeg — needs ffmpeg installed and an uncovered camera`,
+        healthTested: true,
       }
     },
   },
@@ -191,6 +202,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
           conditioning: conditioning(opts),
         }),
         note: `microphone ${device} via ffmpeg — needs ffmpeg installed`,
+        healthTested: true,
       }
     },
   },
@@ -204,6 +216,7 @@ const REGISTRY: Readonly<Record<string, SourceEntry>> = Object.freeze({
           conditioning: conditioning(opts),
         }),
         note: `kernel hardware RNG ${path} — Linux/Pi only, usually root-only`,
+        healthTested: true,
       }
     },
   },

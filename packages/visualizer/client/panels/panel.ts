@@ -31,6 +31,14 @@ export interface Panel {
   dispose(): void
 }
 
+/**
+ * The badge detail for a directory entry: the error reason while the channel
+ * is in error, otherwise its producer note (if any).
+ */
+export function badgeDetail(info: ChannelInfo): string | undefined {
+  return info.status === 'error' ? info.error : info.note
+}
+
 /** DOM scaffold for one panel: title, status badge, GL canvas, 2D overlay. */
 export interface PanelShell {
   readonly root: HTMLElement

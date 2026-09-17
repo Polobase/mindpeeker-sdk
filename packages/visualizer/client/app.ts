@@ -6,11 +6,19 @@
  * Zero dependencies: everything is hand-rolled WebGL2 + a 2D text overlay.
  *
  * Connection hygiene: the socket scheme follows the page (`wss:` under
- * https), panels are reset on every (re)connect before the server replays its
- * retained frames, and a server speaking another protocol version closes the
- * socket for good (reload the page after upgrading).
+ * https), the client requests its newest protocol version (`/ws?v=2`; an
+ * older server answering with protocol 1 is still understood), panels are
+ * reset on every (re)connect before the server replays its retained frames,
+ * and a server speaking an unsupported protocol version closes the socket for
+ * good (reload the page after upgrading).
  */
-import { decodeFrame, PROTOCOL_VERSION, parseTextMessage } from '../src/protocol.js'
+import {
+  decodeFrame,
+  isSupportedProtocolVersion,
+  MIN_PROTOCOL_VERSION,
+  PROTOCOL_VERSION,
+  parseTextMessage,
+} from '../src/protocol.js'
 import { mountDashboard } from './mount.js'
 
 const RECONNECT_MS = 2000
@@ -23,7 +31,7 @@ let halted = false
 
 function socketUrl(): string {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${scheme}//${location.host}/ws`
+  return `${scheme}//${location.host}/ws?v=${PROTOCOL_VERSION}`
 }
 
 function connect(): void {
@@ -45,9 +53,9 @@ function connect(): void {
       if (typeof event.data === 'string') {
         const message = parseTextMessage(event.data)
         if (message.type === 'directory') {
-          if (message.version !== PROTOCOL_VERSION) {
+          if (!isSupportedProtocolVersion(message.version)) {
             halted = true
-            connection.textContent = `protocol mismatch (server v${message.version}, client v${PROTOCOL_VERSION}) — reload after upgrading`
+            connection.textContent = `protocol mismatch (server v${message.version}, client v${MIN_PROTOCOL_VERSION}–v${PROTOCOL_VERSION}) — reload after upgrading`
             connection.className = 'down'
             ws.close(1000, 'protocol mismatch')
             return
