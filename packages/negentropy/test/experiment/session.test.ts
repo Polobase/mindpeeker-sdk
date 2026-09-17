@@ -123,7 +123,7 @@ describe('session (live)', () => {
     const iterator = live[Symbol.asyncIterator]()
     await iterator.next()
     controller.abort()
-    expect(iterator.next()).rejects.toMatchObject({ code: 'aborted' })
+    await expect(iterator.next()).rejects.toMatchObject({ code: 'aborted' })
   })
 
   test("missing 'error': a finite source ends the session with source_ended", async () => {

@@ -73,8 +73,14 @@ function countMatches(
  * probability that two sequences similar for m points stay similar at m+1,
  * $$\mathrm{SampEn}(m,r)=-\ln\frac{A}{B}$$
  * where B / A count length-m / length-(m+1) template pairs within Chebyshev
- * tolerance r, **excluding self-matches** (so it is unbiased and independent
- * of record length, unlike ApEn). `m` defaults to 2, `r` to 0.2·sd. Lower =
+ * tolerance r, **excluding self-matches** — which makes it less biased than
+ * ApEn and largely (not fully) independent of record length.
+ *
+ * Template convention: B counts over all N−m+1 length-m templates and A over
+ * all N−m length-(m+1) templates (the antropy-style convention). Richman &
+ * Moorman restrict both counts to the first N−m templates; the two differ by
+ * O(1/N) (≈2% at N = 200), so compare against published values with the
+ * convention in mind. `m` defaults to 2, `r` to 0.2·sd (population). Lower =
  * more regular/predictable; a sine ≪ white noise. Returns +∞ when no length
  * m+1 matches exist (undefined ratio — a signal too short/irregular to score).
  */

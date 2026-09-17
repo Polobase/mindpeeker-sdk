@@ -68,6 +68,56 @@ describe('ditheredTrialZ', () => {
     expect(Math.abs(moment.exkurt)).toBeLessThan(0.1) // −2/k = −0.01 plus noise
   })
 
+  test('default dither is independent across sources (seed mixed with the source name)', () => {
+    const bytes = prngBytes(250_000, 0x6666)
+    const seriesA = trialsFromBytes(bytes, 'a')
+    const seriesB = trialsFromBytes(bytes, 'b')
+    const calA = theoreticalCalibration('a')
+    const calB = theoreticalCalibration('b')
+    // identical trial sums, so the dithered difference is exactly the dither difference
+    const zA = ditheredTrialZ(seriesA, calA)
+    const zB = ditheredTrialZ(seriesB, calB)
+    let identical = 0
+    let product = 0
+    let squares = 0
+    const offsetsA = new Float64Array(zA.length)
+    const offsetsB = new Float64Array(zB.length)
+    const raw = trialsFromBytes(bytes, 'a').sums
+    for (let i = 0; i < zA.length; i++) {
+      const base = ((raw[i] as number) - calA.mean) / calA.sd
+      offsetsA[i] = (zA[i] as number) - base
+      offsetsB[i] = (zB[i] as number) - base
+      if (offsetsA[i] === offsetsB[i]) identical++
+      product += (offsetsA[i] as number) * (offsetsB[i] as number)
+      squares += (offsetsA[i] as number) ** 2
+    }
+    expect(identical).toBeLessThan(zA.length / 100) // pre-0.2.0: all 10 000 identical
+    const correlation = product / squares
+    expect(Math.abs(correlation)).toBeLessThan(4 / Math.sqrt(zA.length))
+  })
+
+  test('dither is deterministic per (seed, source) and seed-sensitive', () => {
+    const series = trialsFromBytes(prngBytes(5000, 0x7777), 's')
+    const first = ditheredTrialZ(series, cal, { seed: 42 })
+    expect([...ditheredTrialZ(series, cal, { seed: 42 })]).toEqual([...first])
+    expect(ditheredTrialZ(series, cal, { seed: 43 })[0]).not.toBe(first[0])
+    // an explicit source label overrides the series name
+    expect(ditheredTrialZ(series, cal, { seed: 42, source: 'other' })[0]).not.toBe(first[0])
+    expect(() => ditheredTrialZ(series, cal, { seed: 1.5 })).toThrow(
+      expect.objectContaining({ code: 'invalid_config' }),
+    )
+  })
+
+  test('probitBytes keeps its unlabeled stream and gains independent labeled ones', () => {
+    const bytes = prngBytes(1000, 0x8888)
+    const legacy = probitBytes(bytes, { seed: 9 })
+    expect([...probitBytes(bytes, { seed: 9 })]).toEqual([...legacy])
+    const labeledA = probitBytes(bytes, { seed: 9, source: 'a' })
+    const labeledB = probitBytes(bytes, { seed: 9, source: 'b' })
+    expect(labeledA[0]).not.toBe(labeledB[0])
+    expect(labeledA[0]).not.toBe(legacy[0])
+  })
+
   test('signal: two-point byte blocks light up every estimator', () => {
     // alternating 1000-byte blocks of 0x00 and 0xFF → trial sums 0/200 → ±z two-point
     const bytes = new Uint8Array(100_000)

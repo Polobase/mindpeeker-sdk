@@ -1,38 +1,17 @@
 import { NegentropyError } from '../errors.js'
-import { lnGamma } from '../internal/special.js'
+import { aptCutoff, rctCutoff } from '../internal/health-cutoffs.js'
 
-const ALPHA = 2 ** -20 // false-positive rate for both tests (SP 800-90B recommendation)
-
-/** SP 800-90B §4.4.1 Repetition Count Test cutoff: C = 1 + ⌈20/H⌉ at α = 2⁻²⁰. */
-export function rctCutoff(h: number): number {
-  return 1 + Math.ceil(20 / h)
-}
-
-/**
- * SP 800-90B §4.4.2 Adaptive Proportion Test cutoff:
- * 1 + smallest k with P(Binomial(W, 2⁻ᴴ) ≤ k) ≥ 1 − 2⁻²⁰. The pmf terms are
- * computed in log space — at low H the lower binomial tail underflows float64
- * (e.g. 0.19⁵¹² ≈ 1e-371), which would silently disable the test.
- */
-export function aptCutoff(h: number, windowSize: number): number {
-  const p = 2 ** -h
-  const lnP = Math.log(p)
-  const lnQ = Math.log1p(-p)
-  const lnChooseBase = lnGamma(windowSize + 1)
-  let cdf = 0
-  for (let k = 0; k <= windowSize; k++) {
-    const logPmf =
-      lnChooseBase - lnGamma(k + 1) - lnGamma(windowSize - k + 1) + k * lnP + (windowSize - k) * lnQ
-    cdf += Math.exp(logPmf)
-    if (cdf >= 1 - ALPHA) return 1 + k
-  }
-  return 1 + windowSize
-}
+export { aptCutoff, rctCutoff } from '../internal/health-cutoffs.js'
 
 export interface HealthConfig {
-  /** Assessed min-entropy H in bits per raw sample byte. May be fractional. */
+  /**
+   * Assessed min-entropy H in bits per raw sample byte: finite, 0 < H ≤ 8
+   * (a byte cannot carry more). May be fractional. Below 20/W bits the APT
+   * cutoff is W + 1 and that test cannot fire (see `aptCutoff`); the RCT
+   * still runs.
+   */
   minEntropyPerSample: number
-  /** APT window: 512 (default, non-binary samples) or 1024 (binary sources). */
+  /** APT window: 512 (default, non-binary samples) or 1024 (binary sources). Other values throw. */
   windowSize?: 512 | 1024
   /**
    * strict: throw NegentropyError('health_test') on the first alarm — the
@@ -75,8 +54,23 @@ export class ContinuousHealth {
 
   constructor(config: HealthConfig, source?: string) {
     const { minEntropyPerSample, windowSize = 512, strict = false } = config
-    if (!(minEntropyPerSample > 0)) {
-      throw new NegentropyError('invalid_config', 'minEntropyPerSample must be > 0', { source })
+    if (
+      typeof minEntropyPerSample !== 'number' ||
+      !Number.isFinite(minEntropyPerSample) ||
+      !(minEntropyPerSample > 0 && minEntropyPerSample <= 8)
+    ) {
+      throw new NegentropyError(
+        'invalid_config',
+        `minEntropyPerSample must be a finite number in (0, 8] bits per byte, got ${minEntropyPerSample}`,
+        { source },
+      )
+    }
+    if (windowSize !== 512 && windowSize !== 1024) {
+      throw new NegentropyError(
+        'invalid_config',
+        `windowSize must be 512 or 1024 (SP 800-90B §4.4.2), got ${windowSize}`,
+        { source },
+      )
     }
     this.rctCutoff = rctCutoff(minEntropyPerSample)
     this.aptCutoff = aptCutoff(minEntropyPerSample, windowSize)

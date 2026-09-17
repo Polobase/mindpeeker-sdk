@@ -135,14 +135,62 @@ describe('trialStream (count mode)', () => {
     })
     await stream.next()
     controller.abort()
-    expect(stream.next()).rejects.toMatchObject({ name: 'NegentropyError', code: 'aborted' })
+    await expect(stream.next()).rejects.toMatchObject({ name: 'NegentropyError', code: 'aborted' })
   })
 
   test('pre-aborted signal throws before any I/O', async () => {
     const source = countingSource('s')
     const stream = trialStream(source, { signal: AbortSignal.abort() })
-    expect(stream.next()).rejects.toMatchObject({ code: 'aborted' })
+    await expect(stream.next()).rejects.toMatchObject({ code: 'aborted' })
     expect(source.streamCalls).toBe(0)
+  })
+
+  test('abort pre-empts a blocked source that ignores the signal, and closes it', async () => {
+    let returned = false
+    const stalled: TrialSource = {
+      name: 'stalled',
+      stream() {
+        let pulls = 0
+        return {
+          [Symbol.asyncIterator]: () => ({
+            next: () =>
+              pulls++ === 0
+                ? Promise.resolve({ done: false, value: prngBytes(25, 3) })
+                : new Promise<IteratorResult<Uint8Array>>(() => {}), // never settles
+            return: () => {
+              returned = true
+              return Promise.resolve({ done: true, value: undefined })
+            },
+          }),
+        }
+      },
+    }
+    const controller = new AbortController()
+    const stream = trialStream(stalled, { bitsPerTrial: 200, signal: controller.signal })
+    await stream.next()
+    const pending = stream.next()
+    setTimeout(() => controller.abort(), 10)
+    const started = performance.now()
+    await expect(pending).rejects.toMatchObject({ name: 'NegentropyError', code: 'aborted' })
+    expect(performance.now() - started).toBeLessThan(1000)
+    expect(returned).toBe(true)
+  })
+
+  test('a source that ends cleanly after the abort still reports aborted', async () => {
+    const controller = new AbortController()
+    const polite: TrialSource = {
+      name: 'polite',
+      async *stream(opts) {
+        yield prngBytes(25, 4)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        if (opts?.signal?.aborted) return
+        yield prngBytes(25, 5)
+      },
+    }
+    const stream = trialStream(polite, { bitsPerTrial: 200, signal: controller.signal })
+    await stream.next()
+    controller.abort()
+    await expect(stream.next()).rejects.toMatchObject({ code: 'aborted' })
   })
 
   test('source errors surface as source_failed with cause and source name', async () => {
@@ -231,10 +279,10 @@ describe('trialStream (interval mode)', () => {
     expect(trials.length).toBe(0)
   })
 
-  test('rejects a non-positive interval', () => {
+  test('rejects a non-positive interval', async () => {
     const stream = trialStream(countingSource('s'), {
       clock: { mode: 'interval', intervalMs: 0 },
     })
-    expect(stream.next()).rejects.toMatchObject({ code: 'invalid_config' })
+    await expect(stream.next()).rejects.toMatchObject({ code: 'invalid_config' })
   })
 })

@@ -5,6 +5,8 @@ import { trialsFromBytes } from '../../src/stats/trials.js'
 import { stoufferZ, zScores } from '../../src/stats/zscores.js'
 import { gaussians, prngBytes } from '../helpers/byte-sources.js'
 
+const invalid = expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' })
+
 describe('theoreticalCalibration', () => {
   test('Binomial(200, ½): mean 100, sd √50', () => {
     const cal = theoreticalCalibration('anu')
@@ -12,6 +14,13 @@ describe('theoreticalCalibration', () => {
     expect(cal.sd).toBe(Math.sqrt(50))
     expect(cal.basis).toBe('theoretical')
     expect(cal.trials).toBe(0)
+  })
+
+  test('validates bitsPerTrial like trialsFromBytes (integer ≥ 8)', () => {
+    for (const bad of [0, -8, 7, 12.5, Number.NaN]) {
+      expect(() => theoreticalCalibration('s', bad)).toThrow(invalid)
+    }
+    expect(theoreticalCalibration('s', 8).sd).toBe(Math.sqrt(2))
   })
 })
 
@@ -34,6 +43,16 @@ describe('calibrate', () => {
     } catch (error) {
       expect((error as NegentropyError).code).toBe('insufficient_data')
     }
+  })
+
+  test('validates minTrials, bitsPerTrial and finite sums', () => {
+    const series = trialsFromBytes(prngBytes(25_000), 's', { bitsPerTrial: 200 })
+    expect(() => calibrate(series, { minTrials: 1 })).toThrow(invalid)
+    expect(() => calibrate(series, { minTrials: 2.5 })).toThrow(invalid)
+    expect(() => calibrate({ ...series, bitsPerTrial: 4 })).toThrow(invalid)
+    const sums = series.sums.slice()
+    sums[3] = Number.NaN
+    expect(() => calibrate({ ...series, sums })).toThrow(invalid)
   })
 
   test('rejects a constant series', () => {
@@ -72,6 +91,17 @@ describe('zScores', () => {
     for (const z of zs) m2 += (z - mean) ** 2
     expect(Math.abs(mean)).toBeLessThan(4 / Math.sqrt(n))
     expect(Math.abs(m2 / (n - 1) - 1)).toBeLessThan(4 * Math.sqrt(2 / n))
+  })
+
+  test('rejects a zero/NaN sd calibration and non-finite sums', () => {
+    const series = { source: 's', bitsPerTrial: 200, sums: new Float64Array([100, 101]) }
+    const good = theoreticalCalibration('s', 200)
+    const required = expect.objectContaining({ code: 'calibration_required' })
+    expect(() => zScores(series, { ...good, sd: 0 })).toThrow(required)
+    expect(() => zScores(series, { ...good, sd: Number.NaN })).toThrow(required)
+    expect(() => zScores(series, { ...good, mean: Number.POSITIVE_INFINITY })).toThrow(required)
+    const bad = { ...series, sums: new Float64Array([100, Number.NaN]) }
+    expect(() => zScores(bad, good)).toThrow(invalid)
   })
 
   test('rejects mismatched calibration with calibration_required', () => {
@@ -116,5 +146,10 @@ describe('stoufferZ', () => {
 
   test('rejects empty input', () => {
     expect(() => stoufferZ([])).toThrow(NegentropyError)
+  })
+
+  test('rejects NaN and infinite z-scores with invalid_config', () => {
+    expect(() => stoufferZ([1, Number.NaN])).toThrow(invalid)
+    expect(() => stoufferZ([Number.NEGATIVE_INFINITY, 1])).toThrow(invalid)
   })
 })

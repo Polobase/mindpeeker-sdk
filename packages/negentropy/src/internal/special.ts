@@ -1,102 +1,28 @@
 /**
- * Special-functions core. Everything downstream (p-values, envelopes, probit
- * mapping) keys off these. Accuracy target: relative error ≤ 1e-12 for the
- * incomplete gamma over df up to ~10^4 — tail p-values must be trustworthy,
- * which rules out the Abramowitz–Stegun/Wilson–Hilferty shortcuts used for
- * coarse pass/fail elsewhere in the SDK.
+ * Special-functions core: the normal and chi-square layer over the gamma
+ * family in `gamma.ts` (re-exported here). Accuracy target: ~1e-13 relative
+ * error for tail probabilities at any df, and relative (not absolute)
+ * convergence for quantiles so lower-tail quantiles far below 1 stay exact.
+ * Tail p-values must be trustworthy, which rules out the
+ * Abramowitz–Stegun/Wilson–Hilferty shortcuts used for coarse pass/fail
+ * elsewhere in the SDK.
+ *
+ * Domain errors throw `NegentropyError('invalid_config')` (NaN never passes
+ * silently); a failed iteration throws `NegentropyError('numerical')`.
+ * Infinite arguments return their exact limits.
  */
+import { NegentropyError } from '../errors.js'
+import { assertNotNaN } from './assert.js'
+import { erfc, gammaP, gammaPrefactor, gammaQ, lnGamma } from './gamma.js'
 
-const EPS = 1e-15
-const FPMIN = 1e-300
-const MAX_ITER = 10_000
-const LN_SQRT_2PI = 0.9189385332046727 // ln(√(2π))
+export { erfc, gammaP, gammaQ, lnGamma } from './gamma.js'
 
-// Lanczos g=7, n=9 (Godfrey coefficients — ~1e-15 relative error)
-const LANCZOS_G = 7
-const LANCZOS = [
-  0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.3234287776531,
-  -176.6150291621406, 12.507343278686905, -0.13857109526572012, 9.984369578019572e-6,
-  1.5056327351493116e-7,
-]
-
-/** Natural log of the gamma function. Domain: x > 0 (reflection handles (0, 0.5)). */
-export function lnGamma(x: number): number {
-  if (!Number.isFinite(x) || x <= 0) throw new RangeError(`lnGamma: x must be > 0, got ${x}`)
-  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x)
-  const xm1 = x - 1
-  let a = LANCZOS[0] as number
-  for (let i = 1; i < LANCZOS.length; i++) a += (LANCZOS[i] as number) / (xm1 + i)
-  const t = xm1 + LANCZOS_G + 0.5
-  return LN_SQRT_2PI + (xm1 + 0.5) * Math.log(t) - t + Math.log(a)
-}
-
-/** exp(−x + a·ln x − lnΓ(a)) — the prefactor shared by both gamma branches. */
-function gammaPrefactor(a: number, x: number): number {
-  return Math.exp(-x + a * Math.log(x) - lnGamma(a))
-}
-
-/** Series expansion for P(a, x), valid (fast) for x < a + 1. */
-function gammaPSeries(a: number, x: number): number {
-  let ap = a
-  let del = 1 / a
-  let sum = del
-  for (let i = 0; i < MAX_ITER; i++) {
-    ap += 1
-    del *= x / ap
-    sum += del
-    if (Math.abs(del) < Math.abs(sum) * EPS) return sum * gammaPrefactor(a, x)
-  }
-  throw new Error(`gammaP: series did not converge for a=${a}, x=${x}`)
-}
-
-/** Lentz modified continued fraction for Q(a, x), valid (fast) for x ≥ a + 1. */
-function gammaQContinuedFraction(a: number, x: number): number {
-  let b = x + 1 - a
-  let c = 1 / FPMIN
-  let d = 1 / b
-  let h = d
-  for (let i = 1; i <= MAX_ITER; i++) {
-    const an = -i * (i - a)
-    b += 2
-    d = an * d + b
-    if (Math.abs(d) < FPMIN) d = FPMIN
-    c = b + an / c
-    if (Math.abs(c) < FPMIN) c = FPMIN
-    d = 1 / d
-    const del = d * c
-    h *= del
-    if (Math.abs(del - 1) < EPS) return h * gammaPrefactor(a, x)
-  }
-  throw new Error(`gammaQ: continued fraction did not converge for a=${a}, x=${x}`)
-}
-
-/** Regularized lower incomplete gamma P(a, x) = γ(a, x)/Γ(a). */
-export function gammaP(a: number, x: number): number {
-  if (!(a > 0) || !(x >= 0)) throw new RangeError(`gammaP: need a > 0, x ≥ 0; got a=${a}, x=${x}`)
-  if (x === 0) return 0
-  return x < a + 1 ? gammaPSeries(a, x) : 1 - gammaQContinuedFraction(a, x)
-}
-
-/** Regularized upper incomplete gamma Q(a, x) = 1 − P(a, x). */
-export function gammaQ(a: number, x: number): number {
-  if (!(a > 0) || !(x >= 0)) throw new RangeError(`gammaQ: need a > 0, x ≥ 0; got a=${a}, x=${x}`)
-  if (x === 0) return 1
-  return x < a + 1 ? 1 - gammaPSeries(a, x) : gammaQContinuedFraction(a, x)
-}
-
-/** Complementary error function, via erfc(x) = Q(½, x²) — accurate deep into the tail. */
-export function erfc(x: number): number {
-  if (x < 0) return 2 - erfc(-x)
-  if (x === 0) return 1
-  return gammaQ(0.5, x * x)
-}
-
-/** Standard normal CDF Φ(z). */
+/** Standard normal CDF Φ(z); Φ(−∞) = 0, Φ(∞) = 1. */
 export function normCdf(z: number): number {
   return 0.5 * erfc(-z / Math.SQRT2)
 }
 
-/** Standard normal survival function 1 − Φ(z), accurate for large z. */
+/** Standard normal survival function 1 − Φ(z), accurate for large z; exact limits at ±∞. */
 export function normSf(z: number): number {
   return 0.5 * erfc(z / Math.SQRT2)
 }
@@ -106,7 +32,10 @@ export function normSf(z: number): number {
  * ~1e-15 relative accuracy — the algorithm behind R's qnorm.
  */
 export function normPpf(p: number): number {
-  if (!(p > 0 && p < 1)) throw new RangeError(`normPpf: p must be in (0, 1), got ${p}`)
+  assertNotNaN(p, 'normPpf: p')
+  if (!(p > 0 && p < 1)) {
+    throw new NegentropyError('invalid_config', `normPpf: p must be in (0, 1), got ${p}`)
+  }
   const q = p - 0.5
   if (Math.abs(q) <= 0.425) {
     const r = 0.180625 - q * q
@@ -187,61 +116,132 @@ export function normPpf(p: number): number {
   return q < 0 ? -value : value
 }
 
-/** Chi-square survival function P(X > x) for df k. */
+function validateDf(fn: string, k: number): void {
+  assertNotNaN(k, `${fn}: df`)
+  if (!(k > 0) || k === Number.POSITIVE_INFINITY) {
+    throw new NegentropyError('invalid_config', `${fn}: df must be finite and > 0, got ${k}`)
+  }
+}
+
+/** Chi-square survival function P(X > x) for df k; 1 for x ≤ 0, 0 at x = ∞. */
 export function chi2Sf(x: number, k: number): number {
-  if (!(k > 0)) throw new RangeError(`chi2Sf: df must be > 0, got ${k}`)
+  validateDf('chi2Sf', k)
+  assertNotNaN(x, 'chi2Sf: x')
   if (x <= 0) return 1
   return gammaQ(k / 2, x / 2)
 }
 
-/** Chi-square CDF P(X ≤ x) for df k. */
+/** Chi-square CDF P(X ≤ x) for df k; 0 for x ≤ 0, 1 at x = ∞. */
 export function chi2Cdf(x: number, k: number): number {
-  if (!(k > 0)) throw new RangeError(`chi2Cdf: df must be > 0, got ${k}`)
+  validateDf('chi2Cdf', k)
+  assertNotNaN(x, 'chi2Cdf: x')
   if (x <= 0) return 0
   return gammaP(k / 2, x / 2)
 }
 
-/** Chi-square density, computed in log space to survive large df. */
+/** Chi-square density for finite x > 0, via the cancellation-free gamma prefactor. */
 function chi2Pdf(x: number, k: number): number {
-  if (x <= 0) return 0
-  return Math.exp((k / 2 - 1) * Math.log(x / 2) - x / 2 - lnGamma(k / 2)) / 2
+  return gammaPrefactor(k / 2, x / 2) / x
 }
 
 /**
- * Chi-square quantile (inverse CDF): the x with P(X ≤ x) = p. Newton's method
- * on ln(CDF) — which stays quadratically convergent on the exponentially
- * decaying tail where plain-space Newton overshoots and crawls — seeded with
- * Wilson–Hilferty and safeguarded by a maintained bisection bracket.
+ * Chi-square quantile core. `lower` says which tail `prob` refers to: find x
+ * with CDF(x) = prob (lower) or SF(x) = prob (upper). Newton's method runs in
+ * u = ln x on G(u) = ±(ln tail(eᵘ) − ln prob), increasing in u with slope
+ * x·pdf(x)/tail(x) — well-conditioned deep in either tail, where plain-space
+ * Newton overshoots or crawls. Seeds: Wilson–Hilferty, plus the small-x
+ * asymptote CDF(x) ≈ (x/2)^{k/2}/Γ(k/2 + 1) in the lower tail (whichever lands
+ * closer). A maintained bracket falls back to geometric bisection; iteration
+ * stops on a relative step of 1e-13.
  */
-export function chi2Ppf(p: number, k: number): number {
-  if (!(k > 0)) throw new RangeError(`chi2Ppf: df must be > 0, got ${k}`)
-  if (!(p > 0 && p < 1)) throw new RangeError(`chi2Ppf: p must be in (0, 1), got ${p}`)
-  // Wilson–Hilferty seed: k(1 − 2/(9k) + z√(2/(9k)))³
-  const z = normPpf(p)
+function chi2Quantile(prob: number, k: number, lower: boolean): number {
+  const lnProb = Math.log(prob)
+  const tail = (x: number): number => (lower ? chi2Cdf(x, k) : chi2Sf(x, k))
+  const objective = (x: number): number => {
+    const diff = Math.log(tail(x)) - lnProb
+    return lower ? diff : -diff
+  }
+
+  const z = lower ? normPpf(prob) : -normPpf(prob)
   const h = 2 / (9 * k)
   const cube = 1 - h + z * Math.sqrt(h)
-  let x = cube > 0 ? k * cube ** 3 : k / 2
-  const lnP = Math.log(p)
-  // establish a bracket [lo, hi] with cdf(lo) < p < cdf(hi)
-  let lo = 0
-  let hi = Math.max(2 * x, k + 10)
-  while (chi2Cdf(hi, k) < p) {
-    lo = hi
-    hi *= 2
-    if (hi > 1e308) throw new Error(`chi2Ppf: bracket overflow for p=${p}, k=${k}`)
+  const seeds = [cube > 0 ? k * cube ** 3 : k / 2]
+  if (lower) seeds.push(2 * Math.exp((lnProb + lnGamma(k / 2 + 1)) / (k / 2)))
+  let x = k
+  let best = Number.POSITIVE_INFINITY
+  for (const seed of seeds) {
+    if (!(seed > 0 && Number.isFinite(seed))) continue
+    const size = Math.abs(objective(seed))
+    if (size < best) {
+      best = size
+      x = seed
+    }
   }
-  if (x <= lo || x >= hi) x = (lo + hi) / 2
-  for (let i = 0; i < 200; i++) {
-    const cdf = chi2Cdf(x, k)
-    if (cdf > p) hi = x
+
+  // bracket [lo, hi] with objective(lo) ≤ 0 ≤ objective(hi)
+  let lo = 0
+  let hi = Number.POSITIVE_INFINITY
+  if (objective(x) > 0) {
+    hi = x
+    for (let next = x / 16; next > 0; next /= 16) {
+      if (objective(next) <= 0) {
+        lo = next
+        break
+      }
+      hi = next
+    }
+    x = hi
+  } else {
+    lo = x
+    for (let next = 2 * x; hi === Number.POSITIVE_INFINITY; next *= 2) {
+      if (next > Number.MAX_VALUE / 4) {
+        throw new NegentropyError('numerical', `chi2 quantile: no bracket for p=${prob}, k=${k}`)
+      }
+      if (objective(next) > 0) hi = next
+      else lo = next
+    }
+    x = lo
+  }
+
+  for (let i = 0; i < 300; i++) {
+    const t = tail(x)
+    const g = lower ? Math.log(t) - lnProb : lnProb - Math.log(t)
+    if (g === 0) return x
+    if (g > 0) hi = x
     else lo = x
-    const pdf = chi2Pdf(x, k)
-    // Newton on g(x) = ln(cdf) − ln(p), with g' = pdf/cdf
-    let next = cdf > 0 && pdf > 0 ? x - ((Math.log(cdf) - lnP) * cdf) / pdf : Number.NaN
-    if (!(next > lo && next < hi)) next = (lo + hi) / 2 // Newton left the bracket → bisect
-    const dx = Math.abs(next - x)
+    const slope = t > 0 ? (x * chi2Pdf(x, k)) / t : 0
+    let next = slope > 0 && Number.isFinite(g) ? x * Math.exp(-g / slope) : Number.NaN
+    if (!(next > lo && next < hi)) next = lo > 0 ? Math.sqrt(lo * hi) : hi / 2
+    if (Math.abs(next - x) <= 1e-13 * x) return next
     x = next
-    if (dx < 1e-13 * Math.max(1, x)) break
   }
   return x
+}
+
+/**
+ * Chi-square quantile (inverse CDF): the x with P(X ≤ x) = p, for p in (0, 1)
+ * and finite df k > 0. Relative accuracy ~1e-13 in both tails — e.g.
+ * chi2Ppf(1e-12, 1) = 1.5708e-24 (= (π/2)·p² to leading order).
+ */
+export function chi2Ppf(p: number, k: number): number {
+  validateDf('chi2Ppf', k)
+  assertNotNaN(p, 'chi2Ppf: p')
+  if (!(p > 0 && p < 1)) {
+    throw new NegentropyError('invalid_config', `chi2Ppf: p must be in (0, 1), got ${p}`)
+  }
+  return p <= 0.5 ? chi2Quantile(p, k, true) : chi2Quantile(1 - p, k, false)
+}
+
+/**
+ * Chi-square inverse survival function: the x with P(X > x) = q. Unlike
+ * chi2Ppf(1 − q, k) it keeps full precision for q below 2⁻⁵³, where 1 − q
+ * rounds to 1. Internal (used by `significanceEnvelope`).
+ */
+export function chi2Isf(q: number, k: number): number {
+  validateDf('chi2Isf', k)
+  assertNotNaN(q, 'chi2Isf: q')
+  if (!(q > 0 && q < 1)) {
+    throw new NegentropyError('invalid_config', `chi2Isf: q must be in (0, 1), got ${q}`)
+  }
+  return q < 0.5 ? chi2Quantile(q, k, false) : chi2Quantile(1 - q, k, true)
 }

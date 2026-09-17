@@ -20,7 +20,7 @@ const fixtures = JSON.parse(
 ) as EstimatorFixtures
 
 describe('sampleEntropy / approximateEntropy', () => {
-  test('match the Richman–Moorman cross-language reference (explicit r)', () => {
+  test('match the Python reference loop (N−m+1 template convention, explicit r)', () => {
     for (const c of fixtures.sampleApprox) {
       expect(sampleEntropy(c.samples, c.m, c.r)).toBeCloseTo(c.sampleEntropy, 10)
       expect(approximateEntropy(c.samples, c.m, c.r)).toBeCloseTo(c.approximateEntropy, 10)

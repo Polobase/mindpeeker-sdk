@@ -28,7 +28,12 @@ export interface TrialConfig {
 export interface Trial {
   sum: number
   index: number
-  /** Epoch ms of trial completion — set in live mode, absent in batch. */
+  /**
+   * Epoch ms (from the stream's clock) at which the source chunk that
+   * completed this trial arrived — set in live mode, absent in batch. Every
+   * trial completed from the same chunk shares one timestamp, so it is chunk
+   * arrival time, not a per-trial completion time.
+   */
   at?: number
 }
 

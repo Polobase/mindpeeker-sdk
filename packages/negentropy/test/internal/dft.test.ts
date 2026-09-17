@@ -65,3 +65,11 @@ describe('fft', () => {
     }
   })
 })
+
+describe('fft validation', () => {
+  test('mismatched re/im lengths throw invalid_config, not a RangeError', () => {
+    expect(() => fft(new Float64Array(4), new Float64Array(3))).toThrow(
+      expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' }),
+    )
+  })
+})

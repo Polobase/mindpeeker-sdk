@@ -1,13 +1,19 @@
 import { NegentropyError } from '../errors.js'
+import { assertFiniteArray } from '../internal/assert.js'
 import { Welford } from '../internal/welford.js'
 import type { Calibration, TrialSeries } from '../types.js'
-import { DEFAULT_BITS_PER_TRIAL } from './trials.js'
+import { DEFAULT_BITS_PER_TRIAL, validateBitsPerTrial } from './trials.js'
 
-/** Binomial(k, ½) null: mean k/2, sd √(k/4). The default when a source is trusted unbiased. */
+/**
+ * Binomial(k, ½) null: mean k/2, sd √(k/4). The default when a source is
+ * trusted unbiased. `bitsPerTrial` must be an integer ≥ 8 (`invalid_config`),
+ * matching `trialsFromBytes`/`trialStream`.
+ */
 export function theoreticalCalibration(
   source: string,
   bitsPerTrial: number = DEFAULT_BITS_PER_TRIAL,
 ): Calibration {
+  validateBitsPerTrial(bitsPerTrial, source)
   return {
     source,
     bitsPerTrial,
@@ -26,10 +32,21 @@ export interface CalibrateOptions {
 /**
  * Fit empirical mean/sd on a recorded resting-state series. The calibration
  * window must be disjoint from any window later analyzed — normalizing data
- * with parameters fit on itself deflates every statistic.
+ * with parameters fit on itself deflates every statistic. The series needs a
+ * valid `bitsPerTrial` (integer ≥ 8) and finite sums; `minTrials` must be an
+ * integer ≥ 2 (all `invalid_config`).
  */
 export function calibrate(series: TrialSeries, opts: CalibrateOptions = {}): Calibration {
+  validateBitsPerTrial(series.bitsPerTrial, series.source)
   const minTrials = opts.minTrials ?? 500
+  if (!Number.isInteger(minTrials) || minTrials < 2) {
+    throw new NegentropyError(
+      'invalid_config',
+      `minTrials must be an integer ≥ 2, got ${minTrials}`,
+      { source: series.source },
+    )
+  }
+  assertFiniteArray(series.sums, `trial sums of ${series.source}`, series.source)
   if (series.sums.length < minTrials) {
     throw new NegentropyError(
       'insufficient_data',

@@ -1,4 +1,5 @@
 import { NegentropyError } from '../errors.js'
+import { assertFiniteArray } from '../internal/assert.js'
 import { KahanSum } from '../internal/kahan.js'
 import type { StatResult } from '../types.js'
 import { chiSquareP, normalP } from './pvalues.js'
@@ -8,7 +9,9 @@ import { stoufferZ } from './zscores.js'
  * All network statistics consume a "z matrix": one Float64Array of z-scores
  * per source, all the same length (steps), step-aligned across sources.
  * Useful identity relating the three: Z_s(t)² = [Σᵢzᵢ² + 2S(t)] / N — netvar
- * is a specific mixture of device variance and covariance.
+ * is a specific mixture of device variance and covariance. Every z must be
+ * finite: a NaN/±Infinity (e.g. from a zero-sd calibration) throws
+ * `invalid_config` naming the source and step.
  */
 function checkMatrix(zBySource: readonly Float64Array[], sources: readonly string[]): number {
   if (zBySource.length === 0 || zBySource.length !== sources.length) {
@@ -28,6 +31,10 @@ function checkMatrix(zBySource: readonly Float64Array[], sources: readonly strin
   }
   if (steps === 0) {
     throw new NegentropyError('insufficient_data', 'network statistics need at least one step')
+  }
+  for (let i = 0; i < zBySource.length; i++) {
+    const source = sources[i] as string
+    assertFiniteArray(zBySource[i] as Float64Array, `z-scores of ${source}`, source)
   }
   return steps
 }
@@ -83,8 +90,70 @@ export function devvar(zBySource: readonly Float64Array[], sources: readonly str
 export interface PairCorrelation {
   a: string
   b: string
-  /** Mean per-step product of the pair's z-scores (≈ correlation, z's being standardized). */
+  /**
+   * Same value as `meanProduct`, kept under its original name for backward
+   * compatibility. It is a co-moment, NOT a correlation coefficient: under a
+   * common mean shift μ on uncorrelated sources it reads ≈ μ². Use `pearson`
+   * for the correlation.
+   */
   r: number
+  /** Mean per-step product of the pair's z-scores, (1/T)·Σₜ zₐ(t)·z_b(t) — uncentered. */
+  meanProduct: number
+  /**
+   * Pearson correlation of the pair's z series (centered and scaled over the
+   * T steps) — insensitive to common mean shifts. NaN when either series is
+   * constant.
+   */
+  pearson: number
+}
+
+/** Per-pair mean products and Pearson correlations, pairs in (i < j) order. */
+function pairCorrelations(
+  zBySource: readonly Float64Array[],
+  sources: readonly string[],
+  steps: number,
+): PairCorrelation[] {
+  const n = zBySource.length
+  const means = new Float64Array(n)
+  const scales = new Float64Array(n)
+  for (let i = 0; i < n; i++) {
+    const zs = zBySource[i] as Float64Array
+    const sum = new KahanSum()
+    for (let t = 0; t < steps; t++) sum.add(zs[t] as number)
+    const mean = sum.value / steps
+    const squares = new KahanSum()
+    for (let t = 0; t < steps; t++) squares.add(((zs[t] as number) - mean) ** 2)
+    means[i] = mean
+    scales[i] = Math.sqrt(squares.value)
+  }
+  const pairs: PairCorrelation[] = []
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const za = zBySource[i] as Float64Array
+      const zb = zBySource[j] as Float64Array
+      const ma = means[i] as number
+      const mb = means[j] as number
+      const product = new KahanSum()
+      const centered = new KahanSum()
+      for (let t = 0; t < steps; t++) {
+        const a = za[t] as number
+        const b = zb[t] as number
+        product.add(a * b)
+        centered.add((a - ma) * (b - mb))
+      }
+      const meanProduct = product.value / steps
+      const scale = (scales[i] as number) * (scales[j] as number)
+      const pearson = scale > 0 ? Math.max(-1, Math.min(1, centered.value / scale)) : Number.NaN
+      pairs.push({
+        a: sources[i] as string,
+        b: sources[j] as string,
+        r: meanProduct,
+        meanProduct,
+        pearson,
+      })
+    }
+  }
+  return pairs
 }
 
 /**
@@ -93,6 +162,9 @@ export interface PairCorrelation {
  * Not valid for tiny steps×pairs — expect ≥ ~100 products before trusting
  * the normal approximation. `df` reports that product count for context; the
  * p-value comes from the normal tail (one-sided: excess correlation).
+ * `pairs` carries, per source pair, both the uncentered `meanProduct` (the
+ * quantity the statistic sums; also exposed as `r`) and the `pearson`
+ * correlation.
  */
 export function interSourceCorrelation(
   zBySource: readonly Float64Array[],
@@ -116,16 +188,7 @@ export function interSourceCorrelation(
   }
   const pairCount = (n * (n - 1)) / 2
   const statistic = total.value / Math.sqrt(steps * pairCount)
-  const pairs: PairCorrelation[] = []
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      const za = zBySource[i] as Float64Array
-      const zb = zBySource[j] as Float64Array
-      const acc = new KahanSum()
-      for (let t = 0; t < steps; t++) acc.add((za[t] as number) * (zb[t] as number))
-      pairs.push({ a: sources[i] as string, b: sources[j] as string, r: acc.value / steps })
-    }
-  }
+  const pairs = pairCorrelations(zBySource, sources, steps)
   return {
     statistic,
     df: steps * pairCount,
@@ -137,17 +200,27 @@ export function interSourceCorrelation(
 }
 
 /**
- * Network coherence — the GCP 2.0 headline statistic (a measure of coherent
- * activity across RNGs). Per step, the mean pairwise product of source
- * z-scores S(t)/pairCount with S(t) = ((Σz)² − Σz²)/2; `coherence` is its mean
- * over steps and `perStep` is the plot-ready "evoked response" curve.
- * Significance uses the same CLT normal approximation as
- * `interSourceCorrelation` (one-sided: excess coherence). Requires ≥ 2 sources.
+ * Pairwise network coherence: per step, the mean pairwise product of source
+ * z-scores S(t)/pairCount with S(t) = ((Σz)² − Σz²)/2 — Bancel & Nelson's C1
+ * reformulation of netvar (Nelson & Bancel 2011). `coherence` is its mean over
+ * steps (an uncentered co-moment, not a correlation) and `perStep` the
+ * plot-ready "evoked response" curve; `pairs` gives per-pair `meanProduct` and
+ * `pearson` (as in `interSourceCorrelation`). Significance uses the same CLT
+ * normal approximation (one-sided: excess coherence). Requires ≥ 2 sources.
+ *
+ * Naming note: GCP 2.0 (Plonka et al. 2026, Appendix B) uses "Network
+ * Coherence (Phase)" for netvar and "Network Coherence (Amplitude)" for
+ * (1/√R)·Σᵣ(Z²ᵣ − 1), the standardized device variance — neither is this
+ * pairwise product. Use `netvar`/`devvar` for those published statistics.
  */
 export function networkCoherence(
   zBySource: readonly Float64Array[],
   sources: readonly string[],
-): StatResult & { coherence: number; perStep: Float64Array } {
+): StatResult & {
+  coherence: number
+  perStep: Float64Array
+  pairs: readonly PairCorrelation[]
+} {
   const steps = checkMatrix(zBySource, sources)
   const n = zBySource.length
   if (n < 2) {
@@ -179,6 +252,7 @@ export function networkCoherence(
     sources: [...sources],
     coherence: coherenceMean.value / steps,
     perStep,
+    pairs: pairCorrelations(zBySource, sources, steps),
   }
 }
 
@@ -246,9 +320,15 @@ export function clusteredNetvar(
 /**
  * Pearson correlation between an onsite and a global network stream (e.g. two
  * `networkCoherence` `perStep` series), with a p-value from the Fisher
- * z-transform z = atanh(r)·√(n − 3) ~ N(0, 1). Mirrors the GCP 2.0
- * onsite↔global coherence-correlation analysis (reported r ≈ 0.27). One-sided
- * by default (positive coupling); `df = n − 3`.
+ * z-transform z = atanh(r)·√(n − 3) ~ N(0, 1). One-sided (positive coupling);
+ * `df = n − 3`. Both streams must be finite (`invalid_config`).
+ *
+ * Validity: the Fisher-z null assumes independent observations, so use it on
+ * INCREMENT series (per-step values). It is not valid for cumulative
+ * (random-walk) curves. It does not reproduce the GCP 2.0 onsite↔global
+ * analysis (Plonka et al. 2026), whose r ≈ 0.27 is a MEAN Pearson r between
+ * cumulative Network Coherence (Amplitude) curves over 15 events, tested
+ * against simulated control-segment pairs.
  */
 export function onsiteVsGlobal(
   onsite: Float64Array,
@@ -264,6 +344,8 @@ export function onsiteVsGlobal(
   if (n < 4) {
     throw new NegentropyError('insufficient_data', `onsiteVsGlobal needs ≥ 4 steps, got ${n}`)
   }
+  assertFiniteArray(onsite, 'onsiteVsGlobal: onsite')
+  assertFiniteArray(global, 'onsiteVsGlobal: global')
   let sx = 0
   let sy = 0
   for (let i = 0; i < n; i++) {

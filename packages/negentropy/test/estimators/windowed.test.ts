@@ -81,14 +81,55 @@ describe('windowedNegentropy', () => {
     await generator.next()
     expect(pulled).toBe(64)
     controller.abort()
-    expect(generator.next()).rejects.toMatchObject({ code: 'aborted' })
+    await expect(generator.next()).rejects.toMatchObject({ code: 'aborted' })
   })
 
-  test('rejects bad configuration', () => {
-    expect(windowedNegentropy([], { windowSize: 4 }).next()).rejects.toMatchObject({
+  test('abort pre-empts a blocked async input and closes it', async () => {
+    let released = false
+    async function* stuck(): AsyncGenerator<number> {
+      try {
+        for (const v of gaussians(64, 0x322)) yield v
+        await new Promise(() => {}) // blocks forever without yielding
+      } finally {
+        released = true
+      }
+    }
+    const controller = new AbortController()
+    const generator = windowedNegentropy(stuck(), { windowSize: 64, signal: controller.signal })
+    await generator.next()
+    const pending = generator.next()
+    setTimeout(() => controller.abort(), 10)
+    const started = performance.now()
+    await expect(pending).rejects.toMatchObject({ code: 'aborted' })
+    expect(performance.now() - started).toBeLessThan(1000)
+    // the input is stuck in an await, so return() cannot run its finally — the
+    // consumer is not held hostage by it (bounded grace period)
+    expect(released).toBe(false)
+  })
+
+  test('early exit closes an async input', async () => {
+    let released = false
+    async function* endless(): AsyncGenerator<number> {
+      try {
+        let seed = 1
+        while (true) for (const v of gaussians(16, seed++)) yield v
+      } finally {
+        released = true
+      }
+    }
+    for await (const point of windowedNegentropy(endless(), { windowSize: 32 })) {
+      if (point.index === 2) break
+    }
+    expect(released).toBe(true)
+  })
+
+  test('rejects bad configuration', async () => {
+    await expect(windowedNegentropy([], { windowSize: 4 }).next()).rejects.toMatchObject({
       code: 'invalid_config',
     })
-    expect(windowedNegentropy([], { windowSize: 64, hopSize: 0 }).next()).rejects.toMatchObject({
+    await expect(
+      windowedNegentropy([], { windowSize: 64, hopSize: 0 }).next(),
+    ).rejects.toMatchObject({
       code: 'invalid_config',
     })
   })

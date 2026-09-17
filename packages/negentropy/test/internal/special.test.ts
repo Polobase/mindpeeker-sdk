@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { NegentropyError } from '../../src/errors.js'
 import {
   chi2Cdf,
+  chi2Isf,
   chi2Ppf,
   chi2Sf,
   erfc,
@@ -27,6 +29,10 @@ const fixtures = JSON.parse(
   readFileSync(join(import.meta.dir, '..', 'fixtures', 'special.json'), 'utf8'),
 ) as SpecialFixtures
 
+const numerics = JSON.parse(
+  readFileSync(join(import.meta.dir, '..', 'fixtures', 'numerics.json'), 'utf8'),
+) as { chi2Ppf: Array<{ p: number; k: number; value: number }> }
+
 /** Relative-error assertion with an absolute floor for values near zero. */
 function expectClose(actual: number, expected: number, relTol: number, absTol = 1e-300) {
   const err = Math.abs(actual - expected)
@@ -48,9 +54,12 @@ describe('lnGamma', () => {
     expectClose(lnGamma(0.25), Math.log(3.625609908221908), 1e-13) // Γ(1/4)
   })
 
-  test('rejects non-positive arguments', () => {
-    expect(() => lnGamma(0)).toThrow(RangeError)
-    expect(() => lnGamma(-1)).toThrow(RangeError)
+  test('rejects non-positive and NaN arguments with invalid_config', () => {
+    for (const bad of [0, -1, Number.NaN, Number.NEGATIVE_INFINITY]) {
+      expect(() => lnGamma(bad)).toThrow(NegentropyError)
+      expect(() => lnGamma(bad)).toThrow(expect.objectContaining({ code: 'invalid_config' }))
+    }
+    expect(lnGamma(Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY)
   })
 })
 
@@ -102,8 +111,8 @@ describe('incomplete gamma', () => {
       expect(value).toBeLessThanOrEqual(1)
       previous = value
     }
-    expect(() => gammaP(0, 1)).toThrow(RangeError)
-    expect(() => gammaQ(2, -1)).toThrow(RangeError)
+    expect(() => gammaP(0, 1)).toThrow(expect.objectContaining({ code: 'invalid_config' }))
+    expect(() => gammaQ(2, -1)).toThrow(expect.objectContaining({ code: 'invalid_config' }))
   })
 })
 
@@ -158,9 +167,9 @@ describe('erfc / normal', () => {
   })
 
   test('normPpf rejects out-of-domain p', () => {
-    expect(() => normPpf(0)).toThrow(RangeError)
-    expect(() => normPpf(1)).toThrow(RangeError)
-    expect(() => normPpf(-0.5)).toThrow(RangeError)
+    for (const bad of [0, 1, -0.5, Number.NaN]) {
+      expect(() => normPpf(bad)).toThrow(expect.objectContaining({ code: 'invalid_config' }))
+    }
   })
 })
 
@@ -198,7 +207,81 @@ describe('chi-square', () => {
   test('edges and domain errors', () => {
     expect(chi2Sf(0, 5)).toBe(1)
     expect(chi2Cdf(-3, 5)).toBe(0)
-    expect(() => chi2Ppf(0, 5)).toThrow(RangeError)
-    expect(() => chi2Ppf(0.5, 0)).toThrow(RangeError)
+    const invalid = expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' })
+    expect(() => chi2Ppf(0, 5)).toThrow(invalid)
+    expect(() => chi2Ppf(0.5, 0)).toThrow(invalid)
+    expect(() => chi2Ppf(Number.NaN, 5)).toThrow(invalid)
+    expect(() => chi2Sf(5, Number.POSITIVE_INFINITY)).toThrow(invalid)
+    expect(() => chi2Sf(Number.NaN, 5)).toThrow(invalid)
+    expect(() => chi2Cdf(1, -2)).toThrow(invalid)
+  })
+})
+
+describe('chi2Ppf tails (relative stopping rule, Newton in ln x)', () => {
+  test('k = 1 lower tail matches the closed form 2·erfinv(p)² = (π/2)(p + πp³/12)²', () => {
+    // exact to double precision for p ≤ 1e-6 (next series term is O(p⁵))
+    for (const p of [1e-12, 1e-8, 1e-6]) {
+      const exact = (Math.PI / 2) * (p + (Math.PI * p ** 3) / 12) ** 2
+      expectClose(chi2Ppf(p, 1), exact, 1e-12)
+    }
+    // the reproduced defect: 1e-8 used to return 5.684e-14 (362× too large)
+    expectClose(chi2Ppf(1e-8, 1), 1.5707963267948967e-16, 1e-12)
+  })
+
+  test('k = 1 agrees with (Φ⁻¹((1 + p)/2))² where that form is well-conditioned', () => {
+    for (const p of [0.01, 0.3, 0.9, 0.999]) {
+      expectClose(chi2Ppf(p, 1), normPpf((1 + p) / 2) ** 2, 1e-12)
+    }
+  })
+
+  test('k = 2 matches the closed form −2·ln(1 − p) in both tails', () => {
+    for (const p of [1e-12, 1e-8, 1e-6, 0.05, 0.5, 0.95, 1 - 1e-9]) {
+      expectClose(chi2Ppf(p, 2), -2 * Math.log1p(-p), 1e-12)
+    }
+  })
+
+  test('k = 5 (and the full grid) matches 40-digit mpmath bisection references', () => {
+    for (const p of [1e-12, 1e-8, 1e-6]) {
+      const ref = numerics.chi2Ppf.find((c) => c.k === 5 && c.p === p)
+      expect(ref).toBeDefined()
+      expectClose(chi2Ppf(p, 5), ref?.value as number, 1e-12)
+    }
+    for (const { p, k, value } of numerics.chi2Ppf) {
+      if (value === 0) continue // true quantile underflows float64 (p = 1e-300 at k = 1)
+      expectClose(chi2Ppf(p, k), value, 5e-13)
+    }
+  })
+
+  test('round-trips through the CDF in the deep lower tail', () => {
+    for (const k of [1, 2, 5, 30]) {
+      for (const p of [1e-300, 1e-100, 1e-12, 1e-6]) {
+        const x = chi2Ppf(p, k)
+        if (x === 0) continue
+        expectClose(chi2Cdf(x, k), p, 1e-11)
+      }
+    }
+  })
+
+  test('is strictly increasing in p', () => {
+    for (const k of [1, 2, 5, 1000]) {
+      let previous = 0
+      for (const p of [1e-15, 1e-12, 1e-9, 1e-6, 1e-3, 0.1, 0.5, 0.9, 0.999, 1 - 1e-9]) {
+        const x = chi2Ppf(p, k)
+        expect(x).toBeGreaterThan(previous)
+        previous = x
+      }
+    }
+  })
+
+  test('chi2Isf keeps precision below 2⁻⁵³ where 1 − q rounds to 1', () => {
+    for (const k of [1, 3, 50]) {
+      for (const q of [1e-17, 1e-40, 1e-200]) {
+        const x = chi2Isf(q, k)
+        expectClose(chi2Sf(x, k), q, 1e-11)
+      }
+    }
+    expectClose(chi2Isf(0.05, 1), 3.8414588206941205, 1e-12)
+    expectClose(chi2Isf(0.95, 10), chi2Ppf(0.05, 10), 1e-12)
+    expect(() => chi2Isf(0, 3)).toThrow(expect.objectContaining({ code: 'invalid_config' }))
   })
 })

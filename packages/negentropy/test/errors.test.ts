@@ -12,6 +12,12 @@ describe('NegentropyError', () => {
     expect(err.cause).toBeUndefined()
   })
 
+  test("'numerical' is a code: iteration failures are typed, never a bare Error", () => {
+    const err = new NegentropyError('numerical', 'series did not converge')
+    expect(err.code).toBe('numerical')
+    expect(err).toBeInstanceOf(NegentropyError)
+  })
+
   test('attributes a source and preserves the cause', () => {
     const inner = new Error('socket closed')
     const err = new NegentropyError('source_failed', 'drand stream failed', {

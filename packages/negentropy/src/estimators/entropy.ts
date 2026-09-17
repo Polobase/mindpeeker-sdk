@@ -4,6 +4,8 @@
  * everything). Meaningful on RAW source output; whitened output looks perfect
  * by construction.
  */
+import { NegentropyError } from '../errors.js'
+import { assertBits } from '../internal/assert.js'
 
 export { toBits } from '../internal/bytes.js'
 
@@ -23,8 +25,15 @@ export function shannonEntropy(data: Uint8Array): number {
 /**
  * NIST SP 800-90B §6.3.1 Most Common Value min-entropy estimate (bits/byte):
  * upper-bounds the most common symbol's probability at 99% confidence.
+ * Needs ≥ 2 bytes (`insufficient_data`).
  */
 export function mcvMinEntropy(data: Uint8Array): number {
+  if (data.length < 2) {
+    throw new NegentropyError(
+      'insufficient_data',
+      `mcvMinEntropy needs ≥ 2 bytes, got ${data.length}`,
+    )
+  }
   const counts = new Array<number>(256).fill(0)
   for (const byte of data) counts[byte] = (counts[byte] as number) + 1
   const pHat = Math.max(...counts) / data.length
@@ -37,8 +46,11 @@ export function mcvMinEntropy(data: Uint8Array): number {
  * in bits per bit: the most probable 128-step path through the first-order
  * transition model bounds per-bit entropy. Catches serial dependence that
  * per-symbol counting misses (e.g. …010101… scores 0 here, 1.0 on MCV).
+ * Input is unpacked bits: any value other than 0/1 throws `invalid_config`
+ * (unpack bytes with `toBits` first).
  */
 export function markovMinEntropyPerBit(bits: Uint8Array): number {
+  assertBits(bits, 'markovMinEntropyPerBit')
   const n = bits.length
   if (n < 2) return 0
   let ones = 0

@@ -69,20 +69,20 @@ describe('conditionStream', () => {
       }),
     )
     expect(hex(mac as Uint8Array)).not.toBe(hex(sha as Uint8Array))
-    expect(
+    await expect(
       conditionStream(chunked(raw, 64), { minEntropyPerByte: 4, mode: 'hmac' }).next(),
     ).rejects.toMatchObject({ code: 'invalid_config' })
   })
 
-  test('validates configuration', () => {
+  test('validates configuration', async () => {
     const raw = chunked(prngBytes(10), 10)
-    expect(conditionStream(raw, { minEntropyPerByte: 0 }).next()).rejects.toMatchObject({
+    await expect(conditionStream(raw, { minEntropyPerByte: 0 }).next()).rejects.toMatchObject({
       code: 'invalid_config',
     })
-    expect(
+    await expect(
       conditionStream(chunked(prngBytes(10), 10), { minEntropyPerByte: 9 }).next(),
     ).rejects.toMatchObject({ code: 'invalid_config' })
-    expect(
+    await expect(
       conditionStream(chunked(prngBytes(10), 10), {
         minEntropyPerByte: 4,
         safetyFactor: 0.5,
@@ -102,6 +102,6 @@ describe('conditionStream', () => {
     })
     await stream.next()
     controller.abort()
-    expect(stream.next()).rejects.toMatchObject({ code: 'aborted' })
+    await expect(stream.next()).rejects.toMatchObject({ code: 'aborted' })
   })
 })

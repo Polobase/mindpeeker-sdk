@@ -30,6 +30,12 @@ describe('mcvMinEntropy', () => {
     expect(mcvMinEntropy(prngBytes(1_048_576))).toBeGreaterThan(7.8)
   })
 
+  test('needs at least two bytes', () => {
+    const insufficient = expect.objectContaining({ code: 'insufficient_data' })
+    expect(() => mcvMinEntropy(new Uint8Array(0))).toThrow(insufficient)
+    expect(() => mcvMinEntropy(Uint8Array.from([5]))).toThrow(insufficient)
+  })
+
   test('reflects a dominant symbol', () => {
     // 50% zeros, rest uniform → p_max ≈ 0.5 → H ≈ 1 bit
     const data = prngBytes(65_536)
@@ -53,6 +59,12 @@ describe('markovMinEntropyPerBit', () => {
 
   test('scores uniform bits near 1', () => {
     expect(markovMinEntropyPerBit(toBits(prngBytes(131_072)))).toBeGreaterThan(0.95)
+  })
+
+  test('rejects packed bytes (non-0/1 values) with invalid_config instead of a TypeError', () => {
+    expect(() => markovMinEntropyPerBit(Uint8Array.from([3, 200, 7, 7, 1, 0]))).toThrow(
+      expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' }),
+    )
   })
 })
 

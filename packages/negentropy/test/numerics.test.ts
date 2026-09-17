@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
+import * as barrel from '../src/numerics.js'
 import {
+  aptCutoff,
+  betaInc,
+  betaPpf,
+  binomialCdf,
+  binomialPmf,
+  binomialSf,
   chi2Cdf,
   chi2Ppf,
   chi2Sf,
@@ -8,11 +15,13 @@ import {
   gammaP,
   gammaQ,
   KahanSum,
+  lnBeta,
   lnGamma,
   normCdf,
   normPpf,
   normSf,
   POPCOUNT,
+  rctCutoff,
   toBits,
   Welford,
 } from '../src/numerics.js'
@@ -27,6 +36,12 @@ import {
 describe('numerics barrel surface', () => {
   test('every re-export is a function or class', () => {
     const callables = {
+      aptCutoff,
+      betaInc,
+      betaPpf,
+      binomialCdf,
+      binomialPmf,
+      binomialSf,
       chi2Cdf,
       chi2Ppf,
       chi2Sf,
@@ -35,16 +50,59 @@ describe('numerics barrel surface', () => {
       gammaP,
       gammaQ,
       KahanSum,
+      lnBeta,
       lnGamma,
       normCdf,
       normPpf,
       normSf,
+      rctCutoff,
       toBits,
       Welford,
     }
     for (const [name, value] of Object.entries(callables)) {
       expect(typeof value, `${name} should be a function/class`).toBe('function')
     }
+  })
+
+  test('the export list is exactly the documented surface', () => {
+    expect(Object.keys(barrel).sort()).toEqual(
+      [
+        'aptCutoff',
+        'betaInc',
+        'betaPpf',
+        'binomialCdf',
+        'binomialPmf',
+        'binomialSf',
+        'chi2Cdf',
+        'chi2Ppf',
+        'chi2Sf',
+        'concatBytes',
+        'erfc',
+        'gammaP',
+        'gammaQ',
+        'KahanSum',
+        'lnBeta',
+        'lnGamma',
+        'normCdf',
+        'normPpf',
+        'normSf',
+        'POPCOUNT',
+        'rctCutoff',
+        'toBits',
+        'Welford',
+      ].sort(),
+    )
+  })
+
+  test('beta/binomial/cutoff spot checks through the barrel', () => {
+    expect(betaInc(1, 2, 0.5)).toBeCloseTo(0.75, 14)
+    expect(betaPpf(0.75, 1, 2)).toBeCloseTo(0.5, 12)
+    expect(lnBeta(2, 3)).toBeCloseTo(Math.log(1 / 12), 14)
+    expect(binomialPmf(2, 4, 0.5)).toBeCloseTo(6 / 16, 15)
+    expect(binomialCdf(2, 4, 0.5)).toBeCloseTo(11 / 16, 14)
+    expect(binomialSf(2, 4, 0.5)).toBeCloseTo(5 / 16, 14)
+    expect(rctCutoff(1)).toBe(21)
+    expect(aptCutoff(1, 512)).toBe(311)
   })
 
   test('POPCOUNT is the 256-entry per-byte one-bits table', () => {
@@ -113,6 +171,27 @@ describe('KahanSum', () => {
     for (let i = 0; i < 10; i++) kahan.add(0.1)
     expect(kahan.value).toBeCloseTo(1, 15)
   })
+
+  test('Neumaier: a term larger than the running sum is compensated (1e16 + 1 − 1e16 = 1)', () => {
+    // classic Kahan returns 0 here; naive summation also returns 0
+    const sum = new KahanSum()
+    for (const x of [1e16, 1, -1e16]) sum.add(x)
+    expect(sum.value).toBe(1)
+    expect(1e16 + 1 - 1e16).toBe(0)
+    const alternating = new KahanSum()
+    for (const x of [1, 1e100, 1, -1e100]) alternating.add(x)
+    expect(alternating.value).toBe(2)
+  })
+
+  test('long adversarial sums stay exact', () => {
+    const sum = new KahanSum()
+    for (let i = 0; i < 100_000; i++) {
+      sum.add(1e10)
+      sum.add(0.1)
+      sum.add(-1e10)
+    }
+    expect(sum.value).toBeCloseTo(10_000, 9)
+  })
 })
 
 describe('Welford', () => {
@@ -124,6 +203,13 @@ describe('Welford', () => {
     expect(w.populationVariance).toBeCloseTo(4, 14)
     expect(w.variance).toBeCloseTo(32 / 7, 14)
     expect(w.sd).toBeCloseTo(Math.sqrt(32 / 7), 14)
+  })
+
+  test('one million identical values: mean exact, variance exactly zero', () => {
+    const w = new Welford()
+    for (let i = 0; i < 1_000_000; i++) w.push(0.1)
+    expect(w.mean).toBeCloseTo(0.1, 15)
+    expect(w.variance).toBe(0)
   })
 
   test('variance is NaN below two observations', () => {

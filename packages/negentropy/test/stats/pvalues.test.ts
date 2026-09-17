@@ -26,3 +26,26 @@ describe('chiSquareP', () => {
     expect(chiSquareP(10_000, 10)).toBeGreaterThanOrEqual(P_FLOOR)
   })
 })
+
+describe('boundary validation', () => {
+  const invalid = expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' })
+
+  test('NaN and infinite statistics throw invalid_config (never a RangeError)', () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(() => normalP(bad)).toThrow(invalid)
+      expect(() => chiSquareP(bad, 5)).toThrow(invalid)
+    }
+    expect(() => chiSquareP(5, 0)).toThrow(invalid)
+    expect(() => chiSquareP(5, Number.NaN)).toThrow(invalid)
+    expect(() => normalP(1, 'sideways' as 'two')).toThrow(invalid)
+  })
+
+  test('GCP network scale: devvar-sized df gives a p-value on both sides of the mean', () => {
+    const df = 60 * 86_400
+    const sd = Math.sqrt(2 * df)
+    for (const z of [-1.366, -0.155, 0, 0.3, 2]) {
+      const p = chiSquareP(df + z * sd, df)
+      expect(Math.abs(p - normalP(z, 'upper'))).toBeLessThan(2e-3) // skew √(8/df) ≈ 1.2e-3
+    }
+  })
+})

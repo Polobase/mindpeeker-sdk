@@ -3,6 +3,7 @@
  * arbitrary length: radix-2 Cooley–Tukey when n is a power of two, Bluestein's
  * chirp-z algorithm otherwise (so O(n log n) for any n, not O(n²)).
  */
+import { NegentropyError } from '../errors.js'
 
 /** In-place iterative radix-2 Cooley–Tukey FFT; `re`/`im` length must be a power of two. */
 function fftRadix2(re: Float64Array, im: Float64Array): void {
@@ -119,7 +120,10 @@ function fftBluestein(re: Float64Array, im: Float64Array): void {
 /** In-place FFT of a complex signal of any length. */
 export function fft(re: Float64Array, im: Float64Array): void {
   if (re.length !== im.length) {
-    throw new RangeError(`fft: re/im length mismatch (${re.length} vs ${im.length})`)
+    throw new NegentropyError(
+      'invalid_config',
+      `fft: re/im length mismatch (${re.length} vs ${im.length})`,
+    )
   }
   if (re.length <= 1) return
   if (isPowerOfTwo(re.length)) fftRadix2(re, im)

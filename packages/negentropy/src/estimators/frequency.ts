@@ -1,10 +1,16 @@
+import { NegentropyError } from '../errors.js'
+import { assertBits } from '../internal/assert.js'
 import { chi2Sf } from '../internal/special.js'
 
 /**
  * Chi-square statistic over the byte histogram (255 degrees of freedom),
- * with an exact incomplete-gamma p-value.
+ * with an exact incomplete-gamma p-value. Needs ≥ 1 byte (`insufficient_data`);
+ * the χ² approximation wants ≳ 5 expected counts per bin (≥ 1280 bytes).
  */
 export function chiSquareBytes(data: Uint8Array): { statistic: number; pValue: number } {
+  if (data.length === 0) {
+    throw new NegentropyError('insufficient_data', 'chiSquareBytes needs at least one byte')
+  }
   const counts = new Array<number>(256).fill(0)
   for (const byte of data) counts[byte] = (counts[byte] as number) + 1
   const expected = data.length / 256
@@ -30,17 +36,32 @@ export function serialCorrelation(data: Uint8Array): number {
   return denominator === 0 ? 1 : numerator / denominator
 }
 
-/** Fraction of one-bits (0.5 is ideal) plus its z-score. */
+/**
+ * Fraction of one-bits (0.5 is ideal) plus its z-score (2·ones − n)/√n.
+ * Unpacked bits only (non-0/1 values throw `invalid_config`); needs ≥ 1 bit.
+ */
 export function monobit(bits: Uint8Array): { onesFraction: number; z: number } {
+  if (bits.length === 0) {
+    throw new NegentropyError('insufficient_data', 'monobit needs at least one bit')
+  }
+  assertBits(bits, 'monobit')
   let ones = 0
   for (const bit of bits) ones += bit
   const fraction = ones / bits.length
   return { onesFraction: fraction, z: (2 * ones - bits.length) / Math.sqrt(bits.length) }
 }
 
-/** Wald–Wolfowitz runs test z-score over the bit sequence. */
+/**
+ * Wald–Wolfowitz runs test z-score over the bit sequence (+∞ when every bit
+ * is equal). Unpacked bits only (non-0/1 values throw `invalid_config`);
+ * needs ≥ 2 bits.
+ */
 export function runsTest(bits: Uint8Array): number {
   const n = bits.length
+  if (n < 2) {
+    throw new NegentropyError('insufficient_data', `runsTest needs ≥ 2 bits, got ${n}`)
+  }
+  assertBits(bits, 'runsTest')
   let ones = 0
   let runs = 1
   for (let i = 0; i < n; i++) {

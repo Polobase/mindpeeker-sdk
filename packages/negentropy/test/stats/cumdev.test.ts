@@ -72,6 +72,15 @@ describe('significanceEnvelope', () => {
     expect(crossed / reps).toBeGreaterThan(0.15)
   })
 
+  test('tiny p below 2⁻⁵³ stays exact (1 − p no longer rounds to 1)', () => {
+    const envelope = significanceEnvelope(3, 1e-17)
+    // df = 2: χ²isf(q, 2) = −2·ln q exactly
+    expect(envelope[1]).toBeCloseTo(-2 * Math.log(1e-17) - 2, 10)
+    for (let t = 1; t < envelope.length; t++) {
+      expect(envelope[t] as number).toBeGreaterThan(0)
+    }
+  })
+
   test('rejects bad parameters', () => {
     expect(() => significanceEnvelope(0)).toThrow(NegentropyError)
     expect(() => significanceEnvelope(10, 0)).toThrow(NegentropyError)

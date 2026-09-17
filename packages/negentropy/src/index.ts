@@ -24,7 +24,7 @@ export {
 export type { DitherOptions } from './estimators/pipeline.js'
 export { ditheredTrialZ, probitBytes } from './estimators/pipeline.js'
 export { approximateEntropy, sampleEntropy } from './estimators/sample-entropy.js'
-export type { SpectralEntropyOptions } from './estimators/spectral.js'
+export type { SpectralEntropyOptions, SpectralTestOptions } from './estimators/spectral.js'
 export { spectralEntropy, spectralTest } from './estimators/spectral.js'
 export { negentropyVasicek, vasicekEntropy } from './estimators/vasicek.js'
 export type {
@@ -49,6 +49,7 @@ export type {
 } from './experiment/types.js'
 export type {
   AccountedBytes,
+  DebiasAccountingOptions,
   EntropyClaim,
   PipelineOp,
   PipelineStep,
@@ -58,6 +59,7 @@ export {
   conditionAccounted,
   debiasAccounted,
   extractAccounted,
+  outputEntropy,
   vettedOutputEntropy,
 } from './extract/accounting.js'
 export type { ConditionStreamOptions } from './extract/condition.js'

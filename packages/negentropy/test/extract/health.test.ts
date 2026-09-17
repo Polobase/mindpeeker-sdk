@@ -82,8 +82,41 @@ describe('ContinuousHealth (strict)', () => {
   })
 })
 
+describe('APT exact boundary', () => {
+  test('cutoff − 1 occurrences in a window stay silent; the cutoff-th alarms', () => {
+    // H = 8, W = 512 → APT cutoff 13, RCT cutoff 4 (no runs of the reference here)
+    const health = new ContinuousHealth({ minEntropyPerSample: 8 })
+    expect(health.aptCutoff).toBe(13)
+    const window = new Uint8Array(40)
+    for (let i = 0; i < window.length; i++) window[i] = i % 2 === 0 ? 7 : 100 + i
+    // indices 0, 2, …, 22 → 12 occurrences of the reference value 7
+    expect(health.push(window.subarray(0, 24))).toEqual([])
+    const [alarm] = health.push(window.subarray(24, 25)) // 13th occurrence
+    expect(alarm).toMatchObject({ test: 'apt', count: 13, cutoff: 13, sample: 24 })
+  })
+})
+
 describe('validation', () => {
-  test('rejects non-positive min-entropy', () => {
+  const invalid = expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' })
+
+  test('rejects min-entropy outside (0, 8] bits per byte', () => {
     expect(() => new ContinuousHealth({ minEntropyPerSample: 0 })).toThrow(NegentropyError)
+    for (const bad of [0, -1, 8.01, 100, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => new ContinuousHealth({ minEntropyPerSample: bad })).toThrow(invalid)
+    }
+    expect(new ContinuousHealth({ minEntropyPerSample: 8 }).rctCutoff).toBe(4)
+  })
+
+  test('rejects window sizes other than 512 and 1024', () => {
+    const windowSize = 100 as 512
+    expect(() => new ContinuousHealth({ minEntropyPerSample: 1, windowSize })).toThrow(invalid)
+  })
+
+  test('very low H keeps the exact cutoffs: APT inactive (W + 1) below 20/W, RCT still armed', () => {
+    const health = new ContinuousHealth({ minEntropyPerSample: 0.01 })
+    expect(health.aptCutoff).toBe(513)
+    expect(health.rctCutoff).toBe(2001)
+    const jitter = new ContinuousHealth({ minEntropyPerSample: 0.0625, windowSize: 1024 })
+    expect(jitter.aptCutoff).toBe(1009)
   })
 })

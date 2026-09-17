@@ -1,10 +1,15 @@
 import { NegentropyError } from '../errors.js'
+import { closeIterator, nextOrAbort } from '../internal/abort.js'
 import { POPCOUNT } from '../internal/bytes.js'
 import type { Trial, TrialConfig, TrialSeries, TrialSource } from '../types.js'
 
 export const DEFAULT_BITS_PER_TRIAL = 200
 
-function validateBitsPerTrial(bitsPerTrial: number | undefined, source?: string): number {
+/**
+ * Resolve and validate a trial width: undefined → DEFAULT_BITS_PER_TRIAL;
+ * anything but an integer ≥ 8 throws `invalid_config`.
+ */
+export function validateBitsPerTrial(bitsPerTrial: number | undefined, source?: string): number {
   const k = bitsPerTrial ?? DEFAULT_BITS_PER_TRIAL
   if (!Number.isInteger(k) || k < 8) {
     throw new NegentropyError(
@@ -83,7 +88,12 @@ export interface TrialStreamConfig extends TrialConfig {
  * index gaps.
  *
  * The source ending simply ends this stream; a source error is rethrown as
- * `source_failed` (or `aborted` when the caller's signal fired).
+ * `source_failed` (or `aborted` when the caller's signal fired). Abort is
+ * prompt: each pull is raced against the signal, so a blocked source or one
+ * that ignores the forwarded signal cannot delay `aborted`; a source that
+ * ends cleanly after the abort also yields `aborted`. The upstream iterator
+ * is closed (`return()`) on abort or early exit, waiting at most 100 ms after
+ * an abort.
  */
 export async function* trialStream(
   source: TrialSource,
@@ -110,9 +120,19 @@ export async function* trialStream(
   let bucketFilled = false
   let firstBucket: number | undefined
 
+  let iterator: AsyncIterator<Uint8Array> | undefined
+  let exhausted = false
   try {
-    for await (const chunk of source.stream({ signal, chunkBytes: config.chunkBytes })) {
+    iterator = source.stream({ signal, chunkBytes: config.chunkBytes })[Symbol.asyncIterator]()
+    while (true) {
       if (signal?.aborted) throw abortError()
+      const step = await nextOrAbort(iterator, signal, abortError)
+      if (step.done) {
+        exhausted = true
+        if (signal?.aborted) throw abortError()
+        return
+      }
+      const chunk = step.value
       const at = now()
       if (clock.mode === 'interval') {
         const bucket = Math.floor(at / clock.intervalMs)
@@ -161,5 +181,7 @@ export async function* trialStream(
       source: source.name,
       cause: error,
     })
+  } finally {
+    if (iterator && !exhausted) await closeIterator(iterator, signal?.aborted === true)
   }
 }

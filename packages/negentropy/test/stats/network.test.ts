@@ -220,3 +220,61 @@ describe('onsiteVsGlobal', () => {
     )
   })
 })
+
+describe('finiteness and pair correlations', () => {
+  const invalid = expect.objectContaining({ name: 'NegentropyError', code: 'invalid_config' })
+
+  test('a NaN or infinite z anywhere throws invalid_config naming the source', () => {
+    const zs = nullMatrix(3, 20, 0xa1)
+    ;(zs[1] as Float64Array)[7] = Number.NaN
+    for (const fn of [netvar, devvar, interSourceCorrelation, networkCoherence]) {
+      expect(() => fn(zs, ['a', 'b', 'c'])).toThrow(invalid)
+    }
+    expect(() => clusteredNetvar(zs, ['a', 'b', 'c'], [0, 0, 1])).toThrow(invalid)
+    try {
+      netvar(zs, ['a', 'b', 'c'])
+    } catch (error) {
+      expect((error as NegentropyError).source).toBe('b')
+    }
+    const inf = nullMatrix(2, 20, 0xa2)
+    ;(inf[0] as Float64Array)[3] = Number.POSITIVE_INFINITY
+    expect(() => netvar(inf, ['a', 'b'])).toThrow(invalid)
+    const onsite = Float64Array.from({ length: 10 }, (_, i) => i)
+    const global = onsite.slice()
+    global[4] = Number.NaN
+    expect(() => onsiteVsGlobal(onsite, global)).toThrow(invalid)
+  })
+
+  test('pairs expose meanProduct (= r) and pearson; a common mean shift moves only the former', () => {
+    const steps = 20_000
+    const shifted = nullMatrix(3, steps, 0xa3).map((arr) => arr.map((z) => z + 0.5))
+    const { pairs } = interSourceCorrelation(shifted, ['a', 'b', 'c'])
+    for (const pair of pairs) {
+      expect(pair.r).toBe(pair.meanProduct)
+      expect(Math.abs(pair.meanProduct - 0.25)).toBeLessThan(0.04) // ≈ μ² with no correlation
+      expect(Math.abs(pair.pearson)).toBeLessThan(0.04)
+    }
+  })
+
+  test('pearson recovers a planted correlation; networkCoherence carries the same pairs', () => {
+    const zs = correlatedMatrix(4, 10_000, 0.3, 0xa4)
+    const names = ['a', 'b', 'c', 'd']
+    const corr = interSourceCorrelation(zs, names)
+    const coherence = networkCoherence(zs, names)
+    expect(coherence.pairs).toEqual(corr.pairs)
+    for (const pair of corr.pairs) expect(Math.abs(pair.pearson - 0.3)).toBeLessThan(0.05)
+    // meanProduct averages to the coherence (mean pairwise product)
+    const mean = corr.pairs.reduce((sum, p) => sum + p.meanProduct, 0) / corr.pairs.length
+    expect(mean).toBeCloseTo(coherence.coherence, 10)
+  })
+
+  test('pearson is NaN for a constant series', () => {
+    const constant = new Float64Array(50).fill(0.5)
+    const { pairs } = interSourceCorrelation([constant, gaussians(50, 0xa5)], ['a', 'b'])
+    expect(pairs[0]?.pearson).toBeNaN()
+    expect(pairs[0]?.meanProduct).toBeCloseTo(
+      0.5 * (gaussians(50, 0xa5).reduce((x, y) => x + y, 0) / 50),
+      12,
+    )
+  })
+})
