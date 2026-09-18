@@ -1,218 +1,105 @@
 <script setup lang="ts">
-import type { HexagramCast, RuneCast, ShieldCast, SpreadCast } from '@mindpeeker/oracle'
-import { castHexagram, castRunes, castShield, castSpread } from '@mindpeeker/oracle'
-import { provider, stream } from '~/lib/entropy'
+/**
+ * `@mindpeeker/oracle` — one tab per divination system, plus two utility tabs
+ * (exactness and replay). Every cast draws from the header-selected entropy
+ * source through `~/lib/entropy`, and every cast prints its own receipt.
+ */
+import { DEFAULT_CAST_CHUNK_BYTES, TAROT_DECK } from '@mindpeeker/oracle'
+import { sourceSummary } from '~/lib/entropy'
 
-type Kind = 'iching' | 'tarot' | 'runes' | 'geomancy'
+const TABS = [
+  { value: 'iching', label: 'I Ching', icon: 'i-lucide-square-equal' },
+  { value: 'tarot', label: 'Tarot', icon: 'i-lucide-layers' },
+  { value: 'runes', label: 'Runes', icon: 'i-lucide-feather' },
+  { value: 'geomancy', label: 'Geomancy', icon: 'i-lucide-grip' },
+  { value: 'ifa', label: 'Ifá', icon: 'i-lucide-git-fork' },
+  { value: 'cowries', label: 'Cowries', icon: 'i-lucide-shell' },
+  { value: 'lots', label: 'Lots & dice', icon: 'i-lucide-dices' },
+  { value: 'exactness', label: 'Exactness', icon: 'i-lucide-sigma' },
+  { value: 'replay', label: 'Record & replay', icon: 'i-lucide-rotate-ccw' },
+] as const
 
-const active = ref<Kind>()
-const pending = ref<Kind>()
-const error = ref('')
-
-// Casts are frozen result objects — shallowRef keeps their readonly types intact.
-const hexagram = shallowRef<HexagramCast>()
-const spread = shallowRef<SpreadCast>()
-const runes = shallowRef<RuneCast>()
-const shield = shallowRef<ShieldCast>()
-
-async function run(kind: Kind, fn: () => Promise<void>): Promise<void> {
-  pending.value = kind
-  error.value = ''
-  try {
-    await fn()
-    active.value = kind
-  } catch (e) {
-    active.value = undefined
-    error.value = `cast failed: ${e instanceof Error ? e.message : String(e)}`
-  } finally {
-    pending.value = undefined
-  }
-}
-
-const iching = () =>
-  run('iching', async () => {
-    hexagram.value = await castHexagram(stream())
-  })
-
-const tarot = () =>
-  run('tarot', async () => {
-    spread.value = await castSpread(stream(), 'threeCard', { reversals: true })
-  })
-
-const futhark = () =>
-  run('runes', async () => {
-    runes.value = await castRunes(stream(), 3, { merkstave: true })
-  })
-
-const geomancy = () =>
-  run('geomancy', async () => {
-    shield.value = await castShield(stream())
-  })
-
-/** Top line first, the way a hexagram is read. */
-const ichingLines = computed(() => (hexagram.value ? [...hexagram.value.lines].reverse() : []))
-
-/** `label · bytes consumed · headline` for whichever system is on screen. */
-const summary = computed(() => {
-  const h = hexagram.value
-  const s = spread.value
-  const r = runes.value
-  const g = shield.value
-  switch (active.value) {
-    case 'iching':
-      return h
-        ? {
-            label: 'I-Ching',
-            bytes: h.bytesConsumed,
-            headline: `${h.primary.character}  #${h.primary.kingWen} · ${h.primary.name.en}`,
-          }
-        : undefined
-    case 'tarot':
-      return s ? { label: 'Tarot', bytes: s.bytesConsumed, headline: s.spread.name } : undefined
-    case 'runes':
-      return r
-        ? {
-            label: 'Elder Futhark',
-            bytes: r.bytesConsumed,
-            headline: r.runes.map((d) => d.rune.glyph).join('  '),
-          }
-        : undefined
-    case 'geomancy':
-      return g
-        ? {
-            label: 'Geomancy',
-            bytes: g.bytesConsumed,
-            headline: `Judge: ${g.judge.name} — ${g.judge.meaning}`,
-          }
-        : undefined
-    default:
-      return undefined
-  }
-})
+const tab = useTabQuery('iching', { tabs: TABS.map((t) => t.value) })
+const summary = sourceSummary()
 </script>
 
 <template>
-  <div>
-    <UCard>
-      <div class="flex flex-wrap gap-2">
-        <UButton :loading="pending === 'iching'" :disabled="!!pending" @click="iching">
-          I-Ching
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="subtle"
-          :loading="pending === 'tarot'"
-          :disabled="!!pending"
-          @click="tarot"
-        >
-          Tarot (three-card)
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="subtle"
-          :loading="pending === 'runes'"
-          :disabled="!!pending"
-          @click="futhark"
-        >
-          Runes (three)
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="subtle"
-          :loading="pending === 'geomancy'"
-          :disabled="!!pending"
-          @click="geomancy"
-        >
-          Geomancy shield
-        </UButton>
-      </div>
-      <p class="mt-3 text-xs text-muted">
-        Pick a system to cast it from the selected entropy source ({{ provider.name }}).
+  <div class="flex flex-col gap-6">
+    <div class="rounded-lg border border-default bg-elevated/30 p-4 flex flex-col gap-3">
+      <p class="text-sm text-muted">
+        Ten systems, one contract: uniform bytes in, symbols out with their exact stated
+        probability, and a receipt —
+        <code class="font-mono text-primary">bytesConsumed</code>,
+        <code class="font-mono text-primary">bytesFetched</code>,
+        <code class="font-mono text-primary">bitsUsed</code> — on every cast. Bytes come from the
+        source picked in the header (<span class="font-mono text-highlighted">{{
+          summary.providerName
+        }}</span>), and a cast asks it for
+        <span class="font-mono">{{ DEFAULT_CAST_CHUNK_BYTES }}</span>-byte chunks, so a three-byte
+        hexagram never pulls a kilobyte.
       </p>
-    </UCard>
-
-    <UCard class="mt-4">
-      <div class="min-h-56">
-        <p v-if="error" class="text-sm text-error">{{ error }}</p>
-        <p v-else-if="!summary" class="text-sm text-muted">
-          Nothing cast yet — every reading below is a pure function of the bytes it consumed.
-        </p>
-
-        <template v-else>
-          <div class="font-mono text-xs uppercase tracking-wide text-muted">
-            {{ summary.label }} · {{ summary.bytes }} byte(s) of entropy
-          </div>
-          <div class="mt-1 text-2xl font-semibold">{{ summary.headline }}</div>
-
-          <div v-if="active === 'iching' && hexagram" class="mt-4">
-            <div
-              v-for="l in ichingLines"
-              :key="l.position"
-              class="font-mono text-xl tracking-[2px]"
-              :class="l.changing ? 'text-primary' : ''"
-            >
-              {{ l.yang ? '▬▬▬▬▬▬▬' : '▬▬▬  ▬▬▬' }}{{ l.changing ? '  ✳' : '' }}
-            </div>
-            <p class="mt-3 text-sm text-muted">
-              <template v-if="hexagram.relating">
-                changing lines {{ hexagram.changing.join(', ') }} → relating #{{
-                  hexagram.relating.kingWen
-                }}
-                {{ hexagram.relating.name.en }}
-              </template>
-              <template v-else>a stable hexagram — no changing lines</template>
-            </p>
-          </div>
-
-          <div v-else-if="active === 'tarot' && spread" class="mt-4 grid gap-3 sm:grid-cols-3">
-            <div
-              v-for="d in spread.cards"
-              :key="d.position.name"
-              class="rounded-lg border border-default bg-elevated/40 p-3"
-            >
-              <div class="font-mono text-xs text-primary">{{ d.position.name }}</div>
-              <h3 class="mt-1 font-semibold">{{ d.card.name }}</h3>
-              <p class="mt-1 text-sm text-muted">
-                {{ d.card.arcana }}{{ d.reversed ? ' · reversed' : '' }}
-              </p>
-            </div>
-          </div>
-
-          <div v-else-if="active === 'runes' && runes" class="mt-4 grid gap-3 sm:grid-cols-3">
-            <div
-              v-for="d in runes.runes"
-              :key="d.rune.id"
-              class="rounded-lg border border-default bg-elevated/40 p-3"
-            >
-              <div class="text-4xl leading-none">{{ d.rune.glyph }}</div>
-              <h3 class="mt-2 font-semibold">
-                {{ d.rune.name }}{{ d.merkstave ? ' (merkstave)' : '' }}
-              </h3>
-              <p class="mt-1 text-sm text-muted">
-                {{ d.rune.aettName === null ? 'no ætt' : `${d.rune.aettName}’s ætt` }}
-              </p>
-            </div>
-          </div>
-
-          <div v-else-if="active === 'geomancy' && shield" class="mt-3">
-            <p class="text-sm text-muted">
-              Witnesses: {{ shield.witnesses[0].name }} (right), {{ shield.witnesses[1].name }}
-              (left).
-            </p>
-            <div class="mt-3 grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="(f, i) in shield.mothers"
-                :key="i"
-                class="rounded-lg border border-default bg-elevated/40 p-3"
-              >
-                <div class="font-mono text-xs text-primary">Mother {{ i + 1 }}</div>
-                <h3 class="mt-1 font-semibold">{{ f.name }}</h3>
-                <p class="mt-1 text-sm text-muted">{{ f.meaning }}</p>
-              </div>
-            </div>
-          </div>
-        </template>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <HonestNote variant="exact">
+          Every probability on this page — 1/8 and 3/8 per coin line, 1/65 536 per shield,
+          {{ TAROT_DECK.length }}!/68! ordered Celtic Crosses, 1/256 per odu — is an exact rational
+          number of the model, realized by rejection sampling, dyadic Knuth–Yao draws and
+          Fisher–Yates. No modulo, no float thresholds, no shuffle bias.
+        </HonestNote>
+        <HonestNote variant="caveat" title="What none of this asserts">
+          Divination systems are cultural artifacts. The package makes no claim about what a
+          hexagram, card, rune or figure <em>means</em>, and no claim that a quantum-sourced
+          reading is more meaningful than one from <code>Math.random()</code>. The physical
+          procedures (coins, stalks, shells, blocks, bones) are idealized models — the stated null
+          of a pre-registered study, not a measurement of real objects.
+        </HonestNote>
       </div>
-    </UCard>
+    </div>
+
+    <UTabs
+      v-model="tab"
+      :items="TABS"
+      :content="false"
+      variant="link"
+      size="sm"
+      class="w-full"
+      :ui="{ list: 'overflow-x-auto', trigger: 'shrink-0' }"
+    />
+
+    <template v-if="tab === 'iching'">
+      <OracleIching />
+      <OracleIchingOdds />
+      <OracleIchingStructure />
+    </template>
+    <template v-else-if="tab === 'tarot'">
+      <OracleTarot />
+      <OracleTarotOdds />
+    </template>
+    <template v-else-if="tab === 'runes'">
+      <OracleRunes />
+      <OracleRuneRows />
+    </template>
+    <template v-else-if="tab === 'geomancy'">
+      <OracleGeomancy />
+      <OracleGeomancyHouses />
+      <OracleGeomancyFigures />
+    </template>
+    <template v-else-if="tab === 'ifa'">
+      <OracleIfa />
+      <OracleIfaTable />
+    </template>
+    <template v-else-if="tab === 'cowries'">
+      <OracleCowries />
+    </template>
+    <template v-else-if="tab === 'lots'">
+      <OracleLots />
+      <OracleDice />
+    </template>
+    <template v-else-if="tab === 'exactness'">
+      <OracleExactness />
+      <OracleBudget />
+    </template>
+    <template v-else>
+      <OracleReplay />
+    </template>
   </div>
 </template>

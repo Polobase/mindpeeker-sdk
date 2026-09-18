@@ -1,17 +1,14 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/field</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Spatial field &amp; attractors</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      A field sampled from a good RNG is complete spatial randomness (CSR) — so its “attractors”
-      are the chance clustering any random field shows. Each hotspot carries a Poisson tail p-value
-      under CSR: the honest measure of how ordinary it is. Reseed to draw a new field.
-    </p>
-    <ClientOnly>
-      <FieldDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading field…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="field">
+    <template #intro>
+      Draw a point field from the selected entropy source and ask whether it holds any order. A field
+      from a good RNG is complete spatial randomness, so its “attractors” are the chance clustering
+      every random field shows: each hotspot gets an exact single-point tail <em>and</em> a calibrated
+      whole-field Monte-Carlo p, and the page says which is which. Ripley's K with four edge
+      corrections, global envelope tests, quadrats, Clark–Evans, a kernel-density attractor with the
+      chance baseline the open Randonaut ports never report, Kulldorff's scan statistic, and exact
+      spherical samplers that turn the same bytes into coordinates.
+    </template>
+    <FieldDemo />
+  </DemoPage>
 </template>

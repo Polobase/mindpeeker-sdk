@@ -1,15 +1,13 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/visualizer</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Live entropy dashboard</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      The package’s hand-rolled WebGL2 panels, driven entirely in your browser: a scrolling byte
-      bitmap, Shannon entropy per chunk, a GCP-style cumulative-deviation walk against its χ²
-      envelope, and a byte-value density heatmap — no server, no socket.
-    </p>
-    <ClientOnly>
-      <VisualizerDemo class="mt-6" />
-      <template #fallback><div class="mt-6 text-muted">Loading dashboard…</div></template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="visualizer">
+    <template #intro>
+      The package’s hand-rolled WebGL2 panels, mounted straight into this page: a scrolling noise
+      bitmap, windowed negentropy, the GCP cumulative deviation against both a pointwise χ² band and
+      a time-uniform anytime-valid boundary, the running netvar Z with its anytime p, a decaying byte
+      histogram and a base-44 rate card. Every frame is produced by the package’s own wire encoders
+      and read back by <code class="font-mono text-xs">decodeFrame</code> — the Bun WebSocket server
+      is the only piece a browser cannot run.
+    </template>
+    <VisualizerDemo />
+  </DemoPage>
 </template>

@@ -1,18 +1,14 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/psi</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Mind–matter experiment</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      Each trial is 200 fair coin flips; you aim them high (more 1s), low (more 0s), or idle. The
-      cumulative Stouffer Z and the Bayes factor test your run against pure chance. The mathematics
-      is exact; whether intention moves the number is the open question — and the honest default is
+  <DemoPage id="psi">
+    <template #intro>
+      Seven protocol families, each one runnable in your browser: a PEAR-style tripolar run with a
+      registered schedule and a yoked control arm, Bayes factors and an anytime-valid e-process,
+      the surrogate nulls that keep the rest honest, multiplicity corrections and whole-curve
+      envelopes, GCP event analysis over a hash-chained recording, the recording format itself, and
+      presentiment plus live rolling monitors. The mathematics is exact and the nulls are checked;
+      whether intention moves any of these numbers is the open question — and the honest default is
       no.
-    </p>
-    <ClientOnly>
-      <PsiDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading experiment…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+    </template>
+    <PsiDemo />
+  </DemoPage>
 </template>

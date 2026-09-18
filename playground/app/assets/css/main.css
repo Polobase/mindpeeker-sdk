@@ -1,2 +1,37 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/*
+ * Chart palette. Categorical slots are assigned in fixed order and never
+ * cycled; the dark column is the same hues re-stepped for the dark surface
+ * (validated set, not an automatic flip). Charts read these by role, so a
+ * series keeps its colour in both themes.
+ */
+:root {
+  --viz-1: #2a78d6; /* blue */
+  --viz-2: #eb6834; /* orange */
+  --viz-3: #1baf7a; /* aqua */
+  --viz-4: #eda100; /* yellow */
+  --viz-5: #e87ba4; /* magenta */
+  --viz-6: #4a3aa7; /* violet */
+  --viz-grid: var(--ui-border);
+  --viz-axis: var(--ui-text-dimmed);
+  --viz-label: var(--ui-text-muted);
+  --viz-surface: var(--ui-bg);
+  --viz-band: #2a78d6;
+}
+
+.dark {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-6: #9085e9;
+  --viz-band: #3987e5;
+}
+
+/* Charts and canvases never force a horizontal page scrollbar. */
+.viz-fit {
+  max-width: 100%;
+}

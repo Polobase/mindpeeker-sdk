@@ -1,17 +1,13 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/flow</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Transfer entropy</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      Transfer entropy measures how much one stream’s past reduces uncertainty about another’s next
-      symbol, beyond that stream’s own past. Here Y copies X’s previous bit with the coupling
-      probability below — so TE(X→Y) should rise with coupling while TE(Y→X) stays near zero.
-    </p>
-    <ClientOnly>
-      <FlowDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading transfer entropy…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="flow">
+    <template #intro>
+      Transfer entropy asks a directional question about two streams: how many bits does the past of
+      X tell you about the next symbol of Y, beyond what Y’s own past already tells you? Everything
+      below is built from series with a known answer — a planted copy, a hidden driver, a memory at
+      one lag — so you can watch the estimator recover what was put there, and watch it report flow
+      where there is none. Finite samples always give a positive value; read it against a null,
+      never alone.
+    </template>
+    <FlowDemo />
+  </DemoPage>
 </template>

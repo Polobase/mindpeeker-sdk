@@ -1,17 +1,15 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/rate</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Radionic rate card</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      A Malcolm Rae rate encodes an item as base-44 digits, each a fraction of a turn on a dial.
-      Type a rate (dash- or dot-separated) to render its card geometry as SVG and read every digit’s
-      phase angle, or draw a random rate from your selected entropy source.
-    </p>
-    <ClientOnly>
-      <RateDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading rate card…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="rate">
+    <template #intro>
+      Malcolm Rae replaced the numbered dials of earlier radionic instruments with a card: concentric
+      circles, each carrying one short radial line, the set of angles being the rate. This page makes
+      that encoding exact — parse a rate in base 44 or base 10, read every digit's angle as a
+      rational number beside the double the code returns, render the card and the dials, take the
+      directional statistics of the ring angles against random rates from your selected entropy
+      source, and run the reversible stream modulation. The geometry, the statistics and the
+      modulation are ordinary mathematics. The radionic claim attached to them — that a card imprints
+      a remedy or acts at a distance — is not asserted, tested or supported anywhere here.
+    </template>
+    <RateDemo />
+  </DemoPage>
 </template>

@@ -1,18 +1,13 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/vdf</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Verifiable delay function</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      Computing y = x^(2^T) mod n needs T sequential squarings that no amount of parallelism can
-      shortcut — a proof of elapsed time. The Pietrzak proof then lets anyone verify it in O(log T)
-      steps. The squaring chain yields to the event loop as it runs, so the progress bar keeps
-      moving.
-    </p>
-    <ClientOnly>
-      <VdfDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading delay function…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="vdf">
+    <template #intro>
+      Computing y = |x^(2^T)| mod n takes T sequential squarings that no amount of parallelism can
+      shortcut, yet anyone can check the answer in O(log T) — a proof that time passed. This page
+      runs the whole thing in a Web Worker: both proof systems side by side, the negated-output
+      forgery that 0.2.0 closed, the modulus policy, a sealed beacon pulse broken four ways, and the
+      calibration that turns T into seconds. A seal is a no-earlier-than bound, never a
+      no-later-than one.
+    </template>
+    <VdfDemo />
+  </DemoPage>
 </template>

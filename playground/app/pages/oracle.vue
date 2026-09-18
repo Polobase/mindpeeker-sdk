@@ -1,17 +1,13 @@
 <template>
-  <UContainer class="py-10">
-    <p class="font-mono text-sm text-primary uppercase tracking-widest">@mindpeeker/oracle</p>
-    <h1 class="mt-2 text-3xl font-bold tracking-tight">Divination from entropy</h1>
-    <p class="mt-2 max-w-3xl text-muted">
-      Map an entropy stream to a symbolic system with exact, unbiased probabilities — the I-Ching, a
-      Tarot spread, an Elder Futhark rune draw, or a geomancy shield. Each cast is reproducible from
-      the bytes it consumed; the mathematics is asserted, the meaning is not.
-    </p>
-    <ClientOnly>
-      <OracleDemo class="mt-6" />
-      <template #fallback>
-        <div class="mt-6 text-muted">Loading oracle…</div>
-      </template>
-    </ClientOnly>
-  </UContainer>
+  <DemoPage id="oracle">
+    <template #intro>
+      Ten divination systems, each mapped from the selected entropy stream with exact rational
+      probabilities: the I-Ching by coins, yarrow or one moving line; Tarot in Waite's own Celtic
+      Cross order; five rune rows; a full geomantic shield; Ifá, sixteen cowries, fortune sticks,
+      Tibetan Mo, astragaloi and the Homer oracle. Two more tabs show where the bias would be if
+      the mapping were naive, and replay a recorded reading byte for byte. The mathematics is
+      asserted; the meaning is not.
+    </template>
+    <OracleDemo />
+  </DemoPage>
 </template>
